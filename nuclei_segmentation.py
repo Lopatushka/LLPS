@@ -215,7 +215,7 @@ def process_image(imp, p):
 
     img_title = imp.getTitle()
     img_base = base_name(img_title)
-    IJ.log("Processing: " + img_title)
+    IJ.log("Processing: " + img_base)
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
@@ -235,7 +235,7 @@ def process_image(imp, p):
         return
     
     # --- Save measurement channel image ---
-    MEASURE_CHANNEL_name = "{}_{}.jpeg".format(img_base, MEASURE_CHANNEL)
+    MEASURE_CHANNEL_name = "img_{:03d}_{}_C{}_{}.jpeg".format(idx, MEASURE_CHANNEL, img_base)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
@@ -296,7 +296,7 @@ def process_image(imp, p):
     mask_particles.show()
     mask_particles.updateAndDraw()
 
-    mask_path = os.path.join(output_dir, "{}_nuclei_mask.tif".format(img_base))
+    mask_path = os.path.join(output_dir, "img_{:03d}_{}_{}_nuclei_mask.tif".format(idx, img_base))
     IJ.save(mask_particles, mask_path)
 
     # --- Measure on measurement channel ---
@@ -305,7 +305,7 @@ def process_image(imp, p):
     rm.runCommand(meas_imp, "Measure")
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "{}_{}_roi.csv".format(img_base, MEASURE_CHANNEL))
+    results_path = os.path.join(output_dir, "img_{:03d}_{}_C{}_{}_roi.csv".format(idx, MEASURE_CHANNEL, img_base))
     IJ.saveAs("Results", results_path)
     close_results_table()
 
