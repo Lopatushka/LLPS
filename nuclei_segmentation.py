@@ -285,7 +285,7 @@ print("Processing the image: {}".format(img_title))
 # Set measurements for the Results table:
 # - area + mean intensity
 # - NO redirect (redirect settings can break on repeated runs)
-IJ.run("Set Measurements...", "area mean redirect=None decimal=3")
+IJ.run("Set Measurements...", "area mean decimal=3")
 
 # Clear old results so you only keep this run
 IJ.run("Clear Results", "")
