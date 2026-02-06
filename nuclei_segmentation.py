@@ -196,7 +196,14 @@ def process_image(imp, p):
     '''
     This function process a single image
     '''
-    # Initialize parameteres
+    # initialize counter once
+    if not hasattr(process_image, "call_count"):
+        process_image.call_count = 0
+
+    process_image.call_count += 1
+    call_id = process_image.call_count
+
+    # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
     thr_method = p["thr_method"]
