@@ -166,6 +166,14 @@ def close_all_images_except(keep_imp):
             imp.changes = False
             imp.close()
 
+def close_images(imps):
+    for im in imps:
+        if im is None:
+            continue
+        im.changes = False
+        im.close()
+
+
             
 def close_results_table():
 	"""
@@ -311,7 +319,7 @@ def process_image(imp, p):
     # ------------------------------------------------------------
 
     # Close everything except the measurement channel to reduce confusion/state
-    close_all_images_except(meas_imp)
+    # close_all_images_except(meas_imp)
 
     # Ensure measurement channel is active (important for consistent measurements)
     imp = get_active_image()
