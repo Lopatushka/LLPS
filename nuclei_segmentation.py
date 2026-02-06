@@ -201,6 +201,9 @@ def build_mask_from_rois(reference_imp, rm):
     return mask
 
 def process_image(imp, p):
+    '''
+    This function process a single image
+    '''
     # Initialize parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
@@ -235,6 +238,13 @@ def process_image(imp, p):
         IJ.error("Cannot pick measurement channel {}. Check number of channels.".format(MEASURE_CHANNEL))
         raise SystemExit
     
+    # Save MEASURE_CHANNEL image
+    # meas_imp.changes = False
+    MEASURE_CHANNEL_name = "{}_measure_channel.tif".format(img_base)
+    MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
+    meas_imp.show()
+    IJ.save(meas_imp, MEASURE_CHANNEL_path)
+
     # ------------------------------------------------------------
     # 1) NUCLEI SEGMENTATION ON DAPI
     # ------------------------------------------------------------
@@ -364,6 +374,7 @@ if output_dir is None:
 # ---- loop: show GUI per image, then process ----
 for imp in images:
     if is_original_image(imp):
+
         params = ask_params_for_image(imp.getTitle())
 
         if params is None:
