@@ -240,7 +240,7 @@ def process_image(imp, p):
     
     # Save MEASURE_CHANNEL image
     meas_imp.changes = False
-    MEASURE_CHANNEL_name = "{}_measure_channel.tif".format(img_base)
+    MEASURE_CHANNEL_name = "{}_measure_channel.jpeg".format(img_base)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
