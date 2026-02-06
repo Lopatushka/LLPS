@@ -37,6 +37,14 @@ import csv
 # FUNCTIONS
 # ============================================================
 
+def is_original_image(imp):
+    title = imp.getTitle()
+    return not (
+        title.startswith("C") and "-" in title or
+        title.endswith("_mask.tif") or
+        title == "DAPI_work"
+    )
+
 def get_active_image():
     """
     Returns the currently active ImagePlus in Fiji.
@@ -183,6 +191,24 @@ if output_dir is None:
     IJ.error("No output directory selected.")
     raise SystemExit
 
+# Check if at least one image is opened
+ids = WindowManager.getIDList()
+if not ids:
+    IJ.error("No images open.")
+    raise SystemExit
+
+images = []
+for wid in ids:
+    imp = WindowManager.getImage(wid)
+    if imp is not None:
+        images.append(imp)
+
+input_images = [imp for imp in images if is_original_image(imp)]
+print(images)
+
+
+
+'''
 # Get the currently active image (multichannel)
 imp = get_active_image()
 img_title = imp.getTitle()
@@ -285,7 +311,7 @@ print("Processing the image: {}".format(img_title))
 # Set measurements for the Results table:
 # - area + mean intensity
 # - NO redirect (redirect settings can break on repeated runs)
-IJ.run("Set Measurements...", "area mean decimal=3")
+IJ.run("Set Measurements...", "area mean redirect=None decimal=3")
 
 # Clear old results so you only keep this run
 IJ.run("Clear Results", "")
@@ -301,3 +327,4 @@ IJ.saveAs("Results", results_path)
 close_results_table()
 
 print("Done!")
+'''
