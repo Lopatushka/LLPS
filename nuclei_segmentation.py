@@ -12,6 +12,7 @@
 # PACKAGES IMPORT
 # ============================================================
 from ij import IJ, WindowManager
+from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
 from ij.measure import Measurements, ResultsTable
 from ij.plugin.filter import ParticleAnalyzer
@@ -44,6 +45,35 @@ def is_original_image(imp):
         title.endswith("_mask.tif") or
         title == "DAPI_work"
     )
+
+def ask_params_for_image(img_title):
+    gd = GenericDialog("Nuclei segmentation params")
+    gd.addMessage("Image: " + img_title)
+
+    gd.addNumericField("DAPI channel (1-based):", 1, 0)
+    gd.addNumericField("Measurement channel (1-based):", 2, 0)
+    gd.addChoice("Threshold method:", ["Triangle","Otsu","Huang","Yen","Li","Moments","Default"], "Triangle")
+    gd.addNumericField("Min nucleus area (pixels^2):", 200.0, 0)
+    gd.addNumericField("Max nucleus area (pixels^2) (0 = no max):", 0.0, 0)
+    gd.addNumericField("Min circularity (0..1):", 0.2, 2)
+    gd.addNumericField("Max circularity (0..1):", 1.0, 2)
+    gd.addCheckbox("Exclude edge particles", True)
+
+    gd.showDialog()
+    if gd.wasCanceled():
+        return None
+
+    params = {}
+    params["DAPI_CHANNEL"] = int(gd.getNextNumber())
+    params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
+    params["thr_method"] = gd.getNextChoice()
+    params["min_area"] = float(gd.getNextNumber())
+    params["max_area"] = float(gd.getNextNumber())
+    params["min_circularity"] = float(gd.getNextNumber())
+    params["max_circularity"] = float(gd.getNextNumber())
+    params["exclude_edges"] = bool(gd.getNextBoolean())
+
+    return params
 
 def get_active_image():
     """
@@ -204,7 +234,7 @@ for wid in ids:
         images.append(imp)
 
 input_images = [imp for imp in images if is_original_image(imp)]
-print(images)
+print("There are {} images to be processed.".format(len(images)))
 
 
 
