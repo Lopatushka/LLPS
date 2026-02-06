@@ -239,7 +239,7 @@ def process_image(imp, p):
         raise SystemExit
     
     # Save MEASURE_CHANNEL image
-    # meas_imp.changes = False
+    meas_imp.changes = False
     MEASURE_CHANNEL_name = "{}_measure_channel.tif".format(img_base)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
@@ -337,6 +337,10 @@ def process_image(imp, p):
 
     # Close Results window (optional)
     close_results_table()
+
+    # Close MEASURED image
+    meas_imp.changes = False
+    meas_imp.close()
 
     IJ.log("Done: " + imp.getTitle())
 
