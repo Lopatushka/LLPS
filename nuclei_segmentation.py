@@ -1,13 +1,3 @@
-#@ Integer(label="DAPI channel (1-based)", value=1) DAPI_CHANNEL
-#@ Integer(label="Measurement channel (1-based)", value=2) MEASURE_CHANNEL
-#@ String(label="Threshold method (e.g. Triangle, Otsu, Huang)", value="Triangle") thr_method
-#@ Float(label="Min nucleus area (pixels^2)", value=200.0) min_area
-#@ Float(label="Max nucleus area (pixels^2) (0 = no max)", value=0.0) max_area
-#@ Float(label="Min circularity (0..1)", value=0.2) min_circularity
-#@ Float(label="Max circularity (0..1)", value=1.0) max_circularity
-#@ Boolean(label="Exclude edge particles", value=True) exclude_edges
-
-
 # ============================================================
 # PACKAGES IMPORT
 # ============================================================
@@ -245,14 +235,14 @@ if output_dir is None:
 for imp in images:
     if is_original_image(imp):
         params = ask_params_for_image(imp.getTitle())
-            if params is None:
-                IJ.log("Canceled on image: " + imp.getTitle())
-                break
-            IJ.log("Processing: " + imp.getTitle())
-            # Call your existing pipeline here:
-            # process_image(imp, params)
-            #
 
+        if params is None:
+            IJ.log("Canceled on image: " + imp.getTitle())
+            break
+
+        IJ.log("Processing: " + imp.getTitle())
+        # Call your existing pipeline here:
+        # process_image(imp, params)
 
 
 
