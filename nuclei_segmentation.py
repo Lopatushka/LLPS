@@ -1,6 +1,3 @@
-# ============================================================
-# PACKAGES IMPORT
-# ============================================================
 from ij import IJ, WindowManager
 from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
@@ -9,24 +6,6 @@ from ij.plugin.filter import ParticleAnalyzer
 from ij.process import AutoThresholder
 import os
 import csv
-
-# ============================================================
-# PARAMETERS (edit these)
-# ============================================================
-
-#DAPI_CHANNEL = 1	     # 1-based channel index for DAPI (after Split Channels): C1 = 1, C2 = 2, ...          
-#MEASURE_CHANNEL = 2	     # 1-based channel index to measure mean intensity from (e.g., C2)       
-#thr_method = "Triangle"	 # Auto-threshold method for DAPI segmentation (e.g., Otsu, Triangle, Huang, ...)
-#min_area = 200	         # Minimum nucleus area in pixels^2
-#max_area = None	         # Maximum nucleus area in pixels^2 (None/0 => no max)            
-#min_circularity = 0.2	 # Min circularity filter for nuclei (0..1)
-#max_circularity = 1.0	 # Max circularity filter for nuclei (0..1)
-#exclude_edges = True	 # True = exclude edge particles, False = keep them
-#output_dir = "D:/test"	 # Directory to save results
-
-# ============================================================
-# FUNCTIONS
-# ============================================================
 
 def is_original_image(imp):
     title = imp.getTitle()
@@ -376,5 +355,4 @@ for imp in images:
             IJ.log("Canceled on image: " + imp.getTitle())
             break
 
-        IJ.log("Processing: " + imp.getTitle())
         process_image(imp, params)
