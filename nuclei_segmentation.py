@@ -227,10 +227,9 @@ def process_image(imp, p):
     max_circularity = p["max_circularity"]
     exclude_edges = p["exclude_edges"]
 
-    # Get the currently active image (multichannel)
-    imp = get_active_image()
     img_title = imp.getTitle()
     img_base = base_name(img_title)
+    IJ.log("Processing: " + img_title)
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
@@ -244,15 +243,13 @@ def process_image(imp, p):
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
 
-    if dapi_imp is None:
-        IJ.error("Cannot pick DAPI channel {}. Check number of channels.".format(DAPI_CHANNEL))
-        raise SystemExit
-    if meas_imp is None:
-        IJ.error("Cannot pick measurement channel {}. Check number of channels.".format(MEASURE_CHANNEL))
-        raise SystemExit
+    if dapi_imp is None or meas_imp is None:
+        IJ.error("Missing channels for: " + img_title)
+        close_images(split_imps)
+        return
     
-    # Save MEASURE_CHANNEL image
-    meas_imp.changes = False
+    # --- Save measurement channel image ---
+    #meas_imp.changes = False
     MEASURE_CHANNEL_name = "{}_measure_channel.jpeg".format(img_base)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
@@ -287,7 +284,6 @@ def process_image(imp, p):
     # - ADD_TO_MANAGER adds each detected particle as an ROI
     # - measurements only used during detection (we’ll measure on C2 later)
     options = ParticleAnalyzer.ADD_TO_MANAGER
-
     if exclude_edges:
         options |= ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES
         
@@ -300,13 +296,12 @@ def process_image(imp, p):
                         min_circularity, max_circularity)
 
     ok = pa.analyze(dapi_work)
-    if not ok:
-        IJ.error("ParticleAnalyzer returned False (no particles or error).")
-        raise SystemExit
-
-    if rm.getCount() == 0:
-        IJ.error("No nuclei found (ROI Manager empty). Check threshold/morphology/min_area.")
-        raise SystemExit
+    if (not ok) or rm.getCount() == 0:
+        IJ.log("No nuclei found for: " + img_title)
+        dapi_work.changes = False
+        dapi_work.close()
+        close_images(split_imps)
+        return
 
     # ------------------------------------------------------------
     # 3) SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
@@ -319,41 +314,24 @@ def process_image(imp, p):
     mask_path = os.path.join(output_dir, "{}_nuclei_mask.tif".format(img_base))
     IJ.save(mask_particles, mask_path)
 
-    # ------------------------------------------------------------
-    # 4) MEASURE AREA + MEAN INTENSITY ON CHANNEL 2 FOR THESE ROIs
-    # ------------------------------------------------------------
-
-    # Close everything except the measurement channel to reduce confusion/state
-    # close_all_images_except(meas_imp)
-
-    # Ensure measurement channel is active (important for consistent measurements)
-    imp = get_active_image()
-    img_title = imp.getTitle()
-    img_base = base_name(img_title)
-
-    print("Processing the image: {}".format(img_title))
-
-    # Set measurements for the Results table:
-    # - area + mean intensity
-    # - NO redirect (redirect settings can break on repeated runs)
-    IJ.run("Set Measurements...", "area mean redirect=None decimal=3")
-
-    # Clear old results so you only keep this run
+    # --- Measure on measurement channel ---
+    IJ.run("Set Measurements...", "area mean decimal=3")  # no redirect
     IJ.run("Clear Results", "")
-
-    # Measure all ROIs on meas_imp -> fills the standard Results table
     rm.runCommand(meas_imp, "Measure")
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "{}_C2_roi_area_mean.csv".format(img_base))
+    results_path = os.path.join(output_dir, "{}_C{}_roi_area_mean.csv".format(img_base, MEASURE_CHANNEL))
     IJ.saveAs("Results", results_path)
-
-    # Close Results window (optional)
     close_results_table()
 
-    # Close MEASURED image
-    meas_imp.changes = False
-    meas_imp.close()
+    # --- Cleanup ONLY what we created ---
+    dapi_work.changes = False
+    dapi_work.close()
+
+    mask_particles.changes = False
+    mask_particles.close()
+
+    close_images(split_imps)  # closes C1-..., C2-..., etc. for THIS image only
 
     IJ.log("Done: " + imp.getTitle())
 
