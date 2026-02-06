@@ -211,8 +211,125 @@ def process_image(imp, p):
     max_circularity = p["max_circularity"]
     exclude_edges = p["exclude_edges"]
 
+    # Get the currently active image (multichannel)
+    imp = get_active_image()
+    img_title = imp.getTitle()
+    img_base = base_name(img_title)
+
+    # Initialize/reset ROI Manager so we start clean
+    rm = ensure_roi_manager(reset=True)
+
+    # Split channels into separate images (C1, C2, ...)
+    split_imps = split_channels(imp)
+
+    # Select DAPI channel image (used for nuclei segmentation)
+    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
+
+    # Select the measurement channel image (used for mean intensity measurement)
+    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+
+    if dapi_imp is None:
+        IJ.error("Cannot pick DAPI channel {}. Check number of channels.".format(DAPI_CHANNEL))
+        raise SystemExit
+    if meas_imp is None:
+        IJ.error("Cannot pick measurement channel {}. Check number of channels.".format(MEASURE_CHANNEL))
+        raise SystemExit
     
-    
+    # ------------------------------------------------------------
+    # 1) NUCLEI SEGMENTATION ON DAPI
+    # ------------------------------------------------------------
+
+    # Work on a duplicate so we don’t modify the original DAPI channel image
+    dapi_work = dapi_imp.duplicate()
+    dapi_work.setTitle("DAPI_work")
+    dapi_work.show()
+
+    # Preprocessing: helps reduce uneven background and noise
+    IJ.run(dapi_work, "Subtract Background...", "rolling=50")
+    IJ.run(dapi_work, "Gaussian Blur...", "sigma=1")
+
+    # Thresholding: create a binary mask from the DAPI channel
+    # "{} dark" assumes nuclei are bright on a dark background
+    IJ.setAutoThreshold(dapi_work, "{} dark".format(thr_method))
+    IJ.run(dapi_work, "Convert to Mask", "")
+
+    # Post-processing: fill holes inside nuclei
+    IJ.run(dapi_work, "Fill Holes", "")
+
+    # ------------------------------------------------------------
+    # 2) ANALYZE PARTICLES -> ROIs IN ROI MANAGER
+    # ------------------------------------------------------------
+
+    # ParticleAnalyzer:
+    # - ADD_TO_MANAGER adds each detected particle as an ROI
+    # - measurements only used during detection (we’ll measure on C2 later)
+    options = ParticleAnalyzer.ADD_TO_MANAGER
+
+    if exclude_edges:
+        options |= ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES
+        
+    measurements = Measurements.AREA
+
+    # If your Fiji throws an error here, switch to IJ.run("Analyze Particles...", ...) instead.
+    pa = ParticleAnalyzer(options, measurements, None,
+                        float(min_area),
+                        (float(max_area) if max_area and max_area > 0 else float("inf")),
+                        min_circularity, max_circularity)
+
+    ok = pa.analyze(dapi_work)
+    if not ok:
+        IJ.error("ParticleAnalyzer returned False (no particles or error).")
+        raise SystemExit
+
+    if rm.getCount() == 0:
+        IJ.error("No nuclei found (ROI Manager empty). Check threshold/morphology/min_area.")
+        raise SystemExit
+
+    # ------------------------------------------------------------
+    # 3) SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
+    # ------------------------------------------------------------
+
+    mask_particles = build_mask_from_rois(dapi_work, rm)
+    mask_particles.show()
+    mask_particles.updateAndDraw()
+
+    mask_path = os.path.join(output_dir, "{}_nuclei_mask.tif".format(img_base))
+    IJ.save(mask_particles, mask_path)
+
+    # ------------------------------------------------------------
+    # 4) MEASURE AREA + MEAN INTENSITY ON CHANNEL 2 FOR THESE ROIs
+    # ------------------------------------------------------------
+
+    # Close everything except the measurement channel to reduce confusion/state
+    close_all_images_except(meas_imp)
+
+    # Ensure measurement channel is active (important for consistent measurements)
+    imp = get_active_image()
+    img_title = imp.getTitle()
+    img_base = base_name(img_title)
+
+    print("Processing the image: {}".format(img_title))
+
+    # Set measurements for the Results table:
+    # - area + mean intensity
+    # - NO redirect (redirect settings can break on repeated runs)
+    IJ.run("Set Measurements...", "area mean redirect=None decimal=3")
+
+    # Clear old results so you only keep this run
+    IJ.run("Clear Results", "")
+
+    # Measure all ROIs on meas_imp -> fills the standard Results table
+    rm.runCommand(meas_imp, "Measure")
+
+    # Save Results as CSV
+    results_path = os.path.join(output_dir, "{}_C2_roi_area_mean.csv".format(img_base))
+    IJ.saveAs("Results", results_path)
+
+    # Close Results window (optional)
+    close_results_table()
+
+    IJ.log("Done: " + imp.getTitle())
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -255,124 +372,3 @@ for imp in images:
 
         IJ.log("Processing: " + imp.getTitle())
         process_image(imp, params)
-
-'''
-# Get the currently active image (multichannel)
-imp = get_active_image()
-img_title = imp.getTitle()
-img_base = base_name(img_title)
-
-# Initialize/reset ROI Manager so we start clean
-rm = ensure_roi_manager(reset=True)
-
-# Split channels into separate images (C1, C2, ...)
-split_imps = split_channels(imp)
-
-# Select DAPI channel image (used for nuclei segmentation)
-dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
-
-# Select the measurement channel image (used for mean intensity measurement)
-meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-
-if dapi_imp is None:
-    IJ.error("Cannot pick DAPI channel {}. Check number of channels.".format(DAPI_CHANNEL))
-    raise SystemExit
-if meas_imp is None:
-    IJ.error("Cannot pick measurement channel {}. Check number of channels.".format(MEASURE_CHANNEL))
-    raise SystemExit
-    
-# ------------------------------------------------------------
-# 1) NUCLEI SEGMENTATION ON DAPI
-# ------------------------------------------------------------
-
-# Work on a duplicate so we don’t modify the original DAPI channel image
-dapi_work = dapi_imp.duplicate()
-dapi_work.setTitle("DAPI_work")
-dapi_work.show()
-
-# Preprocessing: helps reduce uneven background and noise
-IJ.run(dapi_work, "Subtract Background...", "rolling=50")
-IJ.run(dapi_work, "Gaussian Blur...", "sigma=1")
-
-# Thresholding: create a binary mask from the DAPI channel
-# "{} dark" assumes nuclei are bright on a dark background
-IJ.setAutoThreshold(dapi_work, "{} dark".format(thr_method))
-IJ.run(dapi_work, "Convert to Mask", "")
-
-# Post-processing: fill holes inside nuclei
-IJ.run(dapi_work, "Fill Holes", "")
-
-# ------------------------------------------------------------
-# 2) ANALYZE PARTICLES -> ROIs IN ROI MANAGER
-# ------------------------------------------------------------
-
-# ParticleAnalyzer:
-# - ADD_TO_MANAGER adds each detected particle as an ROI
-# - measurements only used during detection (we’ll measure on C2 later)
-options = ParticleAnalyzer.ADD_TO_MANAGER
-
-if exclude_edges:
-    options |= ParticleAnalyzer.EXCLUDE_EDGE_PARTICLES
-    
-measurements = Measurements.AREA
-
-# If your Fiji throws an error here, switch to IJ.run("Analyze Particles...", ...) instead.
-pa = ParticleAnalyzer(options, measurements, None,
-                      float(min_area),
-                      (float(max_area) if max_area and max_area > 0 else float("inf")),
-                      min_circularity, max_circularity)
-
-ok = pa.analyze(dapi_work)
-if not ok:
-    IJ.error("ParticleAnalyzer returned False (no particles or error).")
-    raise SystemExit
-
-if rm.getCount() == 0:
-    IJ.error("No nuclei found (ROI Manager empty). Check threshold/morphology/min_area.")
-    raise SystemExit
-
-# ------------------------------------------------------------
-# 3) SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
-# ------------------------------------------------------------
-
-mask_particles = build_mask_from_rois(dapi_work, rm)
-mask_particles.show()
-mask_particles.updateAndDraw()
-
-mask_path = os.path.join(output_dir, "{}_nuclei_mask.tif".format(img_base))
-IJ.save(mask_particles, mask_path)
-
-# ------------------------------------------------------------
-# 4) MEASURE AREA + MEAN INTENSITY ON CHANNEL 2 FOR THESE ROIs
-# ------------------------------------------------------------
-
-# Close everything except the measurement channel to reduce confusion/state
-close_all_images_except(meas_imp)
-
-# Ensure measurement channel is active (important for consistent measurements)
-imp = get_active_image()
-img_title = imp.getTitle()
-img_base = base_name(img_title)
-
-print("Processing the image: {}".format(img_title))
-
-# Set measurements for the Results table:
-# - area + mean intensity
-# - NO redirect (redirect settings can break on repeated runs)
-IJ.run("Set Measurements...", "area mean redirect=None decimal=3")
-
-# Clear old results so you only keep this run
-IJ.run("Clear Results", "")
-
-# Measure all ROIs on meas_imp -> fills the standard Results table
-rm.runCommand(meas_imp, "Measure")
-
-# Save Results as CSV
-results_path = os.path.join(output_dir, "{}_C2_roi_area_mean.csv".format(img_base))
-IJ.saveAs("Results", results_path)
-
-# Close Results window (optional)
-close_results_table()
-
-print("Done!")
-'''
