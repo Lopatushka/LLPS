@@ -214,13 +214,6 @@ def build_mask_from_rois(reference_imp, rm):
 # MAIN
 # ============================================================
 
-# Ask user where to save outputs
-output_dir = IJ.getDirectory("Choose a directory to save data")
-
-if output_dir is None:
-    IJ.error("No output directory selected.")
-    raise SystemExit
-
 # Check if at least one image is opened
 ids = WindowManager.getIDList()
 if not ids:
@@ -230,11 +223,42 @@ if not ids:
 images = []
 for wid in ids:
     imp = WindowManager.getImage(wid)
-    if imp is not None:
-        images.append(imp)
+    if imp is None:
+        continue
+    title = imp.getTitle()
+    # Skip typical derived images (adjust if needed)
+    if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
+        continue
+    images.append(imp)
 
-input_images = [imp for imp in images if is_original_image(imp)]
-print("There are {} images to be processed.".format(len(images)))
+if not images:
+    IJ.error("No suitable images found (only derived windows are open).")
+    raise SystemExit
+
+# Ask user where to save outputs
+output_dir = IJ.getDirectory("Choose a directory to save data")
+if output_dir is None:
+    IJ.error("No output directory selected.")
+    raise SystemExit
+
+# ---- loop: show GUI per image, then process ----
+for imp in images:
+    if is_original_image(imp):
+        params = ask_params_for_image(imp.getTitle())
+            if params is None:
+                IJ.log("Canceled on image: " + imp.getTitle())
+                break
+            IJ.log("Processing: " + imp.getTitle())
+            # Call your existing pipeline here:
+            # process_image(imp, params)
+            #
+
+
+
+
+#input_images = [imp for imp in images if is_original_image(imp)]
+#print("There are {} images to be processed.".format(len(images)))
+
 
 
 
