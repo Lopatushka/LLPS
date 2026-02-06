@@ -228,8 +228,7 @@ def process_image(imp, p):
         return
     
     # --- Save measurement channel image ---
-    #meas_imp.changes = False
-    MEASURE_CHANNEL_name = "{}_measure_channel.jpeg".format(img_base)
+    MEASURE_CHANNEL_name = "{}_{}.jpeg".format(img_base, MEASURE_CHANNEL)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
@@ -299,7 +298,7 @@ def process_image(imp, p):
     rm.runCommand(meas_imp, "Measure")
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "{}_C{}_roi_area_mean.csv".format(img_base, MEASURE_CHANNEL))
+    results_path = os.path.join(output_dir, "{}_{}_roi.csv".format(img_base, MEASURE_CHANNEL))
     IJ.saveAs("Results", results_path)
     close_results_table()
 
