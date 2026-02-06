@@ -199,6 +199,19 @@ def build_mask_from_rois(reference_imp, rm):
 
     mask.killRoi()
     return mask
+
+def process_image(imp, p):
+    # Initialize parameteres
+    DAPI_CHANNEL = p["DAPI_CHANNEL"]
+    MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
+    thr_method = p["thr_method"]
+    min_area = p["min_area"]
+    max_area = p["max_area"]
+    min_circularity = p["min_circularity"]
+    max_circularity = p["max_circularity"]
+    exclude_edges = p["exclude_edges"]
+
+    
     
 # ============================================================
 # MAIN
@@ -241,16 +254,7 @@ for imp in images:
             break
 
         IJ.log("Processing: " + imp.getTitle())
-        # Call your existing pipeline here:
-        # process_image(imp, params)
-
-
-
-#input_images = [imp for imp in images if is_original_image(imp)]
-#print("There are {} images to be processed.".format(len(images)))
-
-
-
+        process_image(imp, params)
 
 '''
 # Get the currently active image (multichannel)
