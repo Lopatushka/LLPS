@@ -104,9 +104,16 @@ def split_channels(imp):
     The list is sorted as [C1, C2, C3, ...].
     """
     orig_title = imp.getTitle()
+
+    # IDs before splitting
+    before = set(WindowManager.getIDList() or [])
     
     # Split channels: creates new windows like "C1-<orig_title>", "C2-<orig_title>", ...
     IJ.run(imp, "Split Channels", "")
+
+    # IDs after splitting
+    after = set(WindowManager.getIDList() or [])
+    new_ids = list(after - before)
     
     # Get all currently opened image window IDs
     ids = WindowManager.getIDList()
@@ -115,7 +122,7 @@ def split_channels(imp):
         raise SystemExit
 
     split_imps = []
-    for wid in ids:
+    for wid in new_ids:
         wimp = WindowManager.getImage(wid)
         if wimp is None:
             continue
@@ -172,9 +179,7 @@ def close_images(imps):
             continue
         im.changes = False
         im.close()
-
-
-            
+         
 def close_results_table():
 	"""
     Closes the standard ImageJ 'Results' table window if it exists.
