@@ -6,6 +6,7 @@ from ij.plugin.filter import ParticleAnalyzer
 from ij.process import AutoThresholder
 import os
 import csv
+import traceback
 
 def ask_params_for_image(img_title):
     gd = GenericDialog("Nuclei segmentation params")
@@ -343,7 +344,7 @@ for wid in ids:
 
 # Check if there are some suitable images after filtration
 if not images:
-    IJ.error("No suitable images found (only derived windows are open).")
+    IJ.error("No suitable images found (only derived windows are open)!")
     raise SystemExit
 
 # Keep only unique images
@@ -353,8 +354,10 @@ n = len(unique_images) # total amount of images to process
 # Ask user where to save outputs
 output_dir = IJ.getDirectory("Choose a directory to save data")
 if output_dir is None:
-    IJ.error("No output directory selected.")
+    IJ.error("No output directory selected!")
     raise SystemExit
+
+errors = []  # collect all errors here
 
 # ---- Loop: show GUI per image, then process ----
 for call_id, imp in enumerate(unique_images, start=1):
@@ -370,9 +373,26 @@ for call_id, imp in enumerate(unique_images, start=1):
     
     try:
         process_image(imp, params)
+
     except Exception as e:
-         IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
-         continue
+        # log immediately
+        IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
+        IJ.log(traceback.format_exc())  # comment out if too verbose
+        continue
+
+    finally:
+        # clean-up
+        rm = RoiManager.getInstance()
+        if rm is not None:
+            rm.reset()
+            rm.close()
+
+# ---- After the loop: print a summary ----
+IJ.log("===== RUN SUMMARY: {} error(s) =====".format(len(errors)))
+for k, er in enumerate(errors, start=1):
+    IJ.log("#{k} [{id}] {title} | {type}: {msg}".format(
+        k=k, id=er["id"], title=er["title"], type=er["type"], msg=er["msg"]
+    ))
 
 # Finish progress
 IJ.log("Done!")
