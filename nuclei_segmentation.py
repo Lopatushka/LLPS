@@ -197,7 +197,6 @@ def process_image(imp, p):
     This function process a single image
     imp - image
     p - parameters
-    idx - the index of function calls
     '''
     # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
@@ -209,11 +208,14 @@ def process_image(imp, p):
     max_circularity = p["max_circularity"]
     exclude_edges = p["exclude_edges"]
 
-    # Processing image title if it is Multipoint (MP)
+    # Processing image title if it is image from Multipoint (MP) or not
     img_title = imp.getTitle()
-    if "MP" in img_title:
-        img_title = img_title.split("-")[1]
-    img_base = base_name(img_title)
+    if "MP" in img_title and " - " in img_title:
+        img_title = img_title.split("-")[1] # split string
+        img_title = img_title.replace(" ", "", 1) # delete fist blank in the string
+        img_title = img_title.replace(" ", "_") # repalce other blanks to underscore
+    else:
+        img_title = base_name(img_title) # delete extention
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
@@ -233,7 +235,7 @@ def process_image(imp, p):
         return
     
     # --- Save measurement channel image ---
-    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_base)
+    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
@@ -288,7 +290,7 @@ def process_image(imp, p):
     mask_particles.show()
     mask_particles.updateAndDraw()
 
-    mask_path = os.path.join(output_dir, "C{}_{}_mask.jpeg".format(DAPI_CHANNEL, img_base))
+    mask_path = os.path.join(output_dir, "C{}_{}_mask.jpeg".format(DAPI_CHANNEL, img_title))
     IJ.save(mask_particles, mask_path)
 
     # --- Measure on measurement channel ---
@@ -297,7 +299,7 @@ def process_image(imp, p):
     rm.runCommand(meas_imp, "Measure")
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "C{}_{}_roi.csv".format(MEASURE_CHANNEL, img_base))
+    results_path = os.path.join(output_dir, "C{}_{}_roi.csv".format(MEASURE_CHANNEL, img_title))
     IJ.saveAs("Results", results_path)
     close_results_table()
 
