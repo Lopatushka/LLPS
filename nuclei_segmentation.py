@@ -192,17 +192,13 @@ def build_mask_from_rois(reference_imp, rm):
     mask.killRoi()
     return mask
 
-def process_image(imp, p):
+def process_image(imp, p, idx):
     '''
     This function process a single image
+    imp - image
+    p - parameters
+    idx - the index of function calls
     '''
-    # initialize counter once
-    if not hasattr(process_image, "call_count"):
-        process_image.call_count = 0
-
-    process_image.call_count += 1
-    call_id = process_image.call_count
-
     # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
@@ -352,6 +348,8 @@ if output_dir is None:
     raise SystemExit
 
 # ---- loop: show GUI per image, then process ----
+# Initialize the counter of function process_image
+call_id = 1
 for imp in images:
     if is_original_image(imp):
 
@@ -361,4 +359,5 @@ for imp in images:
             IJ.log("Canceled on image: " + imp.getTitle())
             break
 
-        process_image(imp, params)
+        process_image(imp, params, call_id)
+        call_id =+ 1
