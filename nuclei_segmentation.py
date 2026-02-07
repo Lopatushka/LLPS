@@ -236,9 +236,7 @@ def process_image(imp, p, idx):
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
 
-    # ------------------------------------------------------------
-    # 1) NUCLEI SEGMENTATION ON DAPI
-    # ------------------------------------------------------------
+    # --- NUCLEI SEGMENTATION ON DAPI
 
     # Work on a duplicate so we don’t modify the original DAPI channel image
     dapi_work = dapi_imp.duplicate()
@@ -257,9 +255,7 @@ def process_image(imp, p, idx):
     # Post-processing: fill holes inside nuclei
     IJ.run(dapi_work, "Fill Holes", "")
 
-    # ------------------------------------------------------------
-    # 2) ANALYZE PARTICLES -> ROIs IN ROI MANAGER
-    # ------------------------------------------------------------
+    # --- ANALYZE PARTICLES -> ROIs IN ROI MANAGER
 
     # ParticleAnalyzer:
     # - ADD_TO_MANAGER adds each detected particle as an ROI
@@ -284,10 +280,8 @@ def process_image(imp, p, idx):
         close_images(split_imps)
         return
 
-    # ------------------------------------------------------------
-    # 3) SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
-    # ------------------------------------------------------------
-
+    # --- SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
+   
     mask_particles = build_mask_from_rois(dapi_work, rm)
     mask_particles.show()
     mask_particles.updateAndDraw()
@@ -316,9 +310,7 @@ def process_image(imp, p, idx):
 
     IJ.log("Done: " + imp.getTitle())
 
-# ============================================================
-# MAIN
-# ============================================================
+# --- Main ---
 
 # Check if at least one image is opened
 ids = WindowManager.getIDList()
@@ -326,6 +318,7 @@ if not ids:
     IJ.error("No images open.")
     raise SystemExit
 
+# Opened images checking and filtration
 images = []
 for wid in ids:
     imp = WindowManager.getImage(wid)
@@ -347,7 +340,7 @@ if output_dir is None:
     IJ.error("No output directory selected.")
     raise SystemExit
 
-# ---- loop: show GUI per image, then process ----
+# ---- Loop: show GUI per image, then process ----
 # Initialize the counter of function process_image
 call_id = 1
 for imp in images:
