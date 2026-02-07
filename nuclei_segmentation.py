@@ -360,4 +360,4 @@ for imp in images:
             break
 
         process_image(imp, params, call_id)
-        call_id =+ 1
+        call_id += 1
