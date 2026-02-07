@@ -198,6 +198,12 @@ def build_mask_from_rois(reference_imp, rm):
     mask.killRoi()
     return mask
 
+def cleanup_iteration():
+    rm = RoiManager.getInstance()
+    if rm is not None:
+        rm.reset()
+        rm.close()
+
 def process_image(imp, p):
     '''
     This function process a single image
@@ -314,10 +320,7 @@ def process_image(imp, p):
     close_images(split_imps)  # closes C1-..., C2-..., etc. for THIS image only
 
     # Reset and close ROI manager
-    rm = RoiManager.getInstance()
-    if rm is not None:
-        rm.reset()   # deletes all ROIs
-        rm.close()   # closes the ROI Manager window
+    cleanup_iteration()
 
     IJ.log("Done: " + imp.getTitle())
 
@@ -381,11 +384,8 @@ for call_id, imp in enumerate(unique_images, start=1):
         continue
 
     finally:
-        # clean-up
-        rm = RoiManager.getInstance()
-        if rm is not None:
-            rm.reset()
-            rm.close()
+        # clean-up ROI manager
+        cleanup_iteration()
 
 # ---- After the loop: print a summary ----
 IJ.log("===== RUN SUMMARY: {} error(s) =====".format(len(errors)))
@@ -395,4 +395,4 @@ for k, er in enumerate(errors, start=1):
     ))
 
 # Finish progress
-IJ.log("Done!")
+IJ.log("Analysis is finished!")
