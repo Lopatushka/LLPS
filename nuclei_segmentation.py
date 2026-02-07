@@ -211,7 +211,6 @@ def process_image(imp, p, idx):
 
     img_title = imp.getTitle()
     img_base = base_name(img_title)
-    IJ.log("Processing: " + img_base)
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
@@ -358,7 +357,7 @@ for call_id, imp in enumerate(unique_images, start=1):
         IJ.log("Skip the image: " + imp.getTitle())
         continue
 
-    #process_image(imp, params, call_id)
+    process_image(imp, params, call_id)
 
 # Finish progress
 IJ.log("Done!")
