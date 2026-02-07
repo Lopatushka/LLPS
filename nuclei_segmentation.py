@@ -7,7 +7,7 @@ from ij.process import AutoThresholder
 import os
 import csv
 
-def is_original_image(imp):
+def _is_original_image(imp):
     title = imp.getTitle()
     return not (
         title.startswith("C") and "-" in title or
@@ -331,11 +331,14 @@ for wid in ids:
         continue
     images.append(imp)
 
+# Check if there are some suitable images after filtration
 if not images:
     IJ.error("No suitable images found (only derived windows are open).")
     raise SystemExit
 
-n = len(images) # total ampount of images to process
+# Keep only unique images
+unique_images = list(set(images))
+n = len(unique_images) # total amount of images to process
 
 # Ask user where to save outputs
 output_dir = IJ.getDirectory("Choose a directory to save data")
@@ -343,25 +346,19 @@ if output_dir is None:
     IJ.error("No output directory selected.")
     raise SystemExit
 
-
 # ---- Loop: show GUI per image, then process ----
-for call_id, imp in enumerate(images, start=1):
+for call_id, imp in enumerate(unique_images, start=1):
     # Make Log message
     msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
     IJ.log(msg)
-    IJ.showStatus(msg)
-    IJ.showProgress(call_id, n)
 
     # Ask user about the parameters
     params = ask_params_for_image(imp.getTitle())
     if params is None:
-        IJ.log("Canceled on image: " + imp.getTitle())
-        IJ.showStatus("Canceled.")
-        IJ.showProgress(1, 1)
-        break
+        IJ.log("Skip the image: " + imp.getTitle())
+        continue
 
-    process_image(imp, params, call_id)
+    #process_image(imp, params, call_id)
 
 # Finish progress
-IJ.showStatus("Done!")
-IJ.showProgress(1, 1)
+IJ.log("Done!")
