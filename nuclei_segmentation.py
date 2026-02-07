@@ -192,7 +192,7 @@ def build_mask_from_rois(reference_imp, rm):
     mask.killRoi()
     return mask
 
-def process_image(imp, p, idx):
+def process_image(imp, p):
     '''
     This function process a single image
     imp - image
@@ -209,7 +209,10 @@ def process_image(imp, p, idx):
     max_circularity = p["max_circularity"]
     exclude_edges = p["exclude_edges"]
 
+    # Processing image title if it is Multipoint (MP)
     img_title = imp.getTitle()
+    if "MP" in img_title:
+        img_title = img_title.split("-")[1]
     img_base = base_name(img_title)
 
     # Initialize/reset ROI Manager so we start clean
@@ -230,7 +233,7 @@ def process_image(imp, p, idx):
         return
     
     # --- Save measurement channel image ---
-    MEASURE_CHANNEL_name = "img_{:03d}_{}_C{}_{}.jpeg".format(idx, MEASURE_CHANNEL, img_base)
+    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_base)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
@@ -285,7 +288,7 @@ def process_image(imp, p, idx):
     mask_particles.show()
     mask_particles.updateAndDraw()
 
-    mask_path = os.path.join(output_dir, "img_{:03d}_{}_{}_nuclei_mask.tif".format(idx, img_base))
+    mask_path = os.path.join(output_dir, "C{}_{}_mask.jpeg".format(DAPI_CHANNEL, img_base))
     IJ.save(mask_particles, mask_path)
 
     # --- Measure on measurement channel ---
@@ -294,7 +297,7 @@ def process_image(imp, p, idx):
     rm.runCommand(meas_imp, "Measure")
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "img_{:03d}_{}_C{}_{}_roi.csv".format(idx, MEASURE_CHANNEL, img_base))
+    results_path = os.path.join(output_dir, "C{}_{}_roi.csv".format(MEASURE_CHANNEL, img_base))
     IJ.saveAs("Results", results_path)
     close_results_table()
 
@@ -327,7 +330,7 @@ for wid in ids:
 
     # Skip typical derived images (adjust if needed)
     if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
-        continue
+        continue         
     images.append(imp)
 
 # Check if there are some suitable images after filtration
@@ -356,8 +359,11 @@ for call_id, imp in enumerate(unique_images, start=1):
     if params is None:
         IJ.log("Skip the image: " + imp.getTitle())
         continue
-
-    process_image(imp, params, call_id)
+    
+    #print(imp)
+    #print(imp.getTitle())
+    #print(base_name(base_name(imp.getTitle())))
+    process_image(imp, params)
 
 # Finish progress
 IJ.log("Done!")
