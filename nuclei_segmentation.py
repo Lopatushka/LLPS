@@ -7,14 +7,6 @@ from ij.process import AutoThresholder
 import os
 import csv
 
-def _is_original_image(imp):
-    title = imp.getTitle()
-    return not (
-        title.startswith("C") and "-" in title or
-        title.endswith("_mask.tif") or
-        title == "DAPI_work"
-    )
-
 def ask_params_for_image(img_title):
     gd = GenericDialog("Nuclei segmentation params")
     gd.addMessage("Image: " + img_title)
@@ -57,13 +49,26 @@ def get_active_image():
 
     return imp
     
-def base_name(title):
+def _base_name(title):
     """
     Removes the file extension from the image title safely.
     Example: 'cell1.tif' -> 'cell1'
     """
     return os.path.splitext(title)[0]
-    
+
+def img_name_processing(name):
+    try:
+        if "MP" in name and " - " in name:
+            name = name.split("-")[1] # split string
+            name = name.replace(" ", "", 1) # delete fist blank in the string
+            name = name.replace(" ", "_") # repalce other blanks to underscore
+        else:
+            name = os.path.splitext(name)[0] # delete extention
+        return name
+    except Exception as e:
+         raise Exception("ERROR in parsing image name")
+         
+
 def ensure_roi_manager(reset=True):
 	"""
     Gets the ROI Manager instance.
@@ -208,14 +213,9 @@ def process_image(imp, p):
     max_circularity = p["max_circularity"]
     exclude_edges = p["exclude_edges"]
 
-    # Processing image title if it is image from Multipoint (MP) or not
+    # Processing image title
     img_title = imp.getTitle()
-    if "MP" in img_title and " - " in img_title:
-        img_title = img_title.split("-")[1] # split string
-        img_title = img_title.replace(" ", "", 1) # delete fist blank in the string
-        img_title = img_title.replace(" ", "_") # repalce other blanks to underscore
-    else:
-        img_title = base_name(img_title) # delete extention
+    img_title = img_name_processing(img_title)
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
@@ -312,6 +312,12 @@ def process_image(imp, p):
 
     close_images(split_imps)  # closes C1-..., C2-..., etc. for THIS image only
 
+    # Reset and close ROI manager
+    rm = RoiManager.getInstance()
+    if rm is not None:
+        rm.reset()   # deletes all ROIs
+        rm.close()   # closes the ROI Manager window
+
     IJ.log("Done: " + imp.getTitle())
 
 # --- Main ---
@@ -362,10 +368,11 @@ for call_id, imp in enumerate(unique_images, start=1):
         IJ.log("Skip the image: " + imp.getTitle())
         continue
     
-    #print(imp)
-    #print(imp.getTitle())
-    #print(base_name(base_name(imp.getTitle())))
-    process_image(imp, params)
+    try:
+        process_image(imp, params)
+    except Exception as e:
+         IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
+         continue
 
 # Finish progress
 IJ.log("Done!")
