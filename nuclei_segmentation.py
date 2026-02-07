@@ -135,7 +135,7 @@ def pick_channel_by_index(split_imps, one_based_index):
 		return None
 	return split_imps[idx]
     
-def close_all_images_except(keep_imp):
+def _close_all_images_except(keep_imp):
     """
     Closes all image windows except keep_imp.
     'changes=False' prevents 'Save changes?' dialogs.
@@ -319,12 +319,13 @@ if not ids:
     raise SystemExit
 
 # Opened images checking and filtration
-images = []
+images = [] # store images in the list
 for wid in ids:
     imp = WindowManager.getImage(wid)
     if imp is None:
         continue
     title = imp.getTitle()
+
     # Skip typical derived images (adjust if needed)
     if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
         continue
@@ -334,23 +335,33 @@ if not images:
     IJ.error("No suitable images found (only derived windows are open).")
     raise SystemExit
 
+n = len(images) # total ampount of images to process
+
 # Ask user where to save outputs
 output_dir = IJ.getDirectory("Choose a directory to save data")
 if output_dir is None:
     IJ.error("No output directory selected.")
     raise SystemExit
 
+
 # ---- Loop: show GUI per image, then process ----
-# Initialize the counter of function process_image
-call_id = 1
-for imp in images:
-    if is_original_image(imp):
+for call_id, imp in enumerate(images, start=1):
+    # Make Log message
+    msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
+    IJ.log(msg)
+    IJ.showStatus(msg)
+    IJ.showProgress(call_id, n)
 
-        params = ask_params_for_image(imp.getTitle())
+    # Ask user about the parameters
+    params = ask_params_for_image(imp.getTitle())
+    if params is None:
+        IJ.log("Canceled on image: " + imp.getTitle())
+        IJ.showStatus("Canceled.")
+        IJ.showProgress(1, 1)
+        break
 
-        if params is None:
-            IJ.log("Canceled on image: " + imp.getTitle())
-            break
+    process_image(imp, params, call_id)
 
-        process_image(imp, params, call_id)
-        call_id += 1
+# Finish progress
+IJ.showStatus("Done!")
+IJ.showProgress(1, 1)
