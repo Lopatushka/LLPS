@@ -21,6 +21,7 @@ def ask_params_for_image(img_title):
     gd.addNumericField("Min circularity (0..1):", 0.3, 2)
     gd.addNumericField("Max circularity (0..1):", 1.0, 2)
     gd.addCheckbox("Exclude edge particles", True)
+    gd.addCheckbox("Fill holes", True)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -35,6 +36,7 @@ def ask_params_for_image(img_title):
     params["min_circularity"] = float(gd.getNextNumber())
     params["max_circularity"] = float(gd.getNextNumber())
     params["exclude_edges"] = bool(gd.getNextBoolean())
+    params["fill_holes"] = bool(gd.getNextBoolean())
 
     return params
 
@@ -212,7 +214,8 @@ def process_image(imp, p):
     max_area = p["max_area"]
     min_circularity = p["min_circularity"]
     max_circularity = p["max_circularity"]
-    exclude_edges = p["exclude_edges"]
+    exclude_edges = p["exclude_edges"] # bool
+    fill_holes = p["fill_holes"] # bool
 
     # Processing image title
     img_title = imp.getTitle()
@@ -258,7 +261,8 @@ def process_image(imp, p):
     IJ.run(dapi_work, "Convert to Mask", "")
 
     # Post-processing: fill holes inside nuclei
-    IJ.run(dapi_work, "Fill Holes", "")
+    if fill_holes:
+        IJ.run(dapi_work, "Fill Holes", "")
     # Errode image (binary)?
     # Dilatation (binary)
 
