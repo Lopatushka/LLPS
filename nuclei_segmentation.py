@@ -249,8 +249,8 @@ def process_image(imp, p):
     dapi_work.show()
 
     # Preprocessing: helps reduce uneven background and noise
-    IJ.run(dapi_work, "Subtract Background...", "rolling=50")
-    IJ.run(dapi_work, "Gaussian Blur...", "sigma=1")
+    #IJ.run(dapi_work, "Subtract Background...", "rolling=50")
+    IJ.run(dapi_work, "Gaussian Blur...", "sigma=1") #variable 
 
     # Thresholding: create a binary mask from the DAPI channel
     # "{} dark" assumes nuclei are bright on a dark background
@@ -259,6 +259,8 @@ def process_image(imp, p):
 
     # Post-processing: fill holes inside nuclei
     IJ.run(dapi_work, "Fill Holes", "")
+    # Errode image (binary)?
+    # Dilatation (binary)
 
     # --- ANALYZE PARTICLES -> ROIs IN ROI MANAGER
 
