@@ -25,6 +25,7 @@ def ask_params_for_image(img_title):
     gd.addNumericField("Number of dilation steps (0...5):", 5, 0)
     gd.addCheckbox("Exclude edge particles", True)
     gd.addCheckbox("Fill holes", True)
+    gd.addCheckbox("Single ROI per image", True)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -43,6 +44,7 @@ def ask_params_for_image(img_title):
     params["dilation_steps"] = int(gd.getNextNumber()) 
     params["exclude_edges"] = bool(gd.getNextBoolean())
     params["fill_holes"] = bool(gd.getNextBoolean())
+    params["single_roi"] = bool(gd.getNextBoolean())
 
     return params
 
@@ -225,6 +227,7 @@ def process_image(imp, p):
     dilation_steps = p["dilation_steps"]
     exclude_edges = p["exclude_edges"] # bool
     fill_holes = p["fill_holes"] # bool
+    single_roi = p["single_roi"] # bool
 
     # Processing image title
     img_title = imp.getTitle()
@@ -307,6 +310,29 @@ def process_image(imp, p):
         close_images(split_imps)
         return
     
+    if single_roi:
+        max_area = -1.0
+        max_roi = None
+        #max_name = None
+
+        for i in range(rm.getCount()):
+                roi = rm.getRoi(i)
+                if roi is None:
+                    continue
+                imp.setRoi(roi)
+                stats = imp.getStatistics(Measurements.AREA)
+                area = stats.area
+                if area > max_area:
+                    max_area = area
+                    max_roi = roi
+                    #max_name = roi.getName(i)
+        if max_roi is None:
+             raise Exception("Could not find a valid ROI")
+        # Keep only the biggest ROI in ROI Manager
+        rm.reset()
+        rm.addRoi(max_roi)
+
+
     # Save ROIs as a separate file .zip
     roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
     rm.runCommand("Save", roi_path)
