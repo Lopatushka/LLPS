@@ -182,10 +182,13 @@ def foci_image(imp, rois, parameters, output_dir):
 
             # Set ROI and crop
             imp.setRoi(roi)
-            dup = imp.crop()
-            dup.setTitle("ROI_{:02d}_{}".format(i + 1, img_name))
-            dup.killRoi()           # analyze whole cropped image
+            dup = imp.duplicate()
+            #dup = imp.crop()
             dup.show()
+            dup.setRoi(roi)
+            dup.setTitle("ROI_{:02d}_{}".format(i + 1, img_name))
+            IJ.run(dup, "Clear Outside", "")
+            dup.killRoi()          
 
             # Convert to 16-bit only if needed
             dup_type = dup.getType()
