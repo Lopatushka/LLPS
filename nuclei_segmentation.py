@@ -11,7 +11,7 @@ import traceback
 
 def ask_params_for_image(img_title):
     gd = GenericDialog("Nuclei segmentation params")
-    gd.addMessage("Image: " + img_title)
+    gd.addMessage("Set parameters for nuclei segmentation.")
 
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
@@ -328,7 +328,7 @@ def process_image(imp, p):
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
-    
+
     # Save ROIs as a separate file .zip
     roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
     rm.runCommand("Save", roi_path)
