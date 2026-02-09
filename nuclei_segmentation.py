@@ -15,7 +15,7 @@ def ask_params_for_image(img_title):
 
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
-    gd.addChoice("Threshold method:", ["Triangle","Otsu","Huang","Yen","Li","Moments","Default"], "Triangle")
+    gd.addChoice("Threshold method:", ["Triangle","Otsu","Huang","Yen","Li","Moments","Default"], "Otsu")
     gd.addNumericField("Min nucleus area (pixels^2):", 3000.0, 0)
     gd.addNumericField("Max nucleus area (pixels^2) (0 = no max):", 0.0, 0)
     gd.addNumericField("Min circularity (0..1):", 0.3, 2)
