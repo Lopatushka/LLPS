@@ -20,6 +20,7 @@ def ask_params_for_image(img_title):
     gd.addNumericField("Max nucleus area (pixels^2) (0 = no max):", 0.0, 0)
     gd.addNumericField("Min circularity (0..1):", 0.3, 2)
     gd.addNumericField("Max circularity (0..1):", 1.0, 2)
+    gd.addNumericField("Gaussian Blur Sigma (1..5):", 1.5, 1)
     gd.addCheckbox("Exclude edge particles", True)
     gd.addCheckbox("Fill holes", True)
 
@@ -35,6 +36,7 @@ def ask_params_for_image(img_title):
     params["max_area"] = float(gd.getNextNumber())
     params["min_circularity"] = float(gd.getNextNumber())
     params["max_circularity"] = float(gd.getNextNumber())
+    params["gaussian_blur_sigma"] = float(gd.getNextNumber())   
     params["exclude_edges"] = bool(gd.getNextBoolean())
     params["fill_holes"] = bool(gd.getNextBoolean())
 
@@ -214,6 +216,7 @@ def process_image(imp, p):
     max_area = p["max_area"]
     min_circularity = p["min_circularity"]
     max_circularity = p["max_circularity"]
+    gaussian_blur_sigma = p["gaussian_blur_sigma"]
     exclude_edges = p["exclude_edges"] # bool
     fill_holes = p["fill_holes"] # bool
 
@@ -253,7 +256,7 @@ def process_image(imp, p):
 
     # Preprocessing: helps reduce uneven background and noise
     #IJ.run(dapi_work, "Subtract Background...", "rolling=50")
-    IJ.run(dapi_work, "Gaussian Blur...", "sigma=1") #variable 
+    IJ.run(dapi_work, "Gaussian Blur...", "sigma={}".format(gaussian_blur_sigma))
 
     # Thresholding: create a binary mask from the DAPI channel
     # "{} dark" assumes nuclei are bright on a dark background
