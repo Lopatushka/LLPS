@@ -5,7 +5,7 @@ This repository contains small scripts used for image analysis around **LLPS / f
 - **Nuclei segmentation** (Python)
 - **Foci segmentation & quantification** (Fiji/ImageJ workflow script)
 
-> Status: work-in-progress / lab utility code (no packaged CLI yet). :contentReference[oaicite:1]{index=1}
+> Status: work-in-progress
 
 ---
 
