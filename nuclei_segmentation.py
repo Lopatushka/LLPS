@@ -73,7 +73,6 @@ def img_name_processing(name):
     except Exception as e:
          raise Exception("ERROR in parsing image name")
          
-
 def ensure_roi_manager(reset=True):
 	"""
     Gets the ROI Manager instance.
@@ -250,12 +249,6 @@ def process_image(imp, p):
         close_images(split_imps)
         return
     
-    # --- Save measurement channel image ---
-    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
-    MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
-    meas_imp.show()
-    IJ.save(meas_imp, MEASURE_CHANNEL_path)
-
     # --- NUCLEI SEGMENTATION ON DAPI
 
     # Work on a duplicate so we don’t modify the original DAPI channel image
@@ -313,7 +306,6 @@ def process_image(imp, p):
     if single_roi:
         max_area = -1.0
         max_roi = None
-        #max_name = None
 
         for i in range(rm.getCount()):
                 roi = rm.getRoi(i)
@@ -325,14 +317,18 @@ def process_image(imp, p):
                 if area > max_area:
                     max_area = area
                     max_roi = roi
-                    #max_name = roi.getName(i)
         if max_roi is None:
              raise Exception("Could not find a valid ROI")
         # Keep only the biggest ROI in ROI Manager
         rm.reset()
         rm.addRoi(max_roi)
 
-
+    # --- Save measurement channel image ---
+    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
+    MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
+    meas_imp.show()
+    IJ.save(meas_imp, MEASURE_CHANNEL_path)
+    
     # Save ROIs as a separate file .zip
     roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
     rm.runCommand("Save", roi_path)
