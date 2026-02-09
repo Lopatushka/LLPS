@@ -21,6 +21,7 @@ def ask_params_for_image(img_title):
     gd.addNumericField("Min circularity (0..1):", 0.3, 2)
     gd.addNumericField("Max circularity (0..1):", 1.0, 2)
     gd.addNumericField("Gaussian Blur Sigma (1..5):", 1.5, 1)
+    gd.addNumericField("Number of erosion steps (0...5):", 3, 0)
     gd.addCheckbox("Exclude edge particles", True)
     gd.addCheckbox("Fill holes", True)
 
@@ -36,7 +37,8 @@ def ask_params_for_image(img_title):
     params["max_area"] = float(gd.getNextNumber())
     params["min_circularity"] = float(gd.getNextNumber())
     params["max_circularity"] = float(gd.getNextNumber())
-    params["gaussian_blur_sigma"] = float(gd.getNextNumber())   
+    params["gaussian_blur_sigma"] = float(gd.getNextNumber()) 
+    params["erosion_steps"] = int(gd.getNextNumber())  
     params["exclude_edges"] = bool(gd.getNextBoolean())
     params["fill_holes"] = bool(gd.getNextBoolean())
 
@@ -217,6 +219,7 @@ def process_image(imp, p):
     min_circularity = p["min_circularity"]
     max_circularity = p["max_circularity"]
     gaussian_blur_sigma = p["gaussian_blur_sigma"]
+    erosion_steps = p["erosion_steps"]
     exclude_edges = p["exclude_edges"] # bool
     fill_holes = p["fill_holes"] # bool
 
@@ -267,9 +270,10 @@ def process_image(imp, p):
     if fill_holes:
         IJ.run(dapi_work, "Fill Holes", "")
     
-    n = 3  # number of erosion iterations
-    for i in range(n):
-        IJ.run("Erode")
+    # Make erosion to separate close nuclei (optional, can be adjusted by user)
+    if erosion_steps > 0:
+        for i in range(erosion_steps):
+            IJ.run("Erode")
     # Dilatation (binary)
 
     # --- ANALYZE PARTICLES -> ROIs IN ROI MANAGER
