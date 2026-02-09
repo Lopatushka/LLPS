@@ -266,7 +266,10 @@ def process_image(imp, p):
     # Post-processing: fill holes inside nuclei
     if fill_holes:
         IJ.run(dapi_work, "Fill Holes", "")
-    # Errode image (binary)?
+    
+    n = 3  # number of erosion iterations
+    for i in range(n):
+        IJ.run("Erode")
     # Dilatation (binary)
 
     # --- ANALYZE PARTICLES -> ROIs IN ROI MANAGER
