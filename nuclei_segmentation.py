@@ -338,7 +338,6 @@ def process_image(imp, p):
     rm.runCommand("Save", roi_path)
     
     # --- SAVE MASK OF ACCEPTED NUCLEI (ROIs-ONLY MASK)
-   
     mask_particles = build_mask_from_rois(dapi_work, rm)
     mask_particles.show()
     mask_particles.updateAndDraw()
@@ -408,18 +407,18 @@ if output_dir is None:
 
 errors = []  # collect all errors here
 
+# Ask user about the parameters
+params = ask_params_for_image(imp.getTitle())
+if params is None:
+    IJ.error("No parameters provided!")
+    raise SystemExit
+    
 # ---- Loop: show GUI per image, then process ----
 for call_id, imp in enumerate(unique_images, start=1):
     # Make Log message
     msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
     IJ.log(msg)
 
-    # Ask user about the parameters
-    params = ask_params_for_image(imp.getTitle())
-    if params is None:
-        IJ.log("Skip the image: " + imp.getTitle())
-        continue
-    
     try:
         process_image(imp, params)
 
