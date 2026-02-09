@@ -181,7 +181,7 @@ def foci_image(imp, rois, parameters, output_dir):
             close_window("ThunderSTORM: results")
 
             # Set ROI and crop
-            imp.setRoi(roi)
+            #imp.setRoi(roi)
             dup = imp.duplicate()
             #dup = imp.crop()
             dup.show()
