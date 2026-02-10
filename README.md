@@ -1,39 +1,42 @@
 # LLPS — nuclei & foci segmentation helpers (Fiji/ImageJ + Python)
 
-This repository contains small scripts used for image analysis around **LLPS / foci-like structures**, focusing on:
-
-- **Nuclei segmentation** (Python)
-- **Foci segmentation & quantification** (Fiji/ImageJ workflow script)
+This repo (master branch) includes:
+- `nuclei_segmentation.py` — nuclei segmentation / ROI generation (Python)
+- `foci_segmentation.ijm.ijm.py` — Fiji/ImageJ workflow for foci detection + export
+- `statisctics.py` — merges nuclei + foci CSV tables and computes Spearman correlations
+- `opener.py` — helper script (opening/IO utility)
+- `graphs.ipynb` — plotting / graphs notebook
+- `data_examples/` — example input/output files
 
 > Status: work-in-progress
 
----
-
-## Contents
-
-- `nuclei_segmentation.py`  
-  Script for generating nuclei masks / ROIs from microscopy images.
-
-- `foci_segmentation.ijm.ijm.py`  
-  Fiji/ImageJ workflow script for foci detection/segmentation and exporting results (e.g., tables/CSV).  
-  *(Filename suggests it may be an `.ijm` macro exported/embedded via Python/Jython, or a macro-like script — adjust as needed.)*
----
-
 ## Typical workflow
 
-1. **Segment nuclei** on your images  
-   → produce nuclei masks and ROIs.
+1) **Segment nuclei** on microscopy images  
+→ produce nucleus ROIs and/or per-nucleus measurements (e.g., `Area`, `Mean`).
 
-2. **Detect/segment foci inside nuclei** in Fiji/ImageJ  
-   → run the foci script, restrict analysis to nuclei ROIs, export results.
+2) **Detect foci** (optionally restricted to nuclei ROIs) in Fiji/ImageJ  
+→ export foci list per image to CSV (e.g., ThunderSTORM table export).
 
----
+3) **Aggregate and run statistics** in Python  
+→ merge nuclei + foci summaries by file key and export `results.csv` + `spearman_pairs.csv`.
 
 ## Requirements
+
+### ImageJ / Fiji
 - Fiji (ImageJ distribution)
-- Plugin ThunderSTORM
-- IJ library for Phyton
----
+- ThunderSTORM plugin (if you use ThunderSTORM for foci)
+- ImageJ / IJ libraries (for running scripts/macros) :contentReference[oaicite:3]{index=3}
+
+### Python
+- Python 3.x
+- `pandas`
+- `scipy`
+
+Install:
+```bash
+pip install pandas scipy
+
 
 ## Installation
 
