@@ -24,7 +24,6 @@ def aggregate_data(dir1, dir2):
     if not dir_path2.exists():
         raise FileNotFoundError(f"dir2 not found: {dir_path2}")
     
-
     # ---- NUCLEI TABLE (path1) ----
     files1 = sorted(dir_path1.glob("*.csv"))
     if not files1:
@@ -65,7 +64,7 @@ def aggregate_data(dir1, dir2):
         foci_rows.append({
         "File_name": key,
         "Foci_number": int(df.shape[0]),
-        "Foci_MFI": float(df["intensity [photon]"].mean()) if "intensity [photon]" in df.columns else pd.NA
+        "Foci_MFI": float(df["intensity [photon]"].mean()) if "intensity [photon]" in df.columns and df.shape[0] > 0 else pd.NA
     })
 
     foci_summary = pd.DataFrame(foci_rows)
