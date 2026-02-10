@@ -1,4 +1,3 @@
-from ij import IJ, WindowManager
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -14,8 +13,8 @@ def base_name_from_csv(filename: str) -> str:
 
 def aggregate_data(dir1, dir2):
     # ---- NUCLEI TABLE (path1) ----
-    #dir_path1 = Path(path1)
-    files1 = sorted(dir1.glob("*.csv"))
+    dir_path1 = Path(dir1)
+    files1 = sorted(dir_path1.glob("*.csv"))
     dfs1 = []
     for f in files1:
         key = base_name_from_csv(f.name)
@@ -29,8 +28,8 @@ def aggregate_data(dir1, dir2):
     final = final[["File_name", "Nucleus_area", "Nucleus_MFI"]]
 
     # ---- FOCI SUMMARY (path2) ----
-    #dir_path2 = Path(path2)
-    files2 = sorted(dir2.glob("*.csv"))
+    dir_path2 = Path(dir2)
+    files2 = sorted(dir_path2.glob("*.csv"))
     foci_rows = []
     for f in files2:
         key = base_name_from_csv(f.name)
@@ -66,31 +65,25 @@ def sprearman_correlation(df):
     return pairs_df
 
 
-def main():
-    # Ask user about directory with .csv files
-    path1 = IJ.getDirectory("Choose a directory with .csv files with nucleus Area and MFI")
-    path2 = IJ.getDirectory("Choose a directory with .csv files containing the number of foci and their MFI")
+def main(path1, path2, path3):
     if path1 is None or path2 is None:
-        IJ.error("No directory selected. Exiting.")
-        raise SystemExit
-
+        return
     try:
         # Make final table
-        IJ.log("Processing files...")
         results = aggregate_data(path1, path2)
-        IJ.log("Processing completed successfully.")
 
         # Spearman correlation
         corr = sprearman_correlation(results)
 
         # Results export
-        path3 = IJ.getDirectory("Choose a directory to save the results file")
         results.to_csv(path3 + "/results.csv", index=False)
         corr.to_csv(path3 + "/spearman_pairs.csv", index=False)
 
     except Exception as e:
-        IJ.error(f"Error processing files: {e}")
-        raise SystemExit
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
-    main()
+    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS2_fixed_MGS1" # path to the folder containing the csv files with nucleus area and MFI
+    path2 = " /mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS2_fixed_MGS1/res8" # path to the folder containing the csv files with foci number and MFI
+    path3 = path2
+    main(path1, path2, path3)
