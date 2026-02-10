@@ -1,6 +1,5 @@
 from pathlib import Path
 import pandas as pd
-import numpy as np
 from scipy.stats import spearmanr
 import re
 
@@ -63,7 +62,6 @@ def sprearman_correlation(df):
 
     pairs_df = pd.DataFrame(pairs)
     return pairs_df
-
 
 def main(path1, path2, path3):
     if path1 is None or path2 is None:
