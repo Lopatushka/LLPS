@@ -33,6 +33,7 @@ def aggregate_data(dir1, dir2):
     dfs1 = []
     for f in files1:
         key = base_name_from_csv(f.name)
+        key = key[:-4]
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()  # remove hidden spaces in headers
 
@@ -62,10 +63,10 @@ def aggregate_data(dir1, dir2):
         df.columns = df.columns.str.strip()
         # count rows + mean intensity
         foci_rows.append({
-            "File_name": key,
-            "Foci_number": int(df.shape[0]),
-            "Foci_MFI": float(df["intensity [photon]"].mean()) if "intensity [photon]" in df.columns and df.shape[0] > 0 else pd.NA
-        })
+        "File_name": key,
+        "Foci_number": int(df.shape[0]),
+        "Foci_MFI": float(df["intensity [photon]"].mean()) if "intensity [photon]" in df.columns else pd.NA
+    })
 
     foci_summary = pd.DataFrame(foci_rows)
 
@@ -104,11 +105,11 @@ def main(path1, path2, out_dir):
     results = aggregate_data(path1, path2)
 
     # Spearman correlation
-    #corr = sprearman_correlation(results)
+    corr = sprearman_correlation(results)
 
     # Results export
-    #results.to_csv(out_dir / "results.csv", index=False)
-    #corr.to_csv(out_dir / "spearman_pairs.csv", index=False)
+    results.to_csv(out_dir / "results.csv", index=False)
+    corr.to_csv(out_dir / "spearman_pairs.csv", index=False)
 
     print(f"Saved: {out_dir / 'results.csv'}")
     print(f"Saved: {out_dir / 'spearman_pairs.csv'}")
