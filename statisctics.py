@@ -18,7 +18,6 @@ def aggregate_data(dir1, dir2):
     # normalize paths (strip accidental spaces)
     dir_path1 = Path(str(dir1).strip())
     dir_path2 = Path(str(dir2).strip())
-    #print(f"dir1: {dir_path1}")
 
     if not dir_path1.exists():
         raise FileNotFoundError(f"dir1 not found: {dir_path1}")
@@ -95,29 +94,31 @@ def sprearman_correlation(df):
     pairs_df = pd.DataFrame(pairs)
     return pairs_df
 
-def main(path1, path2, out_dir):
+def main(path1, path2):
     path1 = str(path1).strip()
     path2 = str(path2).strip()
-    out_dir = Path(str(out_dir).strip())
-    out_dir.mkdir(parents=True, exist_ok=True)
+
+    #if not out_dir.exists():
+        #print("Creating output directory:", out_dir)
+        #out_dir.mkdir(parents=True, exist_ok=True)
 
     # Make final table
-    results = aggregate_data(path1, path2)
+    #results = aggregate_data(path1, path2)
 
     # Spearman correlation
-    corr = sprearman_correlation(results)
+    #corr = sprearman_correlation(results)
 
     # Results export
-    results.to_csv(out_dir / "results.csv", index=False)
-    corr.to_csv(out_dir / "spearman_pairs.csv", index=False)
+    #results.to_csv(out_dir / "results.csv", index=False)
+    #corr.to_csv(out_dir / "spearman_pairs.csv", index=False)
 
-    print(f"Saved: {out_dir / 'results.csv'}")
-    print(f"Saved: {out_dir / 'spearman_pairs.csv'}")
+    print(f"Saved: {path2}/'results.csv'")
+    print(f"Saved: {path2}/'spearman_pairs.csv'")
 
  
 
 if __name__ == "__main__":
-    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT_dc" # path to the folder containing the csv files with nucleus area and MFI
+    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020626_U2OS_fixed_WT_dc" # path to the folder containing the csv files with nucleus area and MFI
     path2 = "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT_dc/res8" # path to the folder containing the csv files with foci number and MFI
-    path3 = path2
-    main(path1, path2, path3)
+    
+    main(path1, path2)
