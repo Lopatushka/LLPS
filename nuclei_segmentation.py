@@ -61,12 +61,28 @@ def get_active_image():
 
     return imp
 
-def img_name_processing(name):
+def _img_name_processing(name):
     try:
         if "MP" in name and " - " in name:
             name = name.split("-")[1] # split string
             name = name.replace(" ", "", 1) # delete fist blank in the string
             name = name.replace(" ", "_") # repalce other blanks to underscore
+        else:
+            name = os.path.splitext(name)[0] # delete extention
+        return name
+    except Exception as e:
+         raise Exception("ERROR in parsing image name")
+    
+def img_name_processing(name):
+    try:
+        if "MP" in name and " - " in name:
+            if "Deconvolved" in name:
+                name = name.split("-")[0] + "_" + name.split("-")[2]
+                name = name.replace(" ", "", 1).replace(",", "").replace(" ", "_")
+            else:
+                name = name.split("-")[1] # split string
+                name = name.replace(" ", "", 1) # delete fist blank in the string
+                name = name.replace(" ", "_") # repalce other blanks to underscore
         else:
             name = os.path.splitext(name)[0] # delete extention
         return name
