@@ -181,9 +181,7 @@ def foci_image(imp, rois, parameters, output_dir):
             close_window("ThunderSTORM: results")
 
             # Set ROI and crop
-            #imp.setRoi(roi)
             dup = imp.duplicate()
-            #dup = imp.crop()
             dup.show()
             dup.setRoi(roi)
             dup.setTitle("ROI_{:02d}_{}".format(i + 1, img_name))
@@ -206,7 +204,7 @@ def foci_image(imp, rois, parameters, output_dir):
             export_opts = (
                 'filepath=[{}] '
                 'fileformat=[CSV (comma separated)] '
-                'sigma=false intensity=true chi2=false offset=false saveprotocol=false '
+                'sigma=true intensity=true chi2=false offset=false saveprotocol=false '
                 'x=true y=true bkgstd=false id=true uncertainty=false frame=false'
             ).format(csv_path_ij)
             
