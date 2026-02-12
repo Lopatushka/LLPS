@@ -78,7 +78,7 @@ def ask_params_for_thunderstorm():
     # ---- Detector ----
     gd.addChoice("Detector:", ["Local maximum"], "Local maximum")
     gd.addChoice("Connectivity:", ["4-neighbourhood", "8-neighbourhood"], "8-neighbourhood")
-    gd.addStringField("Threshold expression:", "3*std(Wave.F1)", 20)
+    gd.addStringField("Threshold expression:", "2*std(Wave.F1)", 20)
 
     # ---- Estimator ----
     gd.addChoice("Estimator:", ["PSF: Integrated Gaussian"], "PSF: Integrated Gaussian")
