@@ -115,7 +115,7 @@ def main(path1, path2):
  
 
 if __name__ == "__main__":
-    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020626_U2OS_fixed_WT_dc" # path to the folder containing the csv files with nucleus area and MFI
-    path2 = "/mnt/c/Users/Elena/Desktop/Data_processing/020626_U2OS_fixed_WT_dc/res8" # path to the folder containing the csv files with foci number and MFI
+    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT" # path to the folder containing the csv files with nucleus area and MFI
+    path2 = "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT/res2_new" # path to the folder containing the csv files with foci number and MFI
     
     main(path1, path2)
