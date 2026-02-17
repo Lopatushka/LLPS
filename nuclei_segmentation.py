@@ -235,19 +235,17 @@ def cleanup_iteration():
         rm.close()
 
 def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
-    """
-    Rolling-ball background subtraction via API
-    """ 
+    radius = float(radius)
+    ip = imp.getProcessor()  # ImageProcessor of current slice
     BackgroundSubtracter().rollingBallBackground(
-            imp,
-            radius,
-            False,              # createBackground
-            bool(light_background),
-            bool(use_paraboloid),
-            bool(do_presmooth),
-            False               # correctCorners
-        )
-
+        ip,
+        radius,
+        False,
+        bool(light_background),
+        bool(use_paraboloid),
+        bool(do_presmooth),
+        False
+    )
     imp.updateAndDraw()
 
 def process_image(imp, p):
@@ -294,6 +292,10 @@ def process_image(imp, p):
         close_images(split_imps)
         return
     
+    # --- Background substurction in MEASUREMENT channel ---
+    if substruct_bg:
+        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+
     # --- NUCLEI SEGMENTATION ON DAPI
 
     # Work on a duplicate so we don’t modify the original DAPI channel image
@@ -366,10 +368,6 @@ def process_image(imp, p):
         # Keep only the biggest ROI in ROI Manager
         rm.reset()
         rm.addRoi(max_roi)
-
-    # --- Background substurction in MEASUREMENT channel ---
-    if substruct_bg:
-        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
     
     # --- Save measurement channel image ---
     MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
