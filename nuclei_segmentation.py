@@ -30,7 +30,7 @@ def ask_params_for_image(img_title):
     gd.addNumericField("Number of dilation steps (0...5):", 5, 0)
 
     gd.addCheckbox("Apply background subtraction", True)
-    gd.addNumericField("Background value (rolling ball radius or constant):", 10, 0)
+    gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
 
     gd.addCheckbox("Exclude edge particles", True)
     gd.addCheckbox("Fill holes", True)
