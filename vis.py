@@ -8,26 +8,31 @@ from PIL import Image, ImageDraw
 from skimage.color import rgb2gray
 from skimage.draw import disk
 from matplotlib.patches import Circle
+import os
 
 def scatter_plot(df, x_col, y_col, 
                  x_lim=None, 
-                 y_lim=None):
+                 y_lim=None,
+                 figsize=(4, 4),
+                 dpi = 300):
+    
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
-    plt.figure(figsize=(4, 4), dpi=150)
-    plt.scatter(df[x_col], df[y_col], alpha=0.6)
+    ax.scatter(df[x_col], df[y_col], alpha=0.6)
 
-    plt.xlabel(x_col.replace("_", " "))
-    plt.ylabel(y_col.replace("_", " "))
+    ax.set_xlabel(x_col.replace("_", " "))
+    ax.set_ylabel(y_col.replace("_", " "))
 
     # Fixed scale
     if x_lim is not None:
-        plt.xlim(x_lim)
+        ax.set_xlim(x_lim)
 
     if y_lim is not None:
-        plt.ylim(y_lim)
+        ax.set_ylim(y_lim)
 
-    plt.tight_layout()
-    plt.show()
+    fig.tight_layout()
+   
+    return fig, ax
 
 
 
@@ -130,10 +135,34 @@ def plot_foci_on_image(
     return fig, ax
 
 def main(dir_path):
-    files = sorted(dir_path.glob("*_extent.csv"))
-    print(files)
+    path = Path(str(dir_path).strip())
+    if not path.exists():
+        raise FileNotFoundError(f"Directory is not found: {path}")
+    
+    files = sorted(path.glob("*_extent.csv"))
+    if not files:
+        raise FileNotFoundError(f"No CSV files found in the directory: {path}")
+    
+    dfs = []
+    for f in files:
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
+        fig, ax = scatter_plot(
+        df,
+        "sigma [nm]",
+        "mean_intensity",
+        x_lim=(0, 800),
+        y_lim=(0, 0.55)
+        )
+
+        base_name = os.path.splitext(os.path.basename(f))[0]
+        save_path = os.path.join(path, f"{base_name}_scatter.png")
+
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+
 
 if __name__ == "__main__":
-    print("kkk")
     dir = "./examples"
     main(dir)
