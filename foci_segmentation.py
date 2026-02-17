@@ -5,7 +5,6 @@ from ij.gui import GenericDialog
 from ij import WindowManager
 import os
 import re
-import csv
 
 def check_dir(dir):
 	if dir is None:
