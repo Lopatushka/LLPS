@@ -3,6 +3,7 @@ from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
 from ij.measure import Measurements, ResultsTable
 from ij.plugin.filter import ParticleAnalyzer
+from ij.plugin.filter import BackgroundSubtracter
 from ij.process import AutoThresholder
 from ij.io import RoiEncoder
 import os
@@ -233,6 +234,22 @@ def cleanup_iteration():
         rm.reset()
         rm.close()
 
+def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
+    """
+    Rolling-ball background subtraction via API
+    """ 
+    BackgroundSubtracter().rollingBallBackground(
+            imp,
+            radius,
+            False,              # createBackground
+            bool(light_background),
+            bool(use_paraboloid),
+            bool(do_presmooth),
+            False               # correctCorners
+        )
+
+    imp.updateAndDraw()
+
 def process_image(imp, p):
     '''
     This function process a single image
@@ -285,7 +302,6 @@ def process_image(imp, p):
     dapi_work.show()
 
     # Preprocessing: helps reduce uneven background and noise
-    #IJ.run(dapi_work, "Subtract Background...", "rolling=50")
     IJ.run(dapi_work, "Gaussian Blur...", "sigma={}".format(gaussian_blur_sigma))
 
     # Thresholding: create a binary mask from the DAPI channel
@@ -353,7 +369,7 @@ def process_image(imp, p):
 
     # --- Background substurction in MEASUREMENT channel ---
     if substruct_bg:
-        IJ.run(imp, "Subtract Background...", "rolling={}".format(bg_radius))
+        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
     
     # --- Save measurement channel image ---
     MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
