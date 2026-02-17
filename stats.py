@@ -2,114 +2,34 @@ from pathlib import Path
 import re
 import pandas as pd
 import numpy as np
-
-from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
+from PIL import Image, ImageDraw
 from skimage.color import rgb2gray
 from skimage.draw import disk
-
+from matplotlib.patches import Circle
 from scipy.stats import spearmanr
 #from scipy.stats import ttest_ind
 #from scipy.stats import linregress
-from sklearn.cluster import KMeans
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
+#from sklearn.cluster import KMeans
+#from sklearn.preprocessing import StandardScaler
 
-def base_name_from_csv(filename: str) -> str:
+def key_from_csv(p: Path) -> str:
     """
-    Turn 'sample_0262-0212.csv' -> 'sample'
-    Turn 'sample.csv' -> 'sample'
+    C2...nd2_(series_01)_0233-0247.csv  ->  C2...nd2_(series_01)
     """
-    # remove extension
-    name = re.sub(r"\.csv$", "", filename)
-    # remove trailing _0262-0212 (or similar) if present
+    name = p.stem  # no .csv
+    # remove trailing _####-#### (or similar) if present
     name = re.sub(r"_\d+-\d+$", "", name)
     return name
 
-def aggregate_data(dir1, dir2):
-    # normalize paths (strip accidental spaces)
-    dir_path1 = Path(str(dir1).strip())
-    dir_path2 = Path(str(dir2).strip())
-
-    if not dir_path1.exists():
-        raise FileNotFoundError(f"dir1 not found: {dir_path1}")
-    if not dir_path2.exists():
-        raise FileNotFoundError(f"dir2 not found: {dir_path2}")
-    
-    # ---- NUCLEI TABLE (path1) ----
-    files1 = sorted(dir_path1.glob("*.csv"))
-    if not files1:
-        raise FileNotFoundError(f"No CSV files found in dir1: {dir_path1}")
-    
-    dfs1 = []
-    for f in files1:
-        key = base_name_from_csv(f.name)
-        key = key[:-4]
-        df = pd.read_csv(f)
-        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
-
-        # ensure expected columns exist
-        if "Area" not in df.columns or "Mean" not in df.columns:
-            raise KeyError(
-                f"In nuclei file {f.name} expected columns 'Area' and 'Mean'. "
-                f"Found: {list(df.columns)}"
-            )
-        
-        df["File_name"] = key
-        df = df.rename(columns={"Area": "Nucleus_area", "Mean": "Nucleus_MFI"})
-        df = df[["File_name", "Nucleus_area", "Nucleus_MFI"]]
-        dfs1.append(df)
-
-    final = pd.concat(dfs1, ignore_index=True)
-
-    # ---- FOCI SUMMARY (path2) ----
-    files2 = sorted(dir_path2.glob("*.csv"))
-    if not files2:
-        raise FileNotFoundError(f"No CSV files found in dir2: {dir_path2}")
-    
-    foci_rows = []
-    for f in files2:
-        key = base_name_from_csv(f.name)
-        df = pd.read_csv(f)
-        df.columns = df.columns.str.strip()
-        # count rows + mean intensity
-        foci_rows.append({
-        "File_name": key,
-        "Foci_number": int(df.shape[0]),
-        "Foci_MFI": float(df["intensity [photon]"].mean()) if "intensity [photon]" in df.columns and df.shape[0] > 0 else pd.NA,
-        "Foci_sigma": float(df["sigma [nm]"].mean()) if "sigma [nm]" in df.columns and df.shape[0] > 0 else pd.NA
-    })
-
-    foci_summary = pd.DataFrame(foci_rows)
-
-    # ---- MERGE ----
-    final["File_name"] = final["File_name"].astype(str).str.strip()
-    foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
-
-    merged  = final.merge(foci_summary, on="File_name", how="left")
-    merged["Foci_MFI"] = pd.to_numeric(merged["Foci_MFI"], errors="coerce")
-
-    return merged
-
-def sprearman_correlation(df):
-    cols = df.select_dtypes(include="number").columns
-    pairs = []
-
-    for i, c1 in enumerate(cols):
-        for c2 in cols[i+1:]:
-            x, y = df[c1], df[c2]
-            mask = x.notna() & y.notna()
-            n = int(mask.sum())
-            if n > 2:
-                r, p = spearmanr(x[mask], y[mask])
-                pairs.append({"var1": c1, "var2": c2, "n": n, "spearman_r": r, "p_value": p})
-
-    pairs_df = pd.DataFrame(pairs)
-    return pairs_df
+def key_from_img(p: Path) -> str:
+    """
+    C2...nd2_(series_01).jpg -> C2...nd2_(series_01)
+    """
+    return p.stem  # no .jpg
 
 def compute_mean_intensity_from_localizations(
-        path_image,
+        image_path,
         df,
         orig_size=(2560, 2560),
         pixel_size_original_nm=16.0,
@@ -117,33 +37,14 @@ def compute_mean_intensity_from_localizations(
         y_col="y [nm]",
         sigma_col="sigma [nm]"
     ):
-    """
-    Convert ThunderSTORM localizations (nm) into current image pixels,
-    build circular ROIs, and compute mean grayscale intensity inside each ROI.
 
-    Parameters
-    ----------
-    image : PIL Image or numpy array
-        RGB image on which intensity will be measured.
-    df : pandas DataFrame
-        Must contain x, y, sigma columns in nanometers.
-    orig_size : tuple
-        Original image size used during ThunderSTORM analysis (width, height).
-    pixel_size_original_nm : float
-        Pixel size of original acquisition in nm/px.
-    x_col, y_col, sigma_col : str
-        Column names in df.
+    # Read dataframe with single nucleus data
+    #df = pd.read_csv(df_path, encoding="latin1")
 
-    Returns
-    -------
-    df_out : pandas DataFrame
-        Copy of df with added columns:
-        x_px, y_px, sigma_px, mean_intensity
-    """
     # Open image
-    image = Image.open(path_image).convert("RGB")
+    image = Image.open(image_path).convert("RGB")
 
-    # Convert to grayscale
+    # Convert image to grayscale
     gray = rgb2gray(image)
 
     # Current image size
@@ -176,7 +77,8 @@ def compute_mean_intensity_from_localizations(
         # original pixels → current image pixels
         x_px = int(round(x_orig_px * sx))
         y_px = int(round(y_orig_px * sy))
-        sigma_px = int(round(sigma_orig_px * sx))
+        #sigma_px = int(round(sigma_orig_px * sx))
+        sigma_px = max(1, int(round(sigma_orig_px * sx))) # minimal possible value is 1 pixel!
 
         # Build circular mask (clipped automatically)
         rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
@@ -203,6 +105,143 @@ def compute_mean_intensity_from_localizations(
 
     return df_out
 
+def aggregate_data(dir1, dir2):
+    # normalize paths (strip accidental spaces)
+    dir_path1 = Path(str(dir1).strip()) # path to data about nucleus in total
+    dir_path2 = Path(str(dir2).strip()) # path to data about foci in the particular nucleus
+
+    if not dir_path1.exists():
+        raise FileNotFoundError(f"dir1 not found: {dir_path1}")
+    if not dir_path2.exists():
+        raise FileNotFoundError(f"dir2 not found: {dir_path2}")
+    
+    # ---- NUCLEI TABLE (path1) ----
+    files1 = sorted(dir_path1.glob("*.csv"))
+    if not files1:
+        raise FileNotFoundError(f"No CSV files found in dir1: {dir_path1}")
+    
+    dfs1 = [] 
+    images_paths = []
+
+    for f in files1:
+        # find the corresponding image
+        image_name = f.stem.replace("_roi", "") + ".jpg"
+        image_path = f.with_name(image_name)
+        images_paths.append(image_path)
+
+        key = key_from_csv(f)
+        key = key[:-4]
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
+
+        # ensure expected columns exist
+        if "Area" not in df.columns or "Mean" not in df.columns:
+            raise KeyError(
+                f"In nuclei file {f.name} expected columns 'Area' and 'Mean'. "
+                f"Found: {list(df.columns)}"
+            )
+        
+        df["File_name"] = key
+        df = df.rename(columns={"Area": "Nucleus_area", "Mean": "Nucleus_MFI"})
+        df = df[["File_name", "Nucleus_area", "Nucleus_MFI"]]
+        dfs1.append(df)
+
+    final = pd.concat(dfs1, ignore_index=True)
+
+    # --- build image lookup by key ---
+    img_by_key = {key_from_img(p): p for p in images_paths}
+
+    # --- make pairs (csv, image) ---
+    pairs = []
+    missing_images = []
+
+    # --- Create .csv - image pairs ---
+    files2 = sorted(dir_path2.glob("*.csv"))
+    if not files2:
+        raise FileNotFoundError(f"No CSV files found in dir2: {dir_path2}")
+    
+    # --- Create .csv - image pairs ---
+    for f in files2:
+        k = key_from_csv(f)
+        img_path = img_by_key.get(k)
+        if img_path is None:
+            missing_images.append(f)
+            continue
+        pairs.append((f, img_path))
+    
+    print(f"Pairs found: {len(pairs)}")
+    #print(f"CSV without matching image: {len(missing_images)}")
+
+    # Calculate MFI of each foci
+    for file, image in pairs:
+        df = pd.read_csv(file)
+        df.columns = df.columns.str.strip()
+        df_added = compute_mean_intensity_from_localizations(image_path = image,
+                                                    df = df,
+                                                    orig_size=(2560, 2560),
+                                                    pixel_size_original_nm=16.0,
+                                                    x_col="x [nm]",
+                                                    y_col="y [nm]",
+                                                    sigma_col="sigma [nm]"
+                                                 )
+        new_name = key_from_csv(file) + "_extent.csv"
+        new_path = file.with_name(new_name)
+        df_added.to_csv(new_path, index=False) # export new extended dataframe
+    
+    # ---- FOCI SUMMARY (path2) ----
+    files3 = sorted(dir_path2.glob("*_extent.csv"))
+    foci_rows = []
+
+    # generic function
+    check_column_mean = lambda df, col: (
+        float(df[col].mean())
+        if col in df.columns and not df.empty
+        else pd.NA
+    )
+
+    for f in files3:
+        k = key_from_csv(f)
+        k = k[:-7]
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()
+
+        # Count rows
+        foci_rows.append({
+        "File_name": k,
+        "Foci_number": int(df.shape[0]),
+        "Foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
+        "Foci_MFI_px": check_column_mean(df, "mean_intensity"),
+        "Foci_sigma_nm": check_column_mean(df, "sigma [nm]")
+        })
+
+    foci_summary = pd.DataFrame(foci_rows)
+
+    # ---- MERGE ----
+    final["File_name"] = final["File_name"].astype(str).str.strip()
+    foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
+
+    merged  = final.merge(foci_summary, on="File_name", how="left")
+    #merged["Foci_MFI"] = pd.to_numeric(merged["Foci_MFI"], errors="coerce")
+
+    return merged
+
+def sprearman_correlation(df):
+    cols = df.select_dtypes(include="number").columns
+    pairs = []
+
+    for i, c1 in enumerate(cols):
+        for c2 in cols[i+1:]:
+            x, y = df[c1], df[c2]
+            mask = x.notna() & y.notna()
+            n = int(mask.sum())
+            if n > 2:
+                r, p = spearmanr(x[mask], y[mask])
+                pairs.append({"var1": c1, "var2": c2, "n": n, "spearman_r": r, "p_value": p})
+
+    pairs_df = pd.DataFrame(pairs)
+    return pairs_df
+
+
 def main(path1, path2):
     path1 = str(path1).strip()
     path2 = str(path2).strip()
@@ -223,7 +262,7 @@ def main(path1, path2):
  
 
 if __name__ == "__main__":
-    path1 =  "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT" # path to the folder containing the csv files with nucleus area and MFI
-    path2 = "/mnt/c/Users/Elena/Desktop/Data_processing/020226_U2OS_fixed_WT/res2_new" # path to the folder containing the csv files with foci number and MFI
+    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" 
+    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" 
     
-    main(path1, path2)
+    main(p1, p2)
