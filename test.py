@@ -189,10 +189,10 @@ def aggregate_data(dir1, dir2):
     foci_rows = []
 
     # generic function
-    check_column = lambda df, col: (
-    df[col]
-    if col in df.columns and not df.empty
-    else pd.NA
+    check_column_mean = lambda df, col: (
+        float(df[col].mean())
+        if col in df.columns and not df.empty
+        else pd.NA
     )
 
     for f in files3:
@@ -205,14 +205,25 @@ def aggregate_data(dir1, dir2):
         foci_rows.append({
         "File_name": k,
         "Foci_number": int(df.shape[0]),
-        "Foci_IFI_photons": float(df["intensity [photon]"].mean()),
-        "Foci_MFI_px": float(df["mean_intensity"].mean()),
-        "Foci_sigma_nm": float(df["sigma [nm]"].mean())
+        "Foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
+        "Foci_MFI_px": check_column_mean(df, "mean_intensity"),
+        "Foci_sigma_nm": check_column_mean(df, "sigma [nm]")
         })
 
-    print(foci_rows)
+    foci_summary = pd.DataFrame(foci_rows)
+
+    # ---- MERGE ----
+    final["File_name"] = final["File_name"].astype(str).str.strip()
+    foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
+
+    merged  = final.merge(foci_summary, on="File_name", how="left")
+    #merged["Foci_MFI"] = pd.to_numeric(merged["Foci_MFI"], errors="coerce")
+
+    return merged
+
         
 
 p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" 
 p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" 
-aggregate_data(p1, p2)
+res = aggregate_data(p1, p2)
+print(res)
