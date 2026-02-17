@@ -24,6 +24,82 @@ def key_from_img(p: Path) -> str:
     """
     return p.stem  # no .jpg
 
+def compute_mean_intensity_from_localizations(
+        image_path,
+        df,
+        orig_size=(2560, 2560),
+        pixel_size_original_nm=16.0,
+        x_col="x [nm]",
+        y_col="y [nm]",
+        sigma_col="sigma [nm]"
+    ):
+
+    # Read dataframe with single nucleus data
+    #df = pd.read_csv(df_path, encoding="latin1")
+
+    # Open image
+    image = Image.open(image_path).convert("RGB")
+
+    # Convert image to grayscale
+    gray = rgb2gray(image)
+
+    # Current image size
+    jpg_w, jpg_h = image.size
+    orig_w, orig_h = orig_size
+
+    # Scaling factors
+    sx = jpg_w / orig_w
+    sy = jpg_h / orig_h
+
+    H, W = gray.shape
+
+    # Storage lists
+    x_list = []
+    y_list = []
+    sigma_list = []
+    mean_list = []
+
+    for _, row in df.iterrows():
+
+        x_nm = row[x_col]
+        y_nm = row[y_col]
+        sigma_nm = row[sigma_col]
+
+        # nm → original pixels
+        x_orig_px = x_nm / pixel_size_original_nm
+        y_orig_px = y_nm / pixel_size_original_nm
+        sigma_orig_px = sigma_nm / pixel_size_original_nm
+
+        # original pixels → current image pixels
+        x_px = int(round(x_orig_px * sx))
+        y_px = int(round(y_orig_px * sy))
+        sigma_px = int(round(sigma_orig_px * sx))
+
+        # Build circular mask (clipped automatically)
+        rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
+        mask = np.zeros((H, W), dtype=bool)
+        mask[rr, cc] = True
+
+        # Compute mean intensity
+        if mask.sum() > 0:
+            mean_intensity = gray[mask].mean()
+        else:
+            mean_intensity = np.nan
+
+        x_list.append(x_px)
+        y_list.append(y_px)
+        sigma_list.append(sigma_px)
+        mean_list.append(mean_intensity)
+
+    # Return modified copy
+    df_out = df.copy()
+    df_out["x_px"] = x_list
+    df_out["y_px"] = y_list
+    df_out["sigma_px"] = sigma_list
+    df_out["mean_intensity"] = mean_list
+
+    return df_out
+
 def aggregate_data(dir1, dir2):
     # normalize paths (strip accidental spaces)
     dir_path1 = Path(str(dir1).strip()) # path to data about nucleus in total
@@ -88,14 +164,34 @@ def aggregate_data(dir1, dir2):
     else pd.NA
     )
     
+    # Create .csv - image pairs 
     for f in files2:
         k = key_from_csv(f)
         img_path = img_by_key.get(k)
-        print(k, img_path)
+        if img_path is None:
+            missing_images.append(f)
+            continue
+        pairs.append((f, img_path))
+    
+    print(f"Pairs found: {len(pairs)}")
+    print(f"CSV without matching image: {len(missing_images)}")
 
-        df = pd.read_csv(f)
+    # Calculate MFI of each foci
+    for file, image in pairs:
+        df = pd.read_csv(file)
         df.columns = df.columns.str.strip()
-
+        df_added = compute_mean_intensity_from_localizations(image_path = image,
+                                                    df = df,
+                                                    orig_size=(2560, 2560),
+                                                    pixel_size_original_nm=16.0,
+                                                    x_col="x [nm]",
+                                                    y_col="y [nm]",
+                                                    sigma_col="sigma [nm]"
+                                                 )
+        new_name = key_from_csv(file) + "_extent.csv"
+        new_path = file.with_name(new_name)
+        df_added.to_csv(new_path, index=False)
+        
 
 p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" 
 p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" 
