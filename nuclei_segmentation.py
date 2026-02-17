@@ -15,14 +15,22 @@ def ask_params_for_image(img_title):
 
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
+
     gd.addChoice("Threshold method:", ["Triangle","Otsu","Huang","Yen","Li","Moments","Default"], "Otsu")
+
     gd.addNumericField("Min nucleus area (pixels^2):", 3000.0, 0)
     gd.addNumericField("Max nucleus area (pixels^2) (0 = no max):", 0.0, 0)
+
     gd.addNumericField("Min circularity (0..1):", 0.3, 2)
     gd.addNumericField("Max circularity (0..1):", 1.0, 2)
+
     gd.addNumericField("Gaussian Blur Sigma (1..5):", 1.5, 1)
     gd.addNumericField("Number of erosion steps (0...5):", 3, 0)
     gd.addNumericField("Number of dilation steps (0...5):", 5, 0)
+
+    gd.addCheckbox("Apply background subtraction", True)
+    gd.addNumericField("Background value (rolling ball radius or constant):", 10, 0)
+
     gd.addCheckbox("Exclude edge particles", True)
     gd.addCheckbox("Fill holes", True)
     gd.addCheckbox("Single ROI per image", True)
@@ -41,7 +49,9 @@ def ask_params_for_image(img_title):
     params["max_circularity"] = float(gd.getNextNumber())
     params["gaussian_blur_sigma"] = float(gd.getNextNumber()) 
     params["erosion_steps"] = int(gd.getNextNumber())
-    params["dilation_steps"] = int(gd.getNextNumber()) 
+    params["dilation_steps"] = int(gd.getNextNumber())
+    params["do_bg_subtraction"] = bool(gd.getNextBoolean())
+    params["bg_value"] = float(gd.getNextNumber())
     params["exclude_edges"] = bool(gd.getNextBoolean())
     params["fill_holes"] = bool(gd.getNextBoolean())
     params["single_roi"] = bool(gd.getNextBoolean())
@@ -240,6 +250,8 @@ def process_image(imp, p):
     gaussian_blur_sigma = p["gaussian_blur_sigma"]
     erosion_steps = p["erosion_steps"]
     dilation_steps = p["dilation_steps"]
+    substruct_bg = p["do_bg_subtraction"] # bppl
+    bg_radius = p["bg_value"]
     exclude_edges = p["exclude_edges"] # bool
     fill_holes = p["fill_holes"] # bool
     single_roi = p["single_roi"] # bool
@@ -339,6 +351,10 @@ def process_image(imp, p):
         rm.reset()
         rm.addRoi(max_roi)
 
+    # --- Background substurction in MEASUREMENT channel ---
+    if substruct_bg:
+        IJ.run(imp, "Subtract Background...", "rolling={}".format(bg_radius))
+    
     # --- Save measurement channel image ---
     MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
