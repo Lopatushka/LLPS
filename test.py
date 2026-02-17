@@ -9,16 +9,20 @@ from skimage.draw import disk
 from matplotlib.patches import Circle
 from scipy.stats import spearmanr
 
-def base_name_from_csv(filename: str) -> str:
+def key_from_csv(p: Path) -> str:
     """
-    Turn 'sample_0262-0212.csv' -> 'sample'
-    Turn 'sample.csv' -> 'sample'
+    C2...nd2_(series_01)_0233-0247.csv  ->  C2...nd2_(series_01)
     """
-    # remove extension
-    name = re.sub(r"\.csv$", "", filename)
-    # remove trailing _0262-0212 (or similar) if present
+    name = p.stem  # no .csv
+    # remove trailing _####-#### (or similar) if present
     name = re.sub(r"_\d+-\d+$", "", name)
     return name
+
+def key_from_img(p: Path) -> str:
+    """
+    C2...nd2_(series_01).jpg -> C2...nd2_(series_01)
+    """
+    return p.stem  # no .jpg
 
 def aggregate_data(dir1, dir2):
     # normalize paths (strip accidental spaces)
@@ -44,7 +48,7 @@ def aggregate_data(dir1, dir2):
         image_path = f.with_name(image_name)
         images_paths.append(image_path)
 
-        key = base_name_from_csv(f.name)
+        key = key_from_csv(f)
         key = key[:-4]
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()  # remove hidden spaces in headers
@@ -63,7 +67,13 @@ def aggregate_data(dir1, dir2):
 
     final = pd.concat(dfs1, ignore_index=True)
 
-    print(images_paths)
+    # --- build image lookup by key ---
+    img_by_key = {key_from_img(p): p for p in images_paths}
+    #print(img_by_key)
+
+    # --- make pairs (csv, image) ---
+    pairs = []
+    missing_images = []
 
     # ---- FOCI SUMMARY (path2) ----
     files2 = sorted(dir_path2.glob("*.csv"))
@@ -79,8 +89,10 @@ def aggregate_data(dir1, dir2):
     )
     
     for f in files2:
-        print(f)
-        key = base_name_from_csv(f.name)
+        k = key_from_csv(f)
+        img_path = img_by_key.get(k)
+        print(k, img_path)
+
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()
 
