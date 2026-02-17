@@ -8,10 +8,7 @@ from skimage.color import rgb2gray
 from skimage.draw import disk
 from matplotlib.patches import Circle
 from scipy.stats import spearmanr
-#from scipy.stats import ttest_ind
-#from scipy.stats import linregress
-#from sklearn.cluster import KMeans
-#from sklearn.preprocessing import StandardScaler
+
 
 def key_from_csv(p: Path) -> str:
     """
@@ -37,9 +34,6 @@ def compute_mean_intensity_from_localizations(
         y_col="y [nm]",
         sigma_col="sigma [nm]"
     ):
-
-    # Read dataframe with single nucleus data
-    #df = pd.read_csv(df_path, encoding="latin1")
 
     # Open image
     image = Image.open(image_path).convert("RGB")
