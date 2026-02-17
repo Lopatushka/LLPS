@@ -73,7 +73,8 @@ def compute_mean_intensity_from_localizations(
         # original pixels → current image pixels
         x_px = int(round(x_orig_px * sx))
         y_px = int(round(y_orig_px * sy))
-        sigma_px = int(round(sigma_orig_px * sx))
+        #sigma_px = int(round(sigma_orig_px * sx))
+        sigma_px = max(1, int(round(sigma_orig_px * sx))) # minimal possible value is 1 pixel!
 
         # Build circular mask (clipped automatically)
         rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
@@ -145,26 +146,17 @@ def aggregate_data(dir1, dir2):
 
     # --- build image lookup by key ---
     img_by_key = {key_from_img(p): p for p in images_paths}
-    #print(img_by_key)
 
     # --- make pairs (csv, image) ---
     pairs = []
     missing_images = []
 
-    # ---- FOCI SUMMARY (path2) ----
+    # --- Create .csv - image pairs ---
     files2 = sorted(dir_path2.glob("*.csv"))
     if not files2:
         raise FileNotFoundError(f"No CSV files found in dir2: {dir_path2}")
     
-    foci_rows = []
-
-    check_column = lambda df, col: (
-    df[col]
-    if col in df.columns and not df.empty
-    else pd.NA
-    )
-    
-    # Create .csv - image pairs 
+    # --- Create .csv - image pairs ---
     for f in files2:
         k = key_from_csv(f)
         img_path = img_by_key.get(k)
@@ -174,7 +166,7 @@ def aggregate_data(dir1, dir2):
         pairs.append((f, img_path))
     
     print(f"Pairs found: {len(pairs)}")
-    print(f"CSV without matching image: {len(missing_images)}")
+    #print(f"CSV without matching image: {len(missing_images)}")
 
     # Calculate MFI of each foci
     for file, image in pairs:
@@ -190,7 +182,35 @@ def aggregate_data(dir1, dir2):
                                                  )
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
-        df_added.to_csv(new_path, index=False)
+        df_added.to_csv(new_path, index=False) # export new extended dataframe
+    
+    # ---- FOCI SUMMARY (path2) ----
+    files3 = sorted(dir_path2.glob("*_extent.csv"))
+    foci_rows = []
+
+    # generic function
+    check_column = lambda df, col: (
+    df[col]
+    if col in df.columns and not df.empty
+    else pd.NA
+    )
+
+    for f in files3:
+        k = key_from_csv(f)
+        k = k[:-7]
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()
+
+        # Count rows
+        foci_rows.append({
+        "File_name": k,
+        "Foci_number": int(df.shape[0]),
+        "Foci_IFI_photons": float(df["intensity [photon]"].mean()),
+        "Foci_MFI_px": float(df["mean_intensity"].mean()),
+        "Foci_sigma_nm": float(df["sigma [nm]"].mean())
+        })
+
+    print(foci_rows)
         
 
 p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" 
