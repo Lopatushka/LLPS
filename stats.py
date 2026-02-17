@@ -1,7 +1,20 @@
 from pathlib import Path
-import pandas as pd
-from scipy.stats import spearmanr
 import re
+import pandas as pd
+import numpy as np
+
+from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+from skimage.color import rgb2gray
+from skimage.draw import disk
+
+from scipy.stats import spearmanr
+#from scipy.stats import ttest_ind
+#from scipy.stats import linregress
+from sklearn.cluster import KMeans
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
 
 def base_name_from_csv(filename: str) -> str:
     """
@@ -94,6 +107,101 @@ def sprearman_correlation(df):
 
     pairs_df = pd.DataFrame(pairs)
     return pairs_df
+
+def compute_mean_intensity_from_localizations(
+        path_image,
+        df,
+        orig_size=(2560, 2560),
+        pixel_size_original_nm=16.0,
+        x_col="x [nm]",
+        y_col="y [nm]",
+        sigma_col="sigma [nm]"
+    ):
+    """
+    Convert ThunderSTORM localizations (nm) into current image pixels,
+    build circular ROIs, and compute mean grayscale intensity inside each ROI.
+
+    Parameters
+    ----------
+    image : PIL Image or numpy array
+        RGB image on which intensity will be measured.
+    df : pandas DataFrame
+        Must contain x, y, sigma columns in nanometers.
+    orig_size : tuple
+        Original image size used during ThunderSTORM analysis (width, height).
+    pixel_size_original_nm : float
+        Pixel size of original acquisition in nm/px.
+    x_col, y_col, sigma_col : str
+        Column names in df.
+
+    Returns
+    -------
+    df_out : pandas DataFrame
+        Copy of df with added columns:
+        x_px, y_px, sigma_px, mean_intensity
+    """
+    # Open image
+    image = Image.open(path_image).convert("RGB")
+
+    # Convert to grayscale
+    gray = rgb2gray(image)
+
+    # Current image size
+    jpg_w, jpg_h = image.size
+    orig_w, orig_h = orig_size
+
+    # Scaling factors
+    sx = jpg_w / orig_w
+    sy = jpg_h / orig_h
+
+    H, W = gray.shape
+
+    # Storage lists
+    x_list = []
+    y_list = []
+    sigma_list = []
+    mean_list = []
+
+    for _, row in df.iterrows():
+
+        x_nm = row[x_col]
+        y_nm = row[y_col]
+        sigma_nm = row[sigma_col]
+
+        # nm → original pixels
+        x_orig_px = x_nm / pixel_size_original_nm
+        y_orig_px = y_nm / pixel_size_original_nm
+        sigma_orig_px = sigma_nm / pixel_size_original_nm
+
+        # original pixels → current image pixels
+        x_px = int(round(x_orig_px * sx))
+        y_px = int(round(y_orig_px * sy))
+        sigma_px = int(round(sigma_orig_px * sx))
+
+        # Build circular mask (clipped automatically)
+        rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
+        mask = np.zeros((H, W), dtype=bool)
+        mask[rr, cc] = True
+
+        # Compute mean intensity
+        if mask.sum() > 0:
+            mean_intensity = gray[mask].mean()
+        else:
+            mean_intensity = np.nan
+
+        x_list.append(x_px)
+        y_list.append(y_px)
+        sigma_list.append(sigma_px)
+        mean_list.append(mean_intensity)
+
+    # Return modified copy
+    df_out = df.copy()
+    df_out["x_px"] = x_list
+    df_out["y_px"] = y_list
+    df_out["sigma_px"] = sigma_list
+    df_out["mean_intensity"] = mean_list
+
+    return df_out
 
 def main(path1, path2):
     path1 = str(path1).strip()
