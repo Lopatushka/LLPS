@@ -10,7 +10,7 @@ from skimage.draw import disk
 from matplotlib.patches import Circle
 import os
 
-def scatter_plot(df, x_col, y_col, 
+def _scatter_plot(df, x_col, y_col, 
                  x_lim=None, 
                  y_lim=None,
                  figsize=(4, 4),
@@ -37,7 +37,7 @@ def scatter_plot(df, x_col, y_col,
 
 
 def plot_histogram(df, column, bins=50, xlabel=None, title=None,
-                   figsize=(4, 3), dpi=200):
+                   figsize=(4, 3), dpi=300):
     """
     Plot histogram for a dataframe column.
 
@@ -69,8 +69,10 @@ def plot_histogram(df, column, bins=50, xlabel=None, title=None,
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    plt.tight_layout()
-    plt.show()
+    fig.tight_layout()
+    #plt.show()
+
+    return fig, ax 
 
 
 def plot_foci_on_image(
@@ -147,16 +149,11 @@ def main(dir_path):
     for f in files:
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()  # remove hidden spaces in headers
-        fig, ax = scatter_plot(
-        df,
-        "sigma [nm]",
-        "mean_intensity",
-        x_lim=(0, 800),
-        y_lim=(0, 0.55)
-        )
+        fig, ax = plot_histogram(df, "mean_intensity", bins=50, xlabel=None, title=None,
+                   figsize=(4, 3), dpi=300)
 
         base_name = os.path.splitext(os.path.basename(f))[0]
-        save_path = os.path.join(path, f"{base_name}_scatter.png")
+        save_path = os.path.join(path, f"{base_name}_hist.png")
 
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
@@ -164,5 +161,5 @@ def main(dir_path):
 
 
 if __name__ == "__main__":
-    dir = "./examples"
+    dir = "/mnt/c/users/elena/Desktop/Data_processing/sb/res"
     main(dir)
