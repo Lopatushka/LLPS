@@ -164,7 +164,6 @@ def aggregate_data(dir1, dir2):
         pairs.append((f, img_path))
     
     print(f"Pairs found: {len(pairs)}")
-    #print(f"CSV without matching image: {len(missing_images)}")
 
     # Calculate MFI of each foci
     for file, image in pairs:
@@ -179,7 +178,8 @@ def aggregate_data(dir1, dir2):
                                                     sigma_col="sigma [nm]"
                                                  )
         # Filtration based on sigma_nm value
-        filtered = df_added[(df_added["sigma [nm]"] > 75)]
+        filtered = df_added[df_added["sigma [nm]"] > 75]
+        print(f"Filtration of file {key_from_csv(file)}: keep {df_added.shape[0]} out of {filtered.shape[0]} foci")
 
         # Outliers
         data = filtered["sigma [nm]"]
@@ -191,9 +191,7 @@ def aggregate_data(dir1, dir2):
         upper_bound = Q3 + 1.5 * IQR
 
         # Create new column bool
-        filtered["Outlier"] = False
         filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
-        #print(sum(filtered["mean_intensity"] < upper_bound))
         
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
@@ -220,9 +218,12 @@ def aggregate_data(dir1, dir2):
         foci_rows.append({
         "File_name": k,
         "Foci_number": int(df.shape[0]),
-        "Foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
-        "Foci_MFI_px": check_column_mean(df, "mean_intensity"),
-        "Foci_sigma_nm": check_column_mean(df, "sigma [nm]")
+        "All_foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
+        "All_foci_MFI_px": check_column_mean(df, "mean_intensity"),
+        "All_foci_sigma_nm": check_column_mean(df, "sigma [nm]"),
+        "Outliers_number": sum(df["Outlier"]),
+        "Outliers_MFI_px": check_column_mean(df[df["Outlier"] == True], "mean_intensity"),
+        "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma_nm")
         })
 
     foci_summary = pd.DataFrame(foci_rows)
@@ -271,7 +272,7 @@ def main(path1, path2):
 
  
 if __name__ == "__main__":
-    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" # path to directory with original images and nucleus Area and Mean
-    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" # path to ThunderSTORM data
+    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/test" # path to directory with original images and nucleus Area and Mean
+    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/test/res" # path to ThunderSTORM data
     
     main(p1, p2)
