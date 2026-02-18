@@ -192,7 +192,7 @@ def aggregate_data(dir1, dir2):
         # Create new column bool
         filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
         n_outliers = sum(filtered["Outlier"])
-        
+
         print(f"File {key_from_csv(file)}: keep {filtered.shape[0]} out of {df_added.shape[0]} foci. Number of outliers: {n_outliers}")
         
         new_name = key_from_csv(file) + "_extent.csv"
@@ -225,7 +225,7 @@ def aggregate_data(dir1, dir2):
         "All_foci_sigma_nm": check_column_mean(df, "sigma [nm]"),
         "Outliers_number": sum(df["Outlier"]),
         "Outliers_MFI_px": check_column_mean(df[df["Outlier"] == True], "mean_intensity"),
-        "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma_nm")
+        "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma [nm]")
         })
 
     foci_summary = pd.DataFrame(foci_rows)
