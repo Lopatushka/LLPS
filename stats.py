@@ -179,10 +179,9 @@ def aggregate_data(dir1, dir2):
                                                  )
         # Filtration based on sigma_nm value
         filtered = df_added[df_added["sigma [nm]"] > 75]
-        print(f"Filtration of file {key_from_csv(file)}: keep {df_added.shape[0]} out of {filtered.shape[0]} foci")
-
+        
         # Outliers
-        data = filtered["sigma [nm]"]
+        data = filtered["mean_intensity"]
         #mean = data.mean()
         #std = data.std()
         Q1 = np.percentile(data, 25)
@@ -192,6 +191,9 @@ def aggregate_data(dir1, dir2):
 
         # Create new column bool
         filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
+        n_outliers = sum(filtered["Outlier"])
+        
+        print(f"File {key_from_csv(file)}: keep {filtered.shape[0]} out of {df_added.shape[0]} foci. Number of outliers: {n_outliers}")
         
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
