@@ -178,9 +178,26 @@ def aggregate_data(dir1, dir2):
                                                     y_col="y [nm]",
                                                     sigma_col="sigma [nm]"
                                                  )
+        # Filtration based on sigma_nm value
+        filtered = df_added[(df_added["sigma [nm]"] > 75)]
+
+        # Outliers
+        data = filtered["sigma [nm]"]
+        #mean = data.mean()
+        #std = data.std()
+        Q1 = np.percentile(data, 25)
+        Q3 = np.percentile(data, 75)
+        IQR = Q3 - Q1
+        upper_bound = Q3 + 1.5 * IQR
+
+        # Create new column bool
+        filtered["Outlier"] = False
+        filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
+        #print(sum(filtered["mean_intensity"] < upper_bound))
+        
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
-        df_added.to_csv(new_path, index=False) # export new extended dataframe
+        filtered.to_csv(new_path, index=False) # export new extended dataframe
     
     # ---- FOCI SUMMARY (path2) ----
     files3 = sorted(dir_path2.glob("*_extent.csv"))
@@ -215,7 +232,6 @@ def aggregate_data(dir1, dir2):
     foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
 
     merged  = final.merge(foci_summary, on="File_name", how="left")
-    #merged["Foci_MFI"] = pd.to_numeric(merged["Foci_MFI"], errors="coerce")
 
     return merged
 
@@ -254,9 +270,8 @@ def main(path1, path2):
     print(f"Saved: {path2}/'spearman_pairs.csv'")
 
  
-
 if __name__ == "__main__":
-    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" 
-    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" 
+    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb" # path to directory with original images and nucleus Area and Mean
+    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/sb/res" # path to ThunderSTORM data
     
     main(p1, p2)
