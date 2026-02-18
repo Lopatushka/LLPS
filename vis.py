@@ -145,7 +145,6 @@ def main(dir_path):
     if not files:
         raise FileNotFoundError(f"No CSV files found in the directory: {path}")
     
-    dfs = []
     for f in files:
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()  # remove hidden spaces in headers
@@ -161,5 +160,5 @@ def main(dir_path):
 
 
 if __name__ == "__main__":
-    dir = "/mnt/c/users/elena/Desktop/Data_processing/sb/res"
+    dir = "/mnt/c/users/elena/Desktop/Data_processing/test/res"
     main(dir)
