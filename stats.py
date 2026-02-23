@@ -144,7 +144,7 @@ def MFI_foci_all(dir_images, dir_foci):
     images = sorted(images_path.glob("*.tif"))
     if not images:
         raise FileNotFoundError(f"No .TIF files found in: {images_path}")
-    foci = sorted(images_path.glob("*.csv"))
+    foci = sorted(foci_data_path.glob("*.csv"))
     if not foci:
          raise FileNotFoundError(f"No .CSV files found in: {foci_data_path}")
     
@@ -245,7 +245,6 @@ def _sprearman_correlation(df):
 
 def main(p1, p2, output_dir):
     df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
-
     MFI_foci_all(dir_images = p1, dir_foci = p2)
     #results = aggregation_foci(dir = p2)
 
