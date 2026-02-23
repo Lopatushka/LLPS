@@ -25,7 +25,7 @@ def key_from_img(p: Path) -> str:
     """
     return p.stem  # no .jpg
 
-def compute_mean_intensity_from_localizations(
+def MFI_foci(
         image_path,
         df,
         px_size_ts_x = 11.6,
@@ -91,103 +91,27 @@ def compute_mean_intensity_from_localizations(
 
         return df_out
 
-def _compute_mean_intensity_from_localizations(
-        image_path,
-        df,
-        orig_size=(2560, 2560),
-        pixel_size_original_nm=16.0,
-        x_col="x [nm]",
-        y_col="y [nm]",
-        sigma_col="sigma [nm]"
-    ):
 
-    # Open image
-    image = Image.open(image_path).convert("RGB")
+def aggregate_nuclei_data(dir_nuclei_stat):
+    # Paths to files
+    nuclei_path = Path(str(dir_nuclei_stat).strip()) # path to data about nucleus in total
 
-    # Convert image to grayscale
-    gray = rgb2gray(image)
-
-    # Current image size
-    jpg_w, jpg_h = image.size
-    orig_w, orig_h = orig_size
-
-    # Scaling factors
-    sx = jpg_w / orig_w
-    sy = jpg_h / orig_h
-
-    H, W = gray.shape
-
-    # Storage lists
-    x_list = []
-    y_list = []
-    sigma_list = []
-    mean_list = []
-
-    for _, row in df.iterrows():
-
-        x_nm = row[x_col]
-        y_nm = row[y_col]
-        sigma_nm = row[sigma_col]
-
-        # nm → original pixels
-        x_orig_px = x_nm / pixel_size_original_nm
-        y_orig_px = y_nm / pixel_size_original_nm
-        sigma_orig_px = sigma_nm / pixel_size_original_nm
-
-        # original pixels → current image pixels
-        x_px = int(round(x_orig_px * sx))
-        y_px = int(round(y_orig_px * sy))
-        #sigma_px = int(round(sigma_orig_px * sx))
-        sigma_px = max(1, int(round(sigma_orig_px * sx))) # minimal possible value is 1 pixel!
-
-        # Build circular mask (clipped automatically)
-        rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
-        mask = np.zeros((H, W), dtype=bool)
-        mask[rr, cc] = True
-
-        # Compute mean intensity
-        if mask.sum() > 0:
-            mean_intensity = gray[mask].mean()
-        else:
-            mean_intensity = np.nan
-
-        x_list.append(x_px)
-        y_list.append(y_px)
-        sigma_list.append(sigma_px)
-        mean_list.append(mean_intensity)
-
-    # Return modified copy
-    df_out = df.copy()
-    df_out["x_px"] = x_list
-    df_out["y_px"] = y_list
-    df_out["sigma_px"] = sigma_list
-    df_out["mean_intensity"] = mean_list
-
-    return df_out
-
-def aggregate_data(dir1, dir2):
-    # normalize paths (strip accidental spaces)
-    dir_path1 = Path(str(dir1).strip()) # path to data about nucleus in total
-    dir_path2 = Path(str(dir2).strip()) # path to data about foci in the particular nucleus
-
-    if not dir_path1.exists():
-        raise FileNotFoundError(f"dir1 not found: {dir_path1}")
-    if not dir_path2.exists():
-        raise FileNotFoundError(f"dir2 not found: {dir_path2}")
+    # Check path
+    if not nuclei_path.exists():
+        raise FileNotFoundError(f"dir1 not found: {nuclei_path}")
     
-    # ---- NUCLEI TABLE (path1) ----
-    files1 = sorted(dir_path1.glob("*.csv"))
-    if not files1:
-        raise FileNotFoundError(f"No CSV files found in dir1: {dir_path1}")
+    # Check that there are .csv files
+    nuclei_files = sorted(nuclei_path.glob("*.csv"))
+    if not nuclei_files:
+        raise FileNotFoundError(f"No CSV files found in: {nuclei_path}")
     
-    dfs1 = [] 
-    images_paths = []
+    dfs = []
 
-    for f in files1:
+    for f in nuclei_files:
         # find the corresponding image
-        image_name = f.stem.replace("_roi", "") + ".jpg"
-        image_path = f.with_name(image_name)
-        images_paths.append(image_path)
+        #image_name = f.stem.replace("_roi", "") + ".tif"
+        #image_path = images_path.with_name(image_name)
+        #images.append(image_path)
 
         key = key_from_csv(f)
         key = key[:-4]
@@ -204,12 +128,23 @@ def aggregate_data(dir1, dir2):
         df["File_name"] = key
         df = df.rename(columns={"Area": "Nucleus_area", "Mean": "Nucleus_MFI"})
         df = df[["File_name", "Nucleus_area", "Nucleus_MFI"]]
-        dfs1.append(df)
+        dfs.append(df)
 
-    final = pd.concat(dfs1, ignore_index=True)
+    final = pd.concat(dfs, ignore_index=True)
+
+    return final
+
+def MFI_foci_all(dir_images, df):
+    # Paths to files
+    images_path = Path(str(dir_images).strip()) # path to data about nucleus in total
+
+    # Check path
+    if not images_path.exists():
+        raise FileNotFoundError(f"Directory {images_path} not found!")
+
 
     # --- build image lookup by key ---
-    img_by_key = {key_from_img(p): p for p in images_paths}
+    #img_by_key = {key_from_img(p): p for p in images}
 
     # --- make pairs (csv, image) ---
     pairs = []
