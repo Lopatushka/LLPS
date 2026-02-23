@@ -144,7 +144,10 @@ def MFI_foci_all(dir_images, dir_foci):
     images = sorted(images_path.glob("*.tif"))
     if not images:
         raise FileNotFoundError(f"No .TIF files found in: {images_path}")
-    foci = sorted(foci_data_path.glob("*.csv"))
+    foci = sorted(
+        f for f in foci_data_path.glob("*.csv")
+        if not f.stem.endswith(("_roi", "_extent"))
+    )
     if not foci:
          raise FileNotFoundError(f"No .CSV files found in: {foci_data_path}")
     
@@ -192,6 +195,8 @@ def MFI_foci_all(dir_images, dir_foci):
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
+
+        #print(f"File {new_name} is saved.")
     
 def aggregation_foci(dir):
     files = sorted(dir.glob("*_extent.csv"))
