@@ -109,7 +109,6 @@ def aggregate_nuclei_data(dir_nuclei_stat):
 
     for f in nuclei_files:
         key = key_from_csv(f)
-        key = key[:-4]
         df = pd.read_csv(f)
         df.columns = df.columns.str.strip()  # remove hidden spaces in headers
 
@@ -255,10 +254,11 @@ def main(p1, p2, output_dir):
     results = aggregation_foci(dir = p2)
 
     merged  = df_nuclei.merge(results, on="File_name", how="left")
-    
-    # Results export
-    merged.to_csv(f"{output_dir}/results.csv", index=False)
+    print(merged)
 
+    # Results export
+    #results.to_csv(f"{output_dir}/results.csv", index=False)
+    #df_nuclei.to_csv(f"{output_dir}/df_nuclei.csv", index=False)
  
 if __name__ == "__main__":
     p1 = "./examples" # path to directory with nucleus Area and Mean
