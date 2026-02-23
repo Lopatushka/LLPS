@@ -171,22 +171,6 @@ def pick_channel_by_index(split_imps, one_based_index):
 		return None
 	return split_imps[idx]
     
-def _close_all_images_except(keep_imp):
-    """
-    Closes all image windows except keep_imp.
-    'changes=False' prevents 'Save changes?' dialogs.
-    """
-    ids = WindowManager.getIDList()
-    if not ids:
-        return
-
-    for wid in ids:
-        imp = WindowManager.getImage(wid)
-        if imp is None:
-            continue
-        if imp != keep_imp:
-            imp.changes = False
-            imp.close()
 
 def close_images(imps):
     for im in imps:
