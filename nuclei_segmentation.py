@@ -354,7 +354,7 @@ def process_image(imp, p):
         rm.addRoi(max_roi)
     
     # --- Save measurement channel image ---
-    MEASURE_CHANNEL_name = "C{}_{}.jpeg".format(MEASURE_CHANNEL, img_title)
+    MEASURE_CHANNEL_name = "C{}_{}.tif".format(MEASURE_CHANNEL, img_title)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
