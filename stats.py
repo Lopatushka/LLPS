@@ -199,7 +199,8 @@ def MFI_foci_all(dir_images, dir_foci):
         #print(f"File {new_name} is saved.")
     
 def aggregation_foci(dir):
-    files = sorted(dir.glob("*_extent.csv"))
+    path_files = Path(str(dir).strip())
+    files = sorted(path_files.glob("*_extent.csv"))
     foci_rows = []
 
         # generic function
@@ -251,7 +252,9 @@ def _sprearman_correlation(df):
 def main(p1, p2, output_dir):
     df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
     MFI_foci_all(dir_images = p1, dir_foci = p2)
-    #results = aggregation_foci(dir = p2)
+    results = aggregation_foci(dir = p2)
+
+    print(results)
 
     #merged  = df_nuclei.merge(results, on="File_name", how="left")
     # Results export
