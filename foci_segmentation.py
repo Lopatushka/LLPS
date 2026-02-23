@@ -143,7 +143,7 @@ def thunderstorm_options(p):
     ]
     return " ".join(opts)
 
-def _safe_name(s):
+def safe_name(s):
     """Make a string safe for filenames."""
     s = str(s)
     s = re.sub(r'[\\/:*?"<>|]+', "_", s)
@@ -163,7 +163,7 @@ def foci_image(imp, rois, parameters, output_dir):
     p    : dict-like parameters (optional, used later)
     """
     img_name = imp.getTitle()
-    img_base = _safe_name(os.path.splitext(img_name)[0])
+    img_base = safe_name(os.path.splitext(img_name)[0])
 
     for i, roi in enumerate(rois):
         dup = None
@@ -172,14 +172,14 @@ def foci_image(imp, rois, parameters, output_dir):
             roi_name = roi.getName()
             if roi_name is None:
                 roi_name = "roi_{:02d}".format(i + 1)
-            roi_base = _safe_name(roi_name)
+            roi_base = safe_name(roi_name)
 
             IJ.log("Processing image: {} and ROI: {}".format(img_name, roi_name))
 
             # Make sure old results window doesn't interfere
             close_window("ThunderSTORM: results")
 
-            # Set ROI and crop
+            # Set ROI and clear data outside ROI
             dup = imp.duplicate()
             dup.show()
             dup.setRoi(roi)
