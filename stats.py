@@ -108,11 +108,6 @@ def aggregate_nuclei_data(dir_nuclei_stat):
     dfs = []
 
     for f in nuclei_files:
-        # find the corresponding image
-        #image_name = f.stem.replace("_roi", "") + ".tif"
-        #image_path = images_path.with_name(image_name)
-        #images.append(image_path)
-
         key = key_from_csv(f)
         key = key[:-4]
         df = pd.read_csv(f)
@@ -134,50 +129,49 @@ def aggregate_nuclei_data(dir_nuclei_stat):
 
     return final
 
-def MFI_foci_all(dir_images, df):
+def MFI_foci_all(dir_images, dir_foci, df):
     # Paths to files
-    images_path = Path(str(dir_images).strip()) # path to data about nucleus in total
+    images_path = Path(str(dir_images).strip())
+    foci_data_path = Path(str(dir_foci).strip())
 
     # Check path
     if not images_path.exists():
-        raise FileNotFoundError(f"Directory {images_path} not found!")
-
-
-    # --- build image lookup by key ---
-    #img_by_key = {key_from_img(p): p for p in images}
-
-    # --- make pairs (csv, image) ---
-    pairs = []
-    missing_images = []
-
-    # --- Create .csv - image pairs ---
-    files2 = sorted(dir_path2.glob("*.csv"))
-    if not files2:
-        raise FileNotFoundError(f"No CSV files found in dir2: {dir_path2}")
+        raise FileNotFoundError(f"Directory {images_path} is not found!")
+    if not foci_data_path.exists():
+        raise FileNotFoundError(f"Directory {foci_data_path} is not found!")
     
-    # --- Create .csv - image pairs ---
-    for f in files2:
+    # Check that there are files
+    images = sorted(images_path.glob("*.tif"))
+    if not images:
+        raise FileNotFoundError(f"No .TIF files found in: {images_path}")
+    foci = sorted(images_path.glob("*.csv"))
+    if not foci:
+         raise FileNotFoundError(f"No .CSV files found in: {foci_data_path}")
+    
+    # --- Make list of tuples called pairs = [(image_path, csv foci filem path)] ---
+    img_by_key = {key_from_img(p): p for p in images} # dictionary {image name: image path}
+    pairs = []
+    for f in foci:
         k = key_from_csv(f)
         img_path = img_by_key.get(k)
-        if img_path is None:
-            missing_images.append(f)
-            continue
         pairs.append((f, img_path))
-    
-    print(f"Pairs found: {len(pairs)}")
-
+    print(f"Found: {len(pairs)} (image.tif foci.csv) pairs.")
+        
     # Calculate MFI of each foci
     for file, image in pairs:
         df = pd.read_csv(file)
         df.columns = df.columns.str.strip()
-        df_added = compute_mean_intensity_from_localizations(image_path = image,
-                                                    df = df,
-                                                    orig_size=(2560, 2560),
-                                                    pixel_size_original_nm=16.0,
-                                                    x_col="x [nm]",
-                                                    y_col="y [nm]",
-                                                    sigma_col="sigma [nm]"
-                                                 )
+        df_added = MFI_foci(image_path = image
+                            df = df,
+                            px_size_ts_x = 11.6,
+                            px_size_ts_y = 11.6,
+                            px_size_x = 57.5,
+                            px_size_y = 58.7,
+                            x_col="x [nm]",
+                            y_col="y [nm]",
+                            sigma_col="sigma [nm]"
+                            )
+        
         # Filtration based on sigma_nm value
         filtered = df_added[df_added["sigma [nm]"] > 75]
         
