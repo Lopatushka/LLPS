@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw
 from skimage.color import rgb2gray
 from skimage.draw import disk
 from matplotlib.patches import Circle
+import matplotlib.pyplot as plt
 #from scipy.stats import spearmanr
 
 
@@ -127,6 +128,41 @@ def aggregate_nuclei_data(dir_nuclei_stat):
     final = pd.concat(dfs, ignore_index=True)
 
     return final
+
+def plot_histogram(df, column, bins=50,
+                   xlabel=None,
+                   title=None,
+                   figsize=(4, 3),
+                   dpi=300,
+                   save_path=None):
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    ax.hist(
+        df[column].dropna(),
+        bins=bins,
+        edgecolor="black",
+        linewidth=0.5,
+        alpha=0.8
+    )
+
+    ax.set_xlabel(xlabel, fontsize=11)
+    ax.set_ylabel("Count", fontsize=11)
+    ax.set_title(title, fontsize=12)
+
+    # Clean style
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    plt.tight_layout()
+
+    # --- Save if path provided ---
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(save_path, dpi=dpi, bbox_inches="tight")
+
+    plt.close(fig)
+
 
 def MFI_foci_all(dir_images, dir_foci):
     # Paths to files
@@ -253,12 +289,11 @@ def main(p1, p2, output_dir):
     MFI_foci_all(dir_images = p1, dir_foci = p2)
     results = aggregation_foci(dir = p2)
 
-    merged  = df_nuclei.merge(results, on="File_name", how="left")
-    print(merged)
+    merged = df_nuclei.merge(results, on="File_name", how="left")
 
     # Results export
-    #results.to_csv(f"{output_dir}/results.csv", index=False)
-    #df_nuclei.to_csv(f"{output_dir}/df_nuclei.csv", index=False)
+    merged.to_csv(f"{output_dir}/results.csv", index=False)
+    print(f"Aggregated results are saved: to the directory: {output_dir}.")
  
 if __name__ == "__main__":
     p1 = "./examples" # path to directory with nucleus Area and Mean
