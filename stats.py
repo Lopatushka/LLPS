@@ -175,16 +175,14 @@ def MFI_foci_all(dir_images, dir_foci, df):
         # Filtration based on sigma_nm value
         filtered = df_added[df_added["sigma [nm]"] > 75]
         
-        # Outliers
+        # Calculate outliers based on mean intensity of foci
         data = filtered["mean_intensity"]
-        #mean = data.mean()
-        #std = data.std()
         Q1 = np.percentile(data, 25)
         Q3 = np.percentile(data, 75)
         IQR = Q3 - Q1
         upper_bound = Q3 + 1.5 * IQR
 
-        # Create new column bool
+        # Create new bool column 'Outlier'
         filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
         n_outliers = sum(filtered["Outlier"])
 
@@ -194,46 +192,48 @@ def MFI_foci_all(dir_images, dir_foci, df):
         new_path = file.with_name(new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
     
-    # ---- FOCI SUMMARY (path2) ----
-    files3 = sorted(dir_path2.glob("*_extent.csv"))
-    foci_rows = []
+    def statistics(dir):
+        files = sorted(dir.glob("*_extent.csv"))
+        foci_rows = []
 
-    # generic function
-    check_column_mean = lambda df, col: (
-        float(df[col].mean())
-        if col in df.columns and not df.empty
-        else pd.NA
-    )
+        # generic function
+        check_column_mean = lambda df, col: (
+            float(df[col].mean())
+            if col in df.columns and not df.empty
+            else pd.NA
+        )
 
-    for f in files3:
-        k = key_from_csv(f)
-        k = k[:-7]
-        df = pd.read_csv(f)
-        df.columns = df.columns.str.strip()
+        for f in files:
+            k = key_from_csv(f)
+            k = k[:-7]
+            df = pd.read_csv(f)
+            df.columns = df.columns.str.strip()
 
-        # Count rows
-        foci_rows.append({
-        "File_name": k,
-        "Foci_number": int(df.shape[0]),
-        "All_foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
-        "All_foci_MFI_px": check_column_mean(df, "mean_intensity"),
-        "All_foci_sigma_nm": check_column_mean(df, "sigma [nm]"),
-        "Outliers_number": sum(df["Outlier"]),
-        "Outliers_MFI_px": check_column_mean(df[df["Outlier"] == True], "mean_intensity"),
-        "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma [nm]")
-        })
+            # Count rows
+            foci_rows.append({
+            "File_name": k,
+            "Foci_number": int(df.shape[0]),
+            "All_foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
+            "All_foci_MFI_px": check_column_mean(df, "mean_intensity"),
+            "All_foci_sigma_nm": check_column_mean(df, "sigma [nm]"),
+            "Outliers_number": sum(df["Outlier"]),
+            "Outliers_MFI_px": check_column_mean(df[df["Outlier"] == True], "mean_intensity"),
+            "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma [nm]")
+            })
 
-    foci_summary = pd.DataFrame(foci_rows)
+        foci_summary = pd.DataFrame(foci_rows)
 
-    # ---- MERGE ----
-    final["File_name"] = final["File_name"].astype(str).str.strip()
-    foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
+        return foci_summary
 
-    merged  = final.merge(foci_summary, on="File_name", how="left")
+        # ---- MERGE ----
+        final["File_name"] = final["File_name"].astype(str).str.strip()
+        foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
 
-    return merged
+        merged  = final.merge(foci_summary, on="File_name", how="left")
 
-def sprearman_correlation(df):
+        return merged
+
+def _sprearman_correlation(df):
     cols = df.select_dtypes(include="number").columns
     pairs = []
 
