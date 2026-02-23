@@ -129,7 +129,7 @@ def aggregate_nuclei_data(dir_nuclei_stat):
 
     return final
 
-def MFI_foci_all(dir_images, dir_foci, df):
+def MFI_foci_all(dir_images, dir_foci):
     # Paths to files
     images_path = Path(str(dir_images).strip())
     foci_data_path = Path(str(dir_foci).strip())
@@ -188,11 +188,12 @@ def MFI_foci_all(dir_images, dir_foci, df):
 
         print(f"File {key_from_csv(file)}: keep {filtered.shape[0]} out of {df_added.shape[0]} foci. Number of outliers: {n_outliers}")
         
+        # Export
         new_name = key_from_csv(file) + "_extent.csv"
         new_path = file.with_name(new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
     
-    def statistics(dir):
+    def aggregation_foci(dir):
         files = sorted(dir.glob("*_extent.csv"))
         foci_rows = []
 
@@ -222,16 +223,7 @@ def MFI_foci_all(dir_images, dir_foci, df):
             })
 
         foci_summary = pd.DataFrame(foci_rows)
-
         return foci_summary
-
-        # ---- MERGE ----
-        final["File_name"] = final["File_name"].astype(str).str.strip()
-        foci_summary["File_name"] = foci_summary["File_name"].astype(str).str.strip()
-
-        merged  = final.merge(foci_summary, on="File_name", how="left")
-
-        return merged
 
 def _sprearman_correlation(df):
     cols = df.select_dtypes(include="number").columns
@@ -250,26 +242,19 @@ def _sprearman_correlation(df):
     return pairs_df
 
 
-def main(path1, path2):
-    path1 = str(path1).strip()
-    path2 = str(path2).strip()
+def main(p1, p2, output_dir):
+    df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
+    MFI_foci_all(dir_images = p2, dir_foci = p2)
+    results = aggregation_foci(dir = p2)
 
-    # Make final table
-    results = aggregate_data(path1, path2)
-
-    # Spearman correlation
-    corr = sprearman_correlation(results)
-
+    merged  = df_nuclei.merge(results, on="File_name", how="left")
     # Results export
-    results.to_csv(f"{path2}/results.csv", index=False)
-    corr.to_csv(f"{path2}/spearman_pairs.csv", index=False)
-
-    print(f"Saved: {path2}/'results.csv'")
-    print(f"Saved: {path2}/'spearman_pairs.csv'")
+    merged.to_csv(f"{output_dir}/results.csv", index=False)
 
  
 if __name__ == "__main__":
     p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/test" # path to directory with original images and nucleus Area and Mean
     p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/test/res" # path to ThunderSTORM data
+    output_dir = ""
     
-    main(p1, p2)
+    main(p1, p2, output_dir)
