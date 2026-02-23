@@ -161,7 +161,7 @@ def MFI_foci_all(dir_images, dir_foci):
     for file, image in pairs:
         df = pd.read_csv(file)
         df.columns = df.columns.str.strip()
-        df_added = MFI_foci(image_path = image
+        df_added = MFI_foci(image_path = image,
                             df = df,
                             px_size_ts_x = 11.6,
                             px_size_ts_y = 11.6,
@@ -193,25 +193,25 @@ def MFI_foci_all(dir_images, dir_foci):
         new_path = file.with_name(new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
     
-    def aggregation_foci(dir):
-        files = sorted(dir.glob("*_extent.csv"))
-        foci_rows = []
+def aggregation_foci(dir):
+    files = sorted(dir.glob("*_extent.csv"))
+    foci_rows = []
 
         # generic function
-        check_column_mean = lambda df, col: (
+    check_column_mean = lambda df, col: (
             float(df[col].mean())
             if col in df.columns and not df.empty
             else pd.NA
-        )
+    )
 
-        for f in files:
-            k = key_from_csv(f)
-            k = k[:-7]
-            df = pd.read_csv(f)
-            df.columns = df.columns.str.strip()
+    for f in files:
+        k = key_from_csv(f)
+        k = k[:-7]
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()
 
             # Count rows
-            foci_rows.append({
+        foci_rows.append({
             "File_name": k,
             "Foci_number": int(df.shape[0]),
             "All_foci_IFI_photons": check_column_mean(df, "intensity [photon]"),
@@ -220,10 +220,11 @@ def MFI_foci_all(dir_images, dir_foci):
             "Outliers_number": sum(df["Outlier"]),
             "Outliers_MFI_px": check_column_mean(df[df["Outlier"] == True], "mean_intensity"),
             "Outliers_sigma_nm": check_column_mean(df[df["Outlier"] == True], "sigma [nm]")
-            })
+        })
 
-        foci_summary = pd.DataFrame(foci_rows)
-        return foci_summary
+    foci_summary = pd.DataFrame(foci_rows)
+
+    return foci_summary
 
 def _sprearman_correlation(df):
     cols = df.select_dtypes(include="number").columns
@@ -244,16 +245,18 @@ def _sprearman_correlation(df):
 
 def main(p1, p2, output_dir):
     df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
-    MFI_foci_all(dir_images = p2, dir_foci = p2)
-    results = aggregation_foci(dir = p2)
+    print(df_nuclei)
 
-    merged  = df_nuclei.merge(results, on="File_name", how="left")
+    #MFI_foci_all(dir_images = p2, dir_foci = p2)
+    #results = aggregation_foci(dir = p2)
+
+    #merged  = df_nuclei.merge(results, on="File_name", how="left")
     # Results export
-    merged.to_csv(f"{output_dir}/results.csv", index=False)
+    #merged.to_csv(f"{output_dir}/results.csv", index=False)
 
  
 if __name__ == "__main__":
-    p1 = "/mnt/c/Users/Elena/Desktop/Data_processing/test" # path to directory with original images and nucleus Area and Mean
+    p1 = "./examples" # path to directory with nucleus Area and Mean
     p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/test/res" # path to ThunderSTORM data
     output_dir = ""
     
