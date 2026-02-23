@@ -231,6 +231,15 @@ def MFI_foci_all(dir_images, dir_foci):
         new_path = file.with_name(new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
 
+        # Plot histogram of foci mean and intensity and save it
+        plot_path = file.with_name(key_from_csv(file) + "_hist.jpg")
+        plot_histogram(df = filtered, column = "mean_intensity", bins=50,
+                   xlabel="Foci mean intensity",
+                   title=key_from_csv(file),
+                   figsize=(4, 3),
+                   dpi=300,
+                   save_path=plot_path)
+
         #print(f"File {new_name} is saved.")
     
 def aggregation_foci(dir):
