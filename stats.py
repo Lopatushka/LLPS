@@ -92,7 +92,6 @@ def MFI_foci(
 
         return df_out
 
-
 def aggregate_nuclei_data(dir_nuclei_stat):
     # Paths to files
     nuclei_path = Path(str(dir_nuclei_stat).strip()) # path to data about nucleus in total
@@ -134,7 +133,8 @@ def plot_histogram(df, column, bins=50,
                    title=None,
                    figsize=(4, 3),
                    dpi=300,
-                   save_path=None):
+                   save_path=None,
+                   threshold = 0):
 
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
@@ -149,6 +149,8 @@ def plot_histogram(df, column, bins=50,
     ax.set_xlabel(xlabel, fontsize=11)
     ax.set_ylabel("Count", fontsize=11)
     ax.set_title(title, fontsize=12)
+
+    ax.axvline(threshold, linestyle="--", linewidth=2)
 
     # Clean style
     ax.spines["top"].set_visible(False)
@@ -238,7 +240,8 @@ def MFI_foci_all(dir_images, dir_foci):
                    title=key_from_csv(file),
                    figsize=(4, 3),
                    dpi=300,
-                   save_path=plot_path)
+                   save_path=plot_path,
+                   threshold = upper_bound)
 
         #print(f"File {new_name} is saved.")
     
@@ -302,7 +305,7 @@ def main(p1, p2, output_dir):
 
     # Results export
     merged.to_csv(f"{output_dir}/results.csv", index=False)
-    print(f"Aggregated results are saved: to the directory: {output_dir}.")
+    print(f"Aggregated results.csv file is saved in the directory: {output_dir}.")
  
 if __name__ == "__main__":
     p1 = "./examples" # path to directory with nucleus Area and Mean
