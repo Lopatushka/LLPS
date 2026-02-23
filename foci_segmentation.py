@@ -77,7 +77,7 @@ def ask_params_for_thunderstorm():
     # ---- Detector ----
     gd.addChoice("Detector:", ["Local maximum"], "Local maximum")
     gd.addChoice("Connectivity:", ["4-neighbourhood", "8-neighbourhood"], "8-neighbourhood")
-    gd.addStringField("Threshold expression:", "2*std(Wave.F1)", 20)
+    gd.addStringField("Threshold expression:", "std(Wave.F1)", 20)
 
     # ---- Estimator ----
     gd.addChoice("Estimator:", ["PSF: Integrated Gaussian"], "PSF: Integrated Gaussian")
@@ -91,6 +91,14 @@ def ask_params_for_thunderstorm():
 
     # ---- Renderer ----
     gd.addChoice("Renderer:", ["No Renderer", "Gaussian rendering"], "No Renderer")
+
+    # ---- Camera parameters ----
+    gd.addNumericField("Pixel size:", 58.1, 1)
+    gd.addNumericField("Photoelectrons per ADU:", 3.6, 1)
+    gd.addNumericField("Quantum efficiency (0..1):", 0.8, 1)
+    gd.addNumericField("ADU offset:", 0, 1)
+    gd.addNumericField("Electrons/pixel:", 1.5, 1)
+    gd.addNumericField("EMCCD gain:", 100, 1)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -115,6 +123,13 @@ def ask_params_for_thunderstorm():
     p["mfaenabled"] = bool(gd.getNextBoolean())
 
     p["renderer"] = gd.getNextChoice()
+
+    p["pixel_size"] = float(gd.getNextNumber())
+    p["photoelectrons_per_adu"] = float(gd.getNextNumber())
+    p["quantum_efficiency"] = float(gd.getNextNumber())
+    p["base_level"] = float(gd.getNextNumber())
+    p["readout_noise"] = float(gd.getNextNumber())
+    p["em_gain"] = float(gd.getNextNumber())
 
     return p
 
@@ -187,13 +202,12 @@ def foci_image(imp, rois, parameters, output_dir):
             IJ.run(dup, "Clear Outside", "")
             dup.killRoi()          
 
-            # Convert to 16-bit only if needed
+            # Convert to 16-bit only if needed. Optional
             dup_type = dup.getType()
             if dup_type not in (ImagePlus.GRAY8, ImagePlus.GRAY16):
                 IJ.run(dup, "16-bit", "")
                 dup.changes = False
 
-            # ---- Run ThunderSTORM ----
             IJ.run(dup, "Run analysis", parameters)
 
             # ---- Export CSV ----
