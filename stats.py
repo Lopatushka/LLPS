@@ -2,12 +2,11 @@ from pathlib import Path
 import re
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from skimage.color import rgb2gray
 from skimage.draw import disk
 from matplotlib.patches import Circle
-from scipy.stats import spearmanr
+#from scipy.stats import spearmanr
 
 
 def key_from_csv(p: Path) -> str:
@@ -17,13 +16,14 @@ def key_from_csv(p: Path) -> str:
     name = p.stem  # no .csv
     # remove trailing _####-#### (or similar) if present
     name = re.sub(r"_\d+-\d+$", "", name)
+    name = re.sub(r"_roi$", "", name, flags=re.IGNORECASE)
     return name
 
 def key_from_img(p: Path) -> str:
     """
     C2...nd2_(series_01).jpg -> C2...nd2_(series_01)
     """
-    return p.stem  # no .jpg
+    return p.stem  # no .extention
 
 def MFI_foci(
         image_path,
@@ -155,7 +155,7 @@ def MFI_foci_all(dir_images, dir_foci):
         k = key_from_csv(f)
         img_path = img_by_key.get(k)
         pairs.append((f, img_path))
-    print(f"Found: {len(pairs)} (image.tif foci.csv) pairs.")
+    print(f"Found {len(pairs)} (image.tif foci.csv) pairs.")
         
     # Calculate MFI of each foci
     for file, image in pairs:
@@ -245,9 +245,8 @@ def _sprearman_correlation(df):
 
 def main(p1, p2, output_dir):
     df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
-    print(df_nuclei)
 
-    #MFI_foci_all(dir_images = p2, dir_foci = p2)
+    MFI_foci_all(dir_images = p1, dir_foci = p2)
     #results = aggregation_foci(dir = p2)
 
     #merged  = df_nuclei.merge(results, on="File_name", how="left")
@@ -257,7 +256,7 @@ def main(p1, p2, output_dir):
  
 if __name__ == "__main__":
     p1 = "./examples" # path to directory with nucleus Area and Mean
-    p2 = "/mnt/c/Users/Elena/Desktop/Data_processing/test/res" # path to ThunderSTORM data
+    p2 = "./examples/run" # path to ThunderSTORM data
     output_dir = ""
     
     main(p1, p2, output_dir)
