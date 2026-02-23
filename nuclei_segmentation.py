@@ -249,7 +249,7 @@ def process_image(imp, p):
     gaussian_blur_sigma = p["gaussian_blur_sigma"]
     erosion_steps = p["erosion_steps"]
     dilation_steps = p["dilation_steps"]
-    substruct_bg = p["do_bg_subtraction"] # bppl
+    substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"]
     exclude_edges = p["exclude_edges"] # bool
     fill_holes = p["fill_holes"] # bool
@@ -333,6 +333,7 @@ def process_image(imp, p):
         close_images(split_imps)
         return
     
+    # Keep the bigest ROI
     if single_roi:
         max_area = -1.0
         max_roi = None
@@ -349,7 +350,6 @@ def process_image(imp, p):
                     max_roi = roi
         if max_roi is None:
              raise Exception("Could not find a valid ROI")
-        # Keep only the biggest ROI in ROI Manager
         rm.reset()
         rm.addRoi(max_roi)
     
