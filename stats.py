@@ -203,7 +203,7 @@ def aggregation_foci(dir):
     files = sorted(path_files.glob("*_extent.csv"))
     foci_rows = []
 
-        # generic function
+    # generic function
     check_column_mean = lambda df, col: (
             float(df[col].mean())
             if col in df.columns and not df.empty
@@ -254,16 +254,15 @@ def main(p1, p2, output_dir):
     MFI_foci_all(dir_images = p1, dir_foci = p2)
     results = aggregation_foci(dir = p2)
 
-    print(results)
-
-    #merged  = df_nuclei.merge(results, on="File_name", how="left")
+    merged  = df_nuclei.merge(results, on="File_name", how="left")
+    
     # Results export
-    #merged.to_csv(f"{output_dir}/results.csv", index=False)
+    merged.to_csv(f"{output_dir}/results.csv", index=False)
 
  
 if __name__ == "__main__":
     p1 = "./examples" # path to directory with nucleus Area and Mean
     p2 = "./examples/run" # path to ThunderSTORM data
-    output_dir = ""
+    output_dir = "./examples"
     
     main(p1, p2, output_dir)
