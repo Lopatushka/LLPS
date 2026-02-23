@@ -28,6 +28,72 @@ def key_from_img(p: Path) -> str:
 def compute_mean_intensity_from_localizations(
         image_path,
         df,
+        px_size_ts_x = 11.6,
+        px_size_ts_y = 11.6,
+        px_size_x = 57.5,
+        px_size_y = 58.7,
+        x_col="x [nm]",
+        y_col="y [nm]",
+        sigma_col="sigma [nm]"
+    ):
+
+        # Open image
+        image = Image.open(image_path).convert("RGB")
+
+        # Convert image to grayscale
+        gray = rgb2gray(image)
+        H, W = gray.shape # number of pixels
+
+        # Scaling factors
+        sx = px_size_ts_x/px_size_x
+        sy = px_size_ts_y/px_size_y
+        ssigma = np.mean([px_size_ts_x, px_size_ts_y]) / np.mean([px_size_x, px_size_y])
+
+        # Storage lists
+        x_list = []
+        y_list = []
+        sigma_list = []
+        mean_list = []
+
+        for _, row in df.iterrows():
+            x_nm = row[x_col]
+            y_nm = row[y_col]
+            sigma_nm = row[sigma_col]
+
+            # original pixels → current image pixels
+            x_px = int(round(sx * x_nm / px_size_ts_x))
+            y_px = int(round(sy * y_nm / px_size_ts_y))
+            sigma_px = max(1, int(round(ssigma * sigma_nm / np.mean([px_size_ts_x, px_size_ts_y])))) # minimal possible value is 1 pixel!
+
+            # Build circular mask (clipped automatically)
+            rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
+            mask = np.zeros((H, W), dtype=bool)
+            mask[rr, cc] = True
+            disk((y_px, x_px), sigma_px, shape=(H, W))
+
+            # Compute mean intensity
+            if mask.sum() > 0:
+                mean_intensity = gray[mask].mean()
+            else:
+                mean_intensity = np.nan
+
+            x_list.append(x_px)
+            y_list.append(y_px)
+            sigma_list.append(sigma_px)
+            mean_list.append(mean_intensity)
+
+        # Return modified copy
+        df_out = df.copy()
+        df_out["x_px"] = x_list
+        df_out["y_px"] = y_list
+        df_out["sigma_px"] = sigma_list
+        df_out["mean_intensity"] = mean_list
+
+        return df_out
+
+def _compute_mean_intensity_from_localizations(
+        image_path,
+        df,
         orig_size=(2560, 2560),
         pixel_size_original_nm=16.0,
         x_col="x [nm]",
