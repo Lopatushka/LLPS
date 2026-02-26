@@ -308,8 +308,8 @@ def main(p1, p2, output_dir):
     print(f"Aggregated results.csv file is saved in the directory: {output_dir}.")
  
 if __name__ == "__main__":
-    p1 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/MGS5" # path to directory with nucleus Area and Mean
-    p2 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/MGS5_run" # path to ThunderSTORM data
-    output_dir = "/mnt/c/users/Elena/Desktop/Data_processing/020226/MGS5_run"
+    p1 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new" # path to directory with nucleus Area and Mean
+    p2 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run" # path to ThunderSTORM data
+    output_dir = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run"
     
     main(p1, p2, output_dir)
