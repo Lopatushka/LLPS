@@ -14,7 +14,7 @@ def get_rm():
     return rm
 
 def safe_name(s):
-    return "".join([c if c.isalnum() or c in "._- " else "_" for c in s]).strip()
+    return s.split(".")[0].strip()
 
 def close_images(imps):
     for im in imps:
@@ -65,10 +65,10 @@ def measure_rois(imp):
             rt.addValue(roi_name, stats.mean)
 
     imp.killRoi()
-    rt.show("My Results")
-    return rt
+    #rt.show("My Results")
     #rt.save(out_csv_path)
-
+    return rt
+    
 def main():
     # Load image and process its title
     imp = IJ.getImage()
@@ -76,6 +76,8 @@ def main():
         IJ.error("No image open.")
         return
     img_title = imp.getTitle()
+    safe_title = safe_name(img_title)
+    print(safe_title)
 
     # Ask which channel is your fluorophore + where to save
     output_dir = IJ.getDirectory("Choose a directory to save data")
@@ -84,7 +86,11 @@ def main():
         return
 
     # Measure over time and save CSV
-    measure_rois(imp)
+    data = measure_rois(imp)
+    data_path = os.path.join(output_dir, safe_title + ".csv")
+    print(data_path)
+    #data.save(data_path)
+
 
     #IJ.log("Saved ROI mean intensities to: " + output_dir)
     #close_images(imp)
