@@ -14,6 +14,19 @@ def get_rm():
 def safe_name(s):
     return "".join([c if c.isalnum() or c in "._- " else "_" for c in s]).strip()
 
+def close_images(keep_imp = None):
+    """
+    Close all open images except keep_imp (ImagePlus).
+    """
+    open_ids = WindowManager.getIDList()
+    if open_ids is None:
+        return
+
+    for img_id in open_ids:
+        imp = WindowManager.getImage(img_id)
+        if imp is not None and imp != keep_imp:
+            imp.close()
+
 def pick_channel_by_index(split_imps, one_based_index):
 	"""
     Picks a channel ImagePlus from split_imps using 1-based indexing.
@@ -141,28 +154,20 @@ def main():
 
     ch_index = int(gd.getNextNumber())
 
-    # Split channels
+    # Split channels and keep MEASURUMENT channel
     split_imps = split_channels(imp)
-
-    # Select the measurement channel image (used for mean intensity measurement)
+    if ch_index < 1 or ch_index > len(split_imps):
+        IJ.error("Channel index out of range. Image has %d channel(s)." % len(split_imps))
+        return
+    
     meas_imp = pick_channel_by_index(split_imps, ch_index)
-
     if meas_imp is None:
         IJ.error("Missing channels for: " + img_title)
-        #close_images(split_imps)
+        close_images(keep_imp = None)
         return
 
-    #if ch_index < 1 or ch_index > len(ch_imps):
-        #J.error("Channel index out of range. Image has %d channel(s)." % len(ch_imps))
-        #raise SystemExit
-
-    #fluor_imp = ch_imps[ch_index - 1]
-    #fluor_imp.setTitle(safe_name(imp.getTitle()) + "_ch%d" % ch_index)
-
     # Close other channels to avoid clutter (optional)
-    #for idx, ci in enumerate(ch_imps):
-        #if idx != (ch_index - 1):
-            #ci.close()
+    close_images(keep_imp = meas_imp)
 
     # Measure over time and save CSV
     #measure_rois_over_time(fluor_imp, rois, out_csv)
