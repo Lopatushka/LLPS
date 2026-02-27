@@ -20,10 +20,44 @@ def close_image(imp):
 
 def measure_rois(imp, rois, time_factors = None):
     """
-    single_ch_imp : ImagePlus (1-channel, may still be Z/T)
-    rois          : list of Roi
-    out_csv_path  : str
-    """    
+    Measure mean intensity of multiple ROIs over time.
+
+    Parameters
+    ----------
+    imp : ImagePlus
+        A single-channel ImagePlus object (can be a time series stack).
+        Assumes channel=1 and Z=1 are used for measurement.
+
+    rois : list of Roi
+        List of ROI objects to measure.
+
+    time_factors : list of tuples or None
+        Defines variable time intervals between frames.
+
+        Each tuple must be:
+            (max_frame_number, frame_interval_seconds)
+
+        Meaning:
+        - max_frame_number : int or float("inf")
+            Upper frame limit (1-based indexing).
+        - frame_interval_seconds : float
+            Time interval in seconds between consecutive frames
+            up to that frame limit.
+
+        Example:
+            [(50, 0.133), (float("inf"), 5)]
+
+        Interpretation:
+            Frames 1–49   → interval = 0.133 sec
+            Frames ≥50    → interval = 5 sec
+
+        The first tuple where current_frame < max_frame_number
+        determines the interval used.
+
+        If None:
+            Frame number is used directly as "Time".
+    """
+    
     nframes = imp.getNFrames()
     #nZ = single_ch_imp.getNSlices()
     rt = ResultsTable()
