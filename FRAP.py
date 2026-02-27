@@ -55,21 +55,26 @@ def main():
     imp = IJ.getImage()
     if imp is None:
         IJ.error("No image open.")
-        return
+        raise SystemExit
 
     rm = get_rm()
     rois = rm.getRoisAsArray()
     if rois is None or len(rois) == 0:
         IJ.error("No ROIs in ROI Manager.")
-        return
+        raise SystemExit
 
     # Ask which channel is your fluorophore + where to save
-    #gd = GenericDialog("Measure ROI mean intensity over time")
-    #gd.addNumericField("Fluorophore channel (1-based):", 2, 0)  # change default if needed
+    output_dir = IJ.getDirectory("Choose a directory to save data")
+    if output_dir is None:
+        IJ.error("No output directory selected!")
+        raise SystemExit
+
+    gd = GenericDialog("Measure ROI mean intensity over time")
+    gd.addNumericField("Fluorophore channel (1-based):", 2, 0)  # change default if needed
     #gd.addStringField("Output CSV path:", os.path.join(IJ.getDirectory("home"), safe_name(imp.getTitle()) + "_roi_means.csv"), 60)
-    #gd.showDialog()
-    #if gd.wasCanceled():
-        #return
+    gd.showDialog()
+    if gd.wasCanceled():
+        raise SystemExit
 
     #ch_index = int(gd.getNextNumber())
     #out_csv = gd.getNextString()
