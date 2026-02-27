@@ -16,20 +16,14 @@ def get_rm():
 def safe_name(s):
     return "".join([c if c.isalnum() or c in "._- " else "_" for c in s]).strip()
 
-def close_images(keep_imp = None):
-    """
-    Close all open images except keep_imp (ImagePlus).
-    """
-    open_ids = WindowManager.getIDList()
-    if open_ids is None:
-        return
+def close_images(imps):
+    for im in imps:
+        if im is None:
+            continue
+        im.changes = False
+        im.close()
 
-    for img_id in open_ids:
-        imp = WindowManager.getImage(img_id)
-        if imp is not None and imp != keep_imp:
-            imp.close()
-
-def measure_rois_wide(imp):
+def measure_rois(imp):
     """
     single_ch_imp : ImagePlus (1-channel, may still be Z/T)
     rois          : list of Roi
@@ -42,7 +36,7 @@ def measure_rois_wide(imp):
         IJ.error("No ROIs in ROI Manager.")
         return
     
-    nT = single_ch_imp.getNFrames()
+    nT = imp.getNFrames()
     #nZ = single_ch_imp.getNSlices()
     rt = ResultsTable()
 
@@ -51,16 +45,16 @@ def measure_rois_wide(imp):
         # If Z exists, measure on the current Z (default slice) OR do a projection first.
         # Here: measure on the current Z slice (usually Z=1). Adjust below if you want something else.
         z = 1
-        single_ch_imp.setPosition(channel, z, t)  # (channel=1, slice=z, frame=t)
+        imp.setPosition(1, z, t)  # (channel=1, slice=z, frame=t)
 
-        ip = single_ch_imp.getProcessor()
+        ip = imp.getProcessor()
 
         for i, roi in enumerate(rois):
-            single_ch_imp.setRoi(roi)
+            imp.setRoi(roi)
             stats = ImageStatistics.getStatistics(
-            single_ch_imp.getProcessor(),
+            imp.getProcessor(),
             Measurements.MEAN,
-            single_ch_imp.getCalibration()
+            imp.getCalibration()
             )
 
             mean_val = stats.mean
@@ -75,8 +69,9 @@ def measure_rois_wide(imp):
             rt.addValue("roi", roi_name)
             rt.addValue("mean", mean_val)
 
-    single_ch_imp.killRoi()
+    imp.killRoi()
     rt.show("My Results")
+    return rt
     #rt.save(out_csv_path)
 
 def main():
@@ -94,9 +89,10 @@ def main():
         return
 
     # Measure over time and save CSV
-    measure_rois_wide(imp)
+    measure_rois(imp)
 
     #IJ.log("Saved ROI mean intensities to: " + output_dir)
+    #close_images(imp)
 
 main()
 
