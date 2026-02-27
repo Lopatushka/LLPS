@@ -3,6 +3,8 @@ from ij.plugin import ChannelSplitter
 from ij.plugin.frame import RoiManager
 from ij.measure import ResultsTable
 from ij.gui import GenericDialog
+from ij.process import ImageStatistics
+from ij.measure import Measurements
 import os
 
 def get_rm():
@@ -93,7 +95,7 @@ def measure_rois_over_time(single_ch_imp, rois, out_csv_path):
     out_csv_path  : str
     """
     nT = single_ch_imp.getNFrames()
-    nZ = single_ch_imp.getNSlices()
+    #nZ = single_ch_imp.getNSlices()
 
     rt = ResultsTable()
 
@@ -101,14 +103,20 @@ def measure_rois_over_time(single_ch_imp, rois, out_csv_path):
     for t in range(1, nT + 1):
         # If Z exists, measure on the current Z (default slice) OR do a projection first.
         # Here: measure on the current Z slice (usually Z=1). Adjust below if you want something else.
-        z = 1
-        single_ch_imp.setPosition(1, z, t)  # (channel=1, slice=z, frame=t)
+        #z = 1
+        #single_ch_imp.setPosition(1, z, t)  # (channel=1, slice=z, frame=t)
 
         ip = single_ch_imp.getProcessor()
 
         for i, roi in enumerate(rois):
             single_ch_imp.setRoi(roi)
-            stats = ip.getStatistics()  # respects current ROI
+            stats = ImageStatistics.getStatistics(
+            single_ch_imp.getProcessor(),
+            Measurements.MEAN,
+            single_ch_imp.getCalibration()
+            )
+
+            mean_val = stats.mean
 
             # ROI name (use existing name if present)
             roi_name = roi.getName()
@@ -118,10 +126,11 @@ def measure_rois_over_time(single_ch_imp, rois, out_csv_path):
             rt.incrementCounter()
             rt.addValue("timepoint", t)
             rt.addValue("roi", roi_name)
-            rt.addValue("mean", stats.mean)
+            rt.addValue("mean", mean_val)
 
     single_ch_imp.killRoi()
-    rt.save(out_csv_path)
+    rt.show("My Results")
+    #rt.save(out_csv_path)
 
 def main():
     # Load image and process its title
@@ -170,10 +179,9 @@ def main():
     close_images(keep_imp = meas_imp)
 
     # Measure over time and save CSV
-    #measure_rois_over_time(fluor_imp, rois, out_csv)
+    measure_rois_over_time(meas_imp, rois, output_dir)
 
-    #IJ.log("Saved ROI mean intensities to: " + out_csv)
-    #IJ.showMessage("Done", "Saved:\n" + out_csv)
+    #IJ.log("Saved ROI mean intensities to: " + output_dir)
 
 main()
 
