@@ -1,4 +1,4 @@
-from ij import IJ
+from ij import IJ, WindowManager
 from ij.plugin import ChannelSplitter
 from ij.plugin.frame import RoiManager
 from ij.measure import ResultsTable
@@ -13,6 +13,65 @@ def get_rm():
 
 def safe_name(s):
     return "".join([c if c.isalnum() or c in "._- " else "_" for c in s]).strip()
+
+def pick_channel_by_index(split_imps, one_based_index):
+	"""
+    Picks a channel ImagePlus from split_imps using 1-based indexing.
+    Example: one_based_index=1 -> C1
+    """
+	idx = int(one_based_index) - 1
+	if idx < 0 or idx >= len(split_imps):
+		return None
+	return split_imps[idx]
+
+def split_channels(imp):
+    """
+    Runs ImageJ command 'Split Channels' on the input image.
+    Returns a list of split channel ImagePlus objects that belong to the original image.
+    The list is sorted as [C1, C2, C3, ...].
+    """
+    orig_title = imp.getTitle()
+
+    # IDs before splitting
+    before = set(WindowManager.getIDList() or [])
+    
+    # Split channels: creates new windows like "C1-<orig_title>", "C2-<orig_title>", ...
+    IJ.run(imp, "Split Channels", "")
+
+    # IDs after splitting
+    after = set(WindowManager.getIDList() or [])
+    new_ids = list(after - before)
+    
+    # Get all currently opened image window IDs
+    ids = WindowManager.getIDList()
+    if not ids:
+        IJ.error("No windows after Split Channels.")
+        raise SystemExit
+
+    split_imps = []
+    for wid in new_ids:
+        wimp = WindowManager.getImage(wid)
+        if wimp is None:
+            continue
+        title = wimp.getTitle()
+        # Keep only windows that look like split channels of THIS image
+        if title.startswith("C") and "-" in title and (orig_title in title):
+            split_imps.append(wimp)
+
+    if len(split_imps) == 0:
+        IJ.error("Could not find split channel images. Make sure your image is multichannel/composite.")
+        raise SystemExit
+
+    # Sort by channel number: C1, C2, C3...
+    def chan_index(t):
+        # expects "C2-..." -> 2
+        try:
+            return int(t.split("-")[0][1:])
+        except:
+            return 999
+    split_imps.sort(key=lambda im: chan_index(im.getTitle()))
+
+    return split_imps
 
 def measure_rois_over_time(single_ch_imp, rois, out_csv_path):
     """
@@ -76,14 +135,17 @@ def main():
     if gd.wasCanceled():
         raise SystemExit
 
-    #ch_index = int(gd.getNextNumber())
-    #out_csv = gd.getNextString()
+    ch_index = int(gd.getNextNumber())
 
     # Split channels
-    #ch_imps = ChannelSplitter.split(imp)
+    split_imps = split_channels(imp)
+
+    # Select the measurement channel image (used for mean intensity measurement)
+    meas_imp = pick_channel_by_index(split_imps, ch_index)
+
     #if ch_index < 1 or ch_index > len(ch_imps):
-        #IJ.error("Channel index out of range. Image has %d channel(s)." % len(ch_imps))
-        #return
+        #J.error("Channel index out of range. Image has %d channel(s)." % len(ch_imps))
+        #raise SystemExit
 
     #fluor_imp = ch_imps[ch_index - 1]
     #fluor_imp.setTitle(safe_name(imp.getTitle()) + "_ch%d" % ch_index)
