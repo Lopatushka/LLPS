@@ -18,24 +18,34 @@ def close_image(imp):
     imp.changes = False
     imp.close()
 
-def measure_rois(imp, rois):
+def measure_rois(imp, rois, time_factors = None):
     """
     single_ch_imp : ImagePlus (1-channel, may still be Z/T)
     rois          : list of Roi
     out_csv_path  : str
     """    
-    nT = imp.getNFrames()
+    nframes = imp.getNFrames()
     #nZ = single_ch_imp.getNSlices()
     rt = ResultsTable()
 
     # Loop over time
-    for t in range(1, nT + 1):
+    time = 0
+    for n in range(1, nframes + 1):
         # If Z exists, measure on the current Z (default slice) OR do a projection first.
         # Here: measure on the current Z slice (usually Z=1). Adjust below if you want something else.
         z = 1
-        imp.setPosition(1, z, t)  # (channel=1, slice=z, frame=t)
+        imp.setPosition(1, z, n)  # (channel=1, slice=z, frame=t)
         rt.incrementCounter()
-        rt.addValue("Time", t)
+        if time_factors:
+            for nframe, sec in time_factors:
+                if n < nframe:
+                    time += sec
+                    rt.addValue("Time", time)
+                    break
+                else:
+                    continue       
+        else:
+            rt.addValue("Time", t)
 
         for i, roi in enumerate(rois):
             roi_name = roi.getName()
@@ -78,7 +88,9 @@ def main():
         return
 
     # Measure Mean internsity over time for the ROIs in ROI manager
-    data = measure_rois(imp, rois)
+    data = measure_rois(imp,
+                        rois,
+                        time_factors = [(50, 0.133), (float("inf"), 5)])
 
     # Save results in .CSV file
     data_path = os.path.join(output_dir, safe_title + ".csv")
