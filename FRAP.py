@@ -46,28 +46,23 @@ def measure_rois(imp):
         # Here: measure on the current Z slice (usually Z=1). Adjust below if you want something else.
         z = 1
         imp.setPosition(1, z, t)  # (channel=1, slice=z, frame=t)
-
-        ip = imp.getProcessor()
+        rt.incrementCounter()
+        rt.addValue("Time", t)
 
         for i, roi in enumerate(rois):
+            roi_name = roi.getName()
+            if roi_name is None or roi_name.strip() == "":
+                roi_name = "ROI_%02d" % (i + 1)
+
             imp.setRoi(roi)
+
             stats = ImageStatistics.getStatistics(
             imp.getProcessor(),
             Measurements.MEAN,
             imp.getCalibration()
             )
 
-            mean_val = stats.mean
-
-            # ROI name (use existing name if present)
-            roi_name = roi.getName()
-            if roi_name is None or roi_name.strip() == "":
-                roi_name = "ROI_%02d" % (i + 1)
-
-            rt.incrementCounter()
-            rt.addValue("timepoint", t)
-            rt.addValue("roi", roi_name)
-            rt.addValue("mean", mean_val)
+            rt.addValue(roi_name, stats.mean)
 
     imp.killRoi()
     rt.show("My Results")
