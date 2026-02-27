@@ -111,29 +111,33 @@ def measure_rois_over_time(single_ch_imp, rois, out_csv_path):
     rt.save(out_csv_path)
 
 def main():
+    # Load image and process its title
     imp = IJ.getImage()
     if imp is None:
         IJ.error("No image open.")
-        raise SystemExit
+        return
+    img_title = imp.getTitle()
+    img_title = safe_name(img_title)
 
+    # Run ROI manager
     rm = get_rm()
     rois = rm.getRoisAsArray()
     if rois is None or len(rois) == 0:
         IJ.error("No ROIs in ROI Manager.")
-        raise SystemExit
+        return
 
     # Ask which channel is your fluorophore + where to save
     output_dir = IJ.getDirectory("Choose a directory to save data")
     if output_dir is None:
         IJ.error("No output directory selected!")
-        raise SystemExit
+        return
 
+    # Ask about the MEASUREMENT channek number
     gd = GenericDialog("Measure ROI mean intensity over time")
     gd.addNumericField("Fluorophore channel (1-based):", 2, 0)  # change default if needed
-    #gd.addStringField("Output CSV path:", os.path.join(IJ.getDirectory("home"), safe_name(imp.getTitle()) + "_roi_means.csv"), 60)
     gd.showDialog()
     if gd.wasCanceled():
-        raise SystemExit
+        return
 
     ch_index = int(gd.getNextNumber())
 
@@ -142,6 +146,11 @@ def main():
 
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, ch_index)
+
+    if meas_imp is None:
+        IJ.error("Missing channels for: " + img_title)
+        #close_images(split_imps)
+        return
 
     #if ch_index < 1 or ch_index > len(ch_imps):
         #J.error("Channel index out of range. Image has %d channel(s)." % len(ch_imps))
