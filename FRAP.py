@@ -3,12 +3,14 @@ from ij.plugin.frame import RoiManager
 from ij.measure import ResultsTable
 from ij.process import ImageStatistics
 from ij.measure import Measurements
+from ij.gui import NonBlockingGenericDialog
 import os
 
 def get_rm():
     rm = RoiManager.getInstance() 
     if rm is None:
         rm = RoiManager()
+    rm.setVisible(True)
     return rm
 
 def safe_name(s):
@@ -126,7 +128,22 @@ def main():
     rm = get_rm()
     rois = rm.getRoisAsArray()
     if rois is None or len(rois) == 0:
-        IJ.error("No ROIs in ROI Manager.")
+        gd = NonBlockingGenericDialog("ROI Manager is empty")
+        gd.addMessage(
+        "Draw ROI(s) on the image, then click 'Add' in ROI Manager.\n"
+        "When finished, click OK here to continue."
+        )
+        gd.showDialog()   # non-blocking UI still works
+        if gd.wasCanceled():
+            IJ.error("Canceled. Stopping.")
+            return
+        
+    # re-fetch after user interaction
+    rois = rm.getRoisAsArray()
+
+    # still empty -> now it's a real stop
+    if rois is None or len(rois) == 0:
+        IJ.error("Still no ROIs in ROI Manager. Stopping.")
         return
 
     # Ask which channel is your fluorophore + where to save
