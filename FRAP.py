@@ -1,4 +1,4 @@
-from ij import IJ
+from ij import IJ, WindowManager
 from ij.plugin.frame import RoiManager
 from ij.measure import ResultsTable
 from ij.process import ImageStatistics
@@ -107,6 +107,20 @@ def main():
         return
     img_title = imp.getTitle()
     safe_title = safe_name(img_title)
+
+    # Keep only image from the channel #2
+    ids = WindowManager.getIDList()
+    if ids is not None:
+        for img_id in ids:
+            imp = WindowManager.getImage(img_id)
+            if "C=1" not in imp.getTitle():
+                close_image(imp)
+
+    # Automatically adjust brightness/contrast (display only)
+    imp = IJ.getImage()
+    imp.getProcessor().resetMinAndMax()   # reset first
+    IJ.run(imp, "Enhance Contrast", "saturated=0.35")
+    imp.updateAndDraw()
 
     # Run ROI manager
     rm = get_rm()
