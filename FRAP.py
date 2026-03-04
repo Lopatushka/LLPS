@@ -155,7 +155,7 @@ def main():
     # Measure Mean internsity over time for the ROIs in ROI manager
     data = measure_rois(imp,
                         rois,
-                        time_factors = [(50, 0.133), (float("inf"), 5)])
+                        time_factors = [(37, 0.659), (float("inf"), 5)])
 
     # Save results in .CSV file
     data_path = os.path.join(output_dir, safe_title + ".csv")
@@ -166,7 +166,7 @@ def main():
     rm.runCommand("Save", zip_path)
     rm.reset() # clean ROI manager
 
-    IJ.log("Saved ROI mean intensities and ROIs.zip to: " + output_dir)
+    #IJ.log("Saved ROI mean intensities and ROIs.zip to: " + output_dir)
     close_image(imp)
 
 main()
