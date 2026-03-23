@@ -20,7 +20,7 @@ This repo (master branch) includes:
 2) **Detect foci** (optionally restricted to nuclei ROIs) using *foci_segmentation.py* macros for **Fiji**  
 → export foci list per image to CSV (e.g., ThunderSTORM table export).
 
-3) **Aggregate and run statistics** using *foci_stats.py* in **Python** 
+3) **Aggregate data** using *foci_stats.py* in **Python** 
 → merge nuclei + foci summaries by file key and export `results.csv` + `spearman_pairs.csv`.
 
 3) **Make statistical data analysis and plot graphs** using *FRAP_graphs.ipynb* notebook in **Python** 
@@ -28,14 +28,17 @@ This repo (master branch) includes:
 # FRAP analysis
 ## Typical workflow
 
+1) **Choose ROIs** on microscopy images using *FRAP_rois.py* macros for **Fiji** 
+→ produce 3 nucleus ROIs, per-nucleus measurements of `Mean`.
+
+2) **Analyse data** using *FRAP_graphs.ipynb* notebook in **Python** 
 
 
 ## Requirements
 
 ### ImageJ / Fiji
 - Fiji (ImageJ distribution)
-- ThunderSTORM plugin (if you use ThunderSTORM for foci)
-- ImageJ / IJ libraries (for running scripts/macros) :contentReference[oaicite:3]{index=3}
+- ThunderSTORM plugin (if you use ThunderSTORM for foci detection)
 
 ### Python
 - Python 3.x
@@ -51,7 +54,6 @@ Installation:
 ```bash
 pip install pandas scipy
 ```
-
 
 ## Installation
 
