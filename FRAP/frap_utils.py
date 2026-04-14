@@ -33,7 +33,7 @@ def check_file_exists(path):
     return path
 
 
-def manage_dir(path, verbose=True):
+def _manage_dir(path, verbose=True):
     path = Path(path)
 
     if path.exists():
