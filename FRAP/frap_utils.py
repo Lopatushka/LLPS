@@ -60,7 +60,10 @@ def beautiful_boxplot(
     jitter=0.06,
     figsize=(4, 3),
     dpi=300,
-    show=True
+    show=True,
+    save=False,
+    name = "",
+    output_dir=None
 ):
     """
     df_list : list of pandas Series (or 1D arrays)
@@ -117,9 +120,14 @@ def beautiful_boxplot(
         ax.set_yscale("log")
 
     fig.tight_layout()
+    
+    if save:
+        fig.savefig(output_dir/f"results_{name}.png", dpi=300, bbox_inches="tight")
+        print(f"Plot {name} for is saved in the directory: {output_dir}.")
 
     if show:
         plt.show()
+
 
     return fig, ax
 
