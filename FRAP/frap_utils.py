@@ -58,7 +58,7 @@ def beautiful_boxplot(
     colors=None,         # list of colors per box (optional)
     dot_size=20,
     jitter=0.06,
-    figsize=(4.8, 4.2),
+    figsize=(4, 3),
     dpi=300,
     show=True
 ):
