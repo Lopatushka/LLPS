@@ -135,11 +135,12 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
     )
     imp.updateAndDraw()
     
-def semi_manual_img_process(imp, p):
+def semi_manual_img_process(imp, output_dir, p):
     '''
     This function process semi-manually a single image
     imp - image
     p - parameters
+    imp, output_dir, params
     '''
     # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
@@ -255,14 +256,21 @@ def semi_manual_img_process(imp, p):
         meas_imp_work.close()
 
     # Show results
-    #rt.show("ROI measurements")
+    rt.show("ROI measurements")
+
+    # --- SAVE DATA ---
+    # Save MEASUREMENT channel
+    MEASURE_CHANNEL_name = "C{}_{}.tif".format(MEASURE_CHANNEL, img_title)
+    MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
+    #meas_imp.show()
+    IJ.save(meas_imp, MEASURE_CHANNEL_path)
 
     # Close splitted images
     close_images(split_imps)
 
     return rt
 
-def append_rt(final_rt, small_rt, image_name=None):
+def _append_rt(final_rt, small_rt, image_name=None):
     for r in range(small_rt.size()):
         final_rt.incrementCounter()
 
@@ -318,9 +326,6 @@ def main():
     # Collect all errors here
     errors = []  
 
-    # Table with results from different images
-    final_rt = ResultsTable()
-
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
         # Make Log message
@@ -328,8 +333,7 @@ def main():
         IJ.log(msg)
 
         try:
-            rt_one = semi_manual_img_process(imp, params)
-            append_rt(final_rt, rt_one, imp.getTitle())
+            semi_manual_img_process(imp, output_dir, params)
 
         except Exception as e:
             # log immediately
@@ -337,7 +341,6 @@ def main():
             IJ.log(traceback.format_exc())  # comment out if too verbose
             continue
 
-    final_rt.show("All results")
 
 # Run program
 main()
