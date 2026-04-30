@@ -37,6 +37,46 @@ def ensure_roi_manager(reset=True):
 	if reset:
 		rm.reset()
 	return rm
+
+def split_channels(imp):
+    """
+    Runs ImageJ command 'Split Channels' on the input image.
+    Returns a list of split channel ImagePlus objects that belong to the original image.
+    The list is sorted as [C1, C2, C3, ...].
+    """
+    orig_title = imp.getTitle()
+
+    # IDs before splitting
+    before = set(WindowManager.getIDList() or [])
+    
+    # Split channels: creates new windows like "C1-<orig_title>", "C2-<orig_title>", ...
+    IJ.run(imp, "Split Channels", "")
+
+    # IDs after splitting
+    after = set(WindowManager.getIDList() or [])
+    new_ids = list(after - before)
+    
+    # Get all currently opened image window IDs
+    ids = WindowManager.getIDList()
+    if not ids:
+        IJ.error("No windows after Split Channels.")
+        raise SystemExit
+
+    split_imps = []
+    for wid in new_ids:
+        wimp = WindowManager.getImage(wid)
+        if wimp is None:
+            continue
+        title = wimp.getTitle()
+        # Keep only windows that look like split channels of THIS image
+        if title.startswith("C") and "-" in title and (orig_title in title):
+            split_imps.append(wimp)
+
+    if len(split_imps) == 0:
+        IJ.error("Could not find split channel images. Make sure your image is multichannel/composite.")
+        raise SystemExit
+    
+    return split_imps
     
 def semi_manual_img_process(imp):
     '''
@@ -50,6 +90,17 @@ def semi_manual_img_process(imp):
 
     # Initialize/reset ROI Manager so we start clean
     rm = ensure_roi_manager(reset=True)
+
+    # Split channels into separate images (C1, C2, ...)
+    split_imps = split_channels(imp)
+
+    # Automatically adjust brightness/contrast for each splitted image (display only)
+    for split_img in split_imps:
+        split_img.getProcessor().resetMinAndMax()   # reset first
+        IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
+        split_img.updateAndDraw()
+
+    # Pause
 
 def main():
     # Check if at least one image is opened
@@ -86,7 +137,8 @@ def main():
         IJ.error("No output directory selected!")
         return
     
-    errors = []  # collect all errors here
+    # Collect all errors here
+    errors = []  
 
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
