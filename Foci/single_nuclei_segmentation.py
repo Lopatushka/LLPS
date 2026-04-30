@@ -1,11 +1,13 @@
 from ij import IJ, WindowManager
 from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
+from ij.gui import ShapeRoi
 from ij.plugin.filter import BackgroundSubtracter
 from ij.measure import Measurements, ResultsTable
 from ij.process import ImageStatistics
 from ij.gui import NonBlockingGenericDialog
 from ij.gui import WaitForUserDialog
+from ij.plugin.filter import Analyzer
 import os
 import csv
 import traceback
@@ -170,6 +172,10 @@ def semi_manual_img_process(imp, p):
         split_img.getProcessor().resetMinAndMax()   # reset first
         IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
         split_img.updateAndDraw()
+    
+    # --- Background substurction in MEASUREMENT channel ---
+    #if substruct_bg:
+        #subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
 
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
@@ -210,31 +216,39 @@ def semi_manual_img_process(imp, p):
     # If ROI manager is empty, stop the program.
     if len(rois) == 0:
         return
-    
-    # --- Background substurction in MEASUREMENT channel ---
-    if substruct_bg:
-        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
 
     # --- Measuremtemts of ROIs ---
     # Results table
     rt = ResultsTable()
 
     # Set ROIs at the MEASUREMENT image
+    # First ROI
+    combined = ShapeRoi(rois[0])
+
+    # Combine ROIs if there are several ones
     for i, roi in enumerate(rois):
         roi_name = roi.getName()
         if roi_name is None or roi_name.strip() == "":
             roi_name = "ROI_%02d" % (i + 1)
-            meas_imp.setRoi(roi)
 
-        stats = ImageStatistics.getStatistics(
-                meas_imp.getProcessor(),
-                Measurements.AREA | Measurements.MEAN
-                )
+        # Add ROI to combined ROI
+        combined = combined.or(ShapeRoi(roi))
+
+    # Apply combined ROI to image
+    meas_imp.setRoi(combined)
+
+    IJ.run(meas_imp, "Clear Outside", "")
         
-        rt.incrementCounter()
-        rt.addValue("ROI", roi_name)
-        rt.addValue("Area", stats.area)
-        rt.addValue("Mean", stats.mean)
+        #rt.incrementCounter()
+        #rt.addValue("ROI", roi_name)
+        #rt.addValue("Area", stats.area)
+        #rt.addValue("Mean", stats.mean)
+
+        #cal = imp.getCalibration()
+       #print(cal.pixelWidth)
+        #print(cal.pixelHeight)
+        #print(cal.getUnit())
+        #print(roi.getStatistics().pixelCount)
 
     # Remove ROI selection from image
     meas_imp.killRoi()
