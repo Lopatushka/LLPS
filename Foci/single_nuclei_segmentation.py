@@ -177,6 +177,8 @@ def semi_manual_img_process(imp, p):
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
 
+    # Bring this image above all others
+    dapi_imp.getWindow().toFront()
 
     # WHILE Loop to fill Roi manager
     while len(rois) == 0:
