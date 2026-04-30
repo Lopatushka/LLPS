@@ -1,11 +1,9 @@
 from ij import IJ, WindowManager
 from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
-from ij.measure import Measurements, ResultsTable
-from ij.plugin.filter import ParticleAnalyzer
 from ij.plugin.filter import BackgroundSubtracter
-from ij.process import AutoThresholder
-from ij.io import RoiEncoder
+from ij.measure import Measurements, ResultsTable
+from ij.process import ImageStatistics
 from ij.gui import NonBlockingGenericDialog
 from ij.gui import WaitForUserDialog
 import os
@@ -213,11 +211,36 @@ def semi_manual_img_process(imp, p):
     if len(rois) == 0:
         return
     
-
-    
     # --- Background substurction in MEASUREMENT channel ---
     if substruct_bg:
         subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+
+    # --- Measuremtemts of ROIs ---
+    # Results table
+    rt = ResultsTable()
+
+    # Set ROIs at the MEASUREMENT image
+    for i, roi in enumerate(rois):
+        roi_name = roi.getName()
+        if roi_name is None or roi_name.strip() == "":
+            roi_name = "ROI_%02d" % (i + 1)
+            meas_imp.setRoi(roi)
+
+        stats = ImageStatistics.getStatistics(
+                meas_imp.getProcessor(),
+                Measurements.AREA | Measurements.MEAN
+                )
+        
+        rt.incrementCounter()
+        rt.addValue("ROI", roi_name)
+        rt.addValue("Area", stats.area)
+        rt.addValue("Mean", stats.mean)
+
+    # Remove ROI selection from image
+    meas_imp.killRoi()
+
+    # Show results
+    rt.show("ROI measurements")
 
     # Close processed image
     #close_images(split_imps)
