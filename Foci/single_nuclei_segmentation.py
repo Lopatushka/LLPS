@@ -111,20 +111,23 @@ def semi_manual_img_process(imp):
         "When finished, click OK here to continue."
         )
         gd.showDialog()   # non-blocking UI still works
+
+        # re-fetch after user interaction in while loop
+        rois = rm.getRoisAsArray()
+
+        # If user press Cancel
         if gd.wasCanceled():
             IJ.error("Canceled. Stopping.")
             break
             
-        # re-fetch after user interaction in while loop
-        rois = rm.getRoisAsArray()
-    
-    # re-fetch after user interaction
-    rois = rm.getRoisAsArray()
+    # Re-fetch after user interaction
+    #rois = rm.getRoisAsArray()
+
+    # If user press cancell stop the program
     if len(rois) == 0:
         return
 
         
-    # Pause
 
 def main():
     # Check if at least one image is opened
