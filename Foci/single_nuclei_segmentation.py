@@ -10,7 +10,33 @@ import os
 import csv
 import traceback
 
-def process_image(imp, p):
+def img_name_processing(name):
+    try:
+        if "MP" in name and " - " in name:
+            if "Deconvolved" in name:
+                name = name.split("-")[0] + "_" + name.split("-")[2]
+                name = name.replace(" ", "", 1).replace(",", "").replace(" ", "_")
+            else:
+                name = name.split("-")[1] # split string
+                name = name.replace(" ", "", 1) # delete fist blank in the string
+                name = name.replace(" ", "_") # repalce other blanks to underscore
+        else:
+            name = os.path.splitext(name)[0] # delete extention
+        return name
+    except Exception as e:
+         raise Exception("ERROR in parsing image name")
+    
+def semi_manual_img_process(imp):
+    '''
+    This function process semi-manually a single image
+    imp - image
+    p - parameters
+    '''
+    # Processing image title
+    img_title = imp.getTitle()
+    img_title = img_name_processing(img_title)
+    
+    print(img_title)
 
 def main():
     # Check if at least one image is opened
@@ -56,8 +82,7 @@ def main():
         IJ.log(msg)
 
         try:
-            #process_image(imp)
-            print(call_id)
+            semi_manual_img_process(imp)
 
         except Exception as e:
             # log immediately
