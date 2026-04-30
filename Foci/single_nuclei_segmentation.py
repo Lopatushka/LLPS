@@ -25,6 +25,18 @@ def img_name_processing(name):
         return name
     except Exception as e:
          raise Exception("ERROR in parsing image name")
+
+def ensure_roi_manager(reset=True):
+	"""
+    Gets the ROI Manager instance.
+    Optionally resets it to avoid mixing old ROIs with new ones.
+    """
+	rm = RoiManager.getInstance()
+	if rm is None:
+		rm = RoiManager()
+	if reset:
+		rm.reset()
+	return rm
     
 def semi_manual_img_process(imp):
     '''
@@ -35,8 +47,9 @@ def semi_manual_img_process(imp):
     # Processing image title
     img_title = imp.getTitle()
     img_title = img_name_processing(img_title)
-    
-    print(img_title)
+
+    # Initialize/reset ROI Manager so we start clean
+    rm = ensure_roi_manager(reset=True)
 
 def main():
     # Check if at least one image is opened
