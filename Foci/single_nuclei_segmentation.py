@@ -174,8 +174,8 @@ def semi_manual_img_process(imp, p):
         split_img.updateAndDraw()
     
     # --- Background substurction in MEASUREMENT channel ---
-    #if substruct_bg:
-        #subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+    if substruct_bg:
+        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
 
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
