@@ -6,6 +6,8 @@ from ij.plugin.filter import ParticleAnalyzer
 from ij.plugin.filter import BackgroundSubtracter
 from ij.process import AutoThresholder
 from ij.io import RoiEncoder
+from ij.gui import NonBlockingGenericDialog
+#from ij.gui import WaitForUserDialog
 import os
 import csv
 import traceback
@@ -88,9 +90,6 @@ def semi_manual_img_process(imp):
     img_title = imp.getTitle()
     img_title = img_name_processing(img_title)
 
-    # Initialize/reset ROI Manager so we start clean
-    rm = ensure_roi_manager(reset=True)
-
     # Split channels into separate images (C1, C2, ...)
     split_imps = split_channels(imp)
 
@@ -99,6 +98,28 @@ def semi_manual_img_process(imp):
         split_img.getProcessor().resetMinAndMax()   # reset first
         IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
         split_img.updateAndDraw()
+
+    # Run ROI manager
+    rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
+    rois = rm.getRoisAsArray() # list of ROIs in roi manager
+    if rois is None or len(rois) == 0:
+        gd = NonBlockingGenericDialog("ROI Manager is empty")
+        gd.addMessage(
+        "Draw ROI(s) on the image, then click 'Add' in ROI Manager.\n"
+        "When finished, click OK here to continue."
+        )
+        gd.showDialog()   # non-blocking UI still works
+        if gd.wasCanceled():
+            IJ.error("Canceled. Stopping.")
+            return
+        
+    # re-fetch after user interaction
+    rois = rm.getRoisAsArray()
+
+    # still empty -> now it's a real stop
+    if rois is None or len(rois) == 0:
+        IJ.error("Still no ROIs in ROI Manager. Stopping.")
+        return
 
     # Pause
 
