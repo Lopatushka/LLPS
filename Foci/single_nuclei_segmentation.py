@@ -118,6 +118,20 @@ def close_images(imps):
             continue
         im.changes = False
         im.close()
+
+def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
+    radius = float(radius)
+    ip = imp.getProcessor()  # ImageProcessor of current slice
+    BackgroundSubtracter().rollingBallBackground(
+        ip,
+        radius,
+        False,
+        bool(light_background),
+        bool(use_paraboloid),
+        bool(do_presmooth),
+        False
+    )
+    imp.updateAndDraw()
     
 def semi_manual_img_process(imp, p):
     '''
@@ -175,8 +189,18 @@ def semi_manual_img_process(imp, p):
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
 
+    # Check splitting
+    if dapi_imp is None or meas_imp is None:
+        IJ.error("Missing channels for: " + img_title)
+        close_images(split_imps)
+        return
+    
+    # --- Background substurction in MEASUREMENT channel ---
+    if substruct_bg:
+        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+
     # Close processed image
-    close_images(split_imps)
+    #close_images(split_imps)
 
         
 def main():
