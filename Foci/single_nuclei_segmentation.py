@@ -255,12 +255,25 @@ def semi_manual_img_process(imp, p):
         meas_imp_work.close()
 
     # Show results
-    rt.show("ROI measurements")
+    #rt.show("ROI measurements")
 
-    # Close processed image
-    #close_images(split_imps)
+    # Close splitted images
+    close_images(split_imps)
 
-        
+    return rt
+
+def append_rt(final_rt, small_rt, image_name=None):
+    for r in range(small_rt.size()):
+        final_rt.incrementCounter()
+
+        if image_name is not None:
+            final_rt.addValue("Image", image_name)
+
+        headings = small_rt.getHeadings()
+        for h in headings:
+            value = small_rt.getValue(h, r)
+            final_rt.addValue(h, value)
+
 def main():
     # Check if at least one image is opened
     ids = WindowManager.getIDList()
@@ -305,6 +318,9 @@ def main():
     # Collect all errors here
     errors = []  
 
+    # Table with results from different images
+    final_rt = ResultsTable()
+
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
         # Make Log message
@@ -312,13 +328,16 @@ def main():
         IJ.log(msg)
 
         try:
-            semi_manual_img_process(imp, params)
+            rt_one = semi_manual_img_process(imp, params)
+            append_rt(final_rt, rt_one, imp.getTitle())
 
         except Exception as e:
             # log immediately
             IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
             IJ.log(traceback.format_exc())  # comment out if too verbose
             continue
+
+    final_rt.show("All results")
 
 # Run program
 main()
