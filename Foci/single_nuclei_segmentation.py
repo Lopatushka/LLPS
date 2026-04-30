@@ -102,7 +102,9 @@ def semi_manual_img_process(imp):
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
-    if rois is None or len(rois) == 0:
+
+    # WHILE Loop to fill Roi manager
+    while len(rois) == 0:
         gd = NonBlockingGenericDialog("ROI Manager is empty")
         gd.addMessage(
         "Draw ROI(s) on the image, then click 'Add' in ROI Manager.\n"
@@ -111,16 +113,17 @@ def semi_manual_img_process(imp):
         gd.showDialog()   # non-blocking UI still works
         if gd.wasCanceled():
             IJ.error("Canceled. Stopping.")
-            return
-        
+            break
+            
+        # re-fetch after user interaction in while loop
+        rois = rm.getRoisAsArray()
+    
     # re-fetch after user interaction
     rois = rm.getRoisAsArray()
-
-    # still empty -> now it's a real stop
-    if rois is None or len(rois) == 0:
-        IJ.error("Still no ROIs in ROI Manager. Stopping.")
+    if len(rois) == 0:
         return
 
+        
     # Pause
 
 def main():
