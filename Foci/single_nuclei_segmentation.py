@@ -111,6 +111,13 @@ def pick_channel_by_index(split_imps, one_based_index):
 	if idx < 0 or idx >= len(split_imps):
 		return None
 	return split_imps[idx]
+
+def close_images(imps):
+    for im in imps:
+        if im is None:
+            continue
+        im.changes = False
+        im.close()
     
 def semi_manual_img_process(imp, p):
     '''
@@ -121,6 +128,8 @@ def semi_manual_img_process(imp, p):
     # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
+    substruct_bg = p["do_bg_subtraction"] # bool
+    bg_radius = p["bg_value"] # numeric
 
     # Processing image title
     img_title = imp.getTitle()
@@ -165,6 +174,9 @@ def semi_manual_img_process(imp, p):
 
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+
+    # Close processed image
+    close_images(split_imps)
 
         
 def main():
