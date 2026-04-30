@@ -246,15 +246,13 @@ def semi_manual_img_process(imp, p):
         rt.addValue("ROI", roi_name)
         rt.addValue("Area", stats.area)
         rt.addValue("Mean", stats.mean)
+        
+        # Remove ROI selection from WORK image
+        meas_imp_work.killRoi()
 
-        #cal = imp.getCalibration()
-       #print(cal.pixelWidth)
-        #print(cal.pixelHeight)
-        #print(cal.getUnit())
-        #print(roi.getStatistics().pixelCount)
-
-    # Remove ROI selection from image
-    meas_imp.killRoi()
+        # Close WORK image w/o saving
+        meas_imp_work.changes = False
+        meas_imp_work.close()
 
     # Show results
     rt.show("ROI measurements")
