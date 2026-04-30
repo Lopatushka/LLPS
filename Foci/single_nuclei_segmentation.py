@@ -38,8 +38,12 @@ def main():
     # Keep only unique images
     unique_images = list(set(images))
     n = len(unique_images) # total amount of images to process
-        
-    print(unique_images)
+
+    # Ask user where to save outputs
+    output_dir = IJ.getDirectory("Choose a directory to save data")
+    if output_dir is None:
+        IJ.error("No output directory selected!")
+        return
 
 # Run program
 main()
