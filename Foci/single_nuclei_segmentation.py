@@ -10,6 +10,8 @@ import os
 import csv
 import traceback
 
+def process_image(imp, p):
+
 def main():
     # Check if at least one image is opened
     ids = WindowManager.getIDList()
@@ -44,6 +46,24 @@ def main():
     if output_dir is None:
         IJ.error("No output directory selected!")
         return
+    
+    errors = []  # collect all errors here
+
+    # ---- Loop: show GUI per image, then process ----
+    for call_id, imp in enumerate(unique_images, start=1):
+        # Make Log message
+        msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
+        IJ.log(msg)
+
+        try:
+            #process_image(imp)
+            print(call_id)
+
+        except Exception as e:
+            # log immediately
+            IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
+            IJ.log(traceback.format_exc())  # comment out if too verbose
+            continue
 
 # Run program
 main()
