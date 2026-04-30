@@ -154,7 +154,19 @@ def semi_manual_img_process(imp, p):
 
     # Split channels into separate images (C1, C2, ...)
     split_imps = split_channels(imp)
+    
+    # Select DAPI channel image (used for nuclei segmentation)
+    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
 
+    # Select the measurement channel image (used for mean intensity measurement)
+    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+
+    # Check splitting
+    if dapi_imp is None or meas_imp is None:
+        IJ.error("Missing channels for: " + img_title)
+        close_images(split_imps)
+        return
+    
     # Automatically adjust brightness/contrast for each splitted image (display only)
     for split_img in split_imps:
         split_img.getProcessor().resetMinAndMax()   # reset first
@@ -164,6 +176,7 @@ def semi_manual_img_process(imp, p):
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
+
 
     # WHILE Loop to fill Roi manager
     while len(rois) == 0:
@@ -198,17 +211,7 @@ def semi_manual_img_process(imp, p):
     if len(rois) == 0:
         return
     
-    # Select DAPI channel image (used for nuclei segmentation)
-    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
 
-    # Select the measurement channel image (used for mean intensity measurement)
-    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-
-    # Check splitting
-    if dapi_imp is None or meas_imp is None:
-        IJ.error("Missing channels for: " + img_title)
-        close_images(split_imps)
-        return
     
     # --- Background substurction in MEASUREMENT channel ---
     if substruct_bg:
