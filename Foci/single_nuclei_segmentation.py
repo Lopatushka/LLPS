@@ -7,7 +7,7 @@ from ij.plugin.filter import BackgroundSubtracter
 from ij.process import AutoThresholder
 from ij.io import RoiEncoder
 from ij.gui import NonBlockingGenericDialog
-#from ij.gui import WaitForUserDialog
+from ij.gui import WaitForUserDialog
 import os
 import csv
 import traceback
@@ -19,6 +19,7 @@ def ask_params_for_image():
     # Fields
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
+    gd.addCheckbox("One nucleus per image", True)
     gd.addCheckbox("Apply background subtraction", True)
     gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
 
@@ -29,6 +30,7 @@ def ask_params_for_image():
     params = {}
     params["DAPI_CHANNEL"] = int(gd.getNextNumber())
     params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
+    params["one_roi"] = bool(gd.getNextBoolean())
     params["do_bg_subtraction"] = bool(gd.getNextBoolean())
     params["bg_value"] = float(gd.getNextNumber())
 
@@ -142,6 +144,7 @@ def semi_manual_img_process(imp, p):
     # Parameteres
     DAPI_CHANNEL = p["DAPI_CHANNEL"]
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
+    one_roi = p["one_roi"]
     substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"] # numeric
 
@@ -171,14 +174,26 @@ def semi_manual_img_process(imp, p):
         )
         gd.showDialog()   # non-blocking UI still works
 
-        # re-fetch after user interaction in while loop
-        rois = rm.getRoisAsArray()
-
         # If user press Cancel
         if gd.wasCanceled():
             IJ.error("Cancelled. Stopping.")
             break
-            
+
+        # re-fetch after user interaction in while loop
+        rois = rm.getRoisAsArray()
+
+        # Check how many ROIs we have if the user wants 1 ROI per image
+        if one_roi:
+            if len(rois) != 1:
+                WaitForUserDialog(
+                "ROI Warning",
+                "Choose exactly one ROI!").show()
+                # Clean ROI manager
+                rm.reset()
+                # re-fetch after user interaction in while loop
+                rois = rm.getRoisAsArray()  
+                continue
+
     # If ROI manager is empty, stop the program.
     if len(rois) == 0:
         return
