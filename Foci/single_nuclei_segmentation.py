@@ -266,22 +266,12 @@ def semi_manual_img_process(imp, output_dir, p):
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
 
+    # Save ROI file in .zip
+    roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
+    rm.runCommand("Save", roi_path)
+
     # Close splitted images
     close_images(split_imps)
-
-    return rt
-
-def _append_rt(final_rt, small_rt, image_name=None):
-    for r in range(small_rt.size()):
-        final_rt.incrementCounter()
-
-        if image_name is not None:
-            final_rt.addValue("Image", image_name)
-
-        headings = small_rt.getHeadings()
-        for h in headings:
-            value = small_rt.getValue(h, r)
-            final_rt.addValue(h, value)
 
 def main():
     # Check if at least one image is opened
