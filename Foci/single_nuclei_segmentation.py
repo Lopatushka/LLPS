@@ -221,11 +221,7 @@ def semi_manual_img_process(imp, p):
     # Results table
     rt = ResultsTable()
 
-    # Set ROIs at the MEASUREMENT image
-    # First ROI
-    combined = ShapeRoi(rois[0])
-
-    # Combine ROIs if there are several ones
+    # Set ROIs at the MEASUREMENT images
     for i, roi in enumerate(rois):
         roi_name = roi.getName()
         if roi_name is None or roi_name.strip() == "":
@@ -240,11 +236,16 @@ def semi_manual_img_process(imp, p):
         meas_imp_work.setRoi(roi)
         IJ.run(meas_imp_work, "Clear Outside", "")
 
-        
-        #rt.incrementCounter()
-        #rt.addValue("ROI", roi_name)
-        #rt.addValue("Area", stats.area)
-        #rt.addValue("Mean", stats.mean)
+        # Make measurememts on the WORK image
+        stats = meas_imp_work.getStatistics(
+        Measurements.AREA | Measurements.MEAN
+        )
+
+        # Fill the table with results
+        rt.incrementCounter()
+        rt.addValue("ROI", roi_name)
+        rt.addValue("Area", stats.area)
+        rt.addValue("Mean", stats.mean)
 
         #cal = imp.getCalibration()
        #print(cal.pixelWidth)
