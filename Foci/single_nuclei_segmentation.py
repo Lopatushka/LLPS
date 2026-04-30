@@ -231,13 +231,15 @@ def semi_manual_img_process(imp, p):
         if roi_name is None or roi_name.strip() == "":
             roi_name = "ROI_%02d" % (i + 1)
 
-        # Add ROI to combined ROI
-        combined = combined.or(ShapeRoi(roi))
+        # Duplicate the MEASUREMENT channel and show it
+        meas_imp_work = meas_imp.duplicate()
+        meas_imp_work.setTitle("MEAS_work")
+        meas_imp_work.show()
 
-    # Apply combined ROI to image
-    meas_imp.setRoi(combined)
+        # Clear everything else outside desired ROI in the copied image
+        meas_imp_work.setRoi(roi)
+        IJ.run(meas_imp_work, "Clear Outside", "")
 
-    IJ.run(meas_imp, "Clear Outside", "")
         
         #rt.incrementCounter()
         #rt.addValue("ROI", roi_name)
