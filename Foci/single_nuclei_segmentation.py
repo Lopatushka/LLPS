@@ -251,8 +251,10 @@ def semi_manual_img_process(imp, output_dir, p):
         # Remove ROI selection from WORK image
         meas_imp_work.killRoi()
 
-        # Close WORK image w/o saving
-        meas_imp_work.changes = False
+        # Save MEASUREMENT WORK channel and close it
+        MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
+        MEASURE_CHANNEL_work_path = os.path.join(output_dir, MEASURE_CHANNEL_work_name)
+        IJ.save(meas_imp_work, MEASURE_CHANNEL_work_path)
         meas_imp_work.close()
 
     # Show results
@@ -262,7 +264,6 @@ def semi_manual_img_process(imp, output_dir, p):
     # Save MEASUREMENT channel
     MEASURE_CHANNEL_name = "C{}_{}.tif".format(MEASURE_CHANNEL, img_title)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
-    #meas_imp.show()
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
 
     # Close splitted images
