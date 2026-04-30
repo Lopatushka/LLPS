@@ -12,6 +12,28 @@ import os
 import csv
 import traceback
 
+def ask_params_for_image():
+    gd = GenericDialog("Nuclei segmentation params")
+    gd.addMessage("Set parameters for nuclei segmentation.")
+
+    # Fields
+    gd.addNumericField("DAPI channel (1-based):", 1, 0)
+    gd.addNumericField("Measurement channel (1-based):", 2, 0)
+    gd.addCheckbox("Apply background subtraction", True)
+    gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
+
+    gd.showDialog()
+    if gd.wasCanceled():
+        return None
+
+    params = {}
+    params["DAPI_CHANNEL"] = int(gd.getNextNumber())
+    params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
+    params["do_bg_subtraction"] = bool(gd.getNextBoolean())
+    params["bg_value"] = float(gd.getNextNumber())
+
+    return params
+
 def img_name_processing(name):
     try:
         if "MP" in name and " - " in name:
@@ -79,13 +101,27 @@ def split_channels(imp):
         raise SystemExit
     
     return split_imps
+
+def pick_channel_by_index(split_imps, one_based_index):
+	"""
+    Picks a channel ImagePlus from split_imps using 1-based indexing.
+    Example: one_based_index=1 -> C1
+    """
+	idx = int(one_based_index) - 1
+	if idx < 0 or idx >= len(split_imps):
+		return None
+	return split_imps[idx]
     
-def semi_manual_img_process(imp):
+def semi_manual_img_process(imp, p):
     '''
     This function process semi-manually a single image
     imp - image
     p - parameters
     '''
+    # Parameteres
+    DAPI_CHANNEL = p["DAPI_CHANNEL"]
+    MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
+
     # Processing image title
     img_title = imp.getTitle()
     img_title = img_name_processing(img_title)
@@ -117,18 +153,20 @@ def semi_manual_img_process(imp):
 
         # If user press Cancel
         if gd.wasCanceled():
-            IJ.error("Canceled. Stopping.")
+            IJ.error("Cancelled. Stopping.")
             break
             
-    # Re-fetch after user interaction
-    #rois = rm.getRoisAsArray()
-
-    # If user press cancell stop the program
+    # If ROI manager is empty, stop the program.
     if len(rois) == 0:
         return
+    
+    # Select DAPI channel image (used for nuclei segmentation)
+    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
+
+    # Select the measurement channel image (used for mean intensity measurement)
+    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
 
         
-
 def main():
     # Check if at least one image is opened
     ids = WindowManager.getIDList()
@@ -158,6 +196,12 @@ def main():
     unique_images = list(set(images))
     n = len(unique_images) # total amount of images to process
 
+    # Ask user about the parameters
+    params = ask_params_for_image()
+    if params is None:
+        IJ.error("No parameters provided!")
+        return
+
     # Ask user where to save outputs
     output_dir = IJ.getDirectory("Choose a directory to save data")
     if output_dir is None:
@@ -174,7 +218,7 @@ def main():
         IJ.log(msg)
 
         try:
-            semi_manual_img_process(imp)
+            semi_manual_img_process(imp, params)
 
         except Exception as e:
             # log immediately
