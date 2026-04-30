@@ -305,7 +305,7 @@ def process_image(imp, p):
             IJ.run("Erode")
     # Make dilation to restore original size after erosion (optional, can be adjusted by user)
     if dilation_steps > 0:
-        for i in range(n):
+        for i in range(dilation_steps):
             IJ.run("Dilate")
 
     # --- ANALYZE PARTICLES -> ROIs IN ROI MANAGER
