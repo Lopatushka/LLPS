@@ -128,6 +128,16 @@ def close_window(title):
     win = WindowManager.getWindow(title)
     if win: win.dispose()
 
+def close_all_images():
+    ids = WindowManager.getIDList()
+    if ids is not None:
+        for image_id in ids:
+            imp = WindowManager.getImage(image_id)
+
+            if imp is not None:
+                imp.changes = False   # avoid "Save changes?" dialog
+                imp.close()
+
 def foci_image(imp, parameters, output_dir):
     """
     Process a single image.
@@ -141,6 +151,7 @@ def foci_image(imp, parameters, output_dir):
     # Duplicate image
     dup = imp.duplicate()
     dup.setTitle("{}_foci".format(img_base))
+    dup_title = dup.getTitle()
     dup.show()
 
     # Convert image into 16-bit if needed
@@ -171,12 +182,12 @@ def foci_image(imp, parameters, output_dir):
     IJ.run("Export results", export_opts)
 
     # Save foci image
-    foci_path = os.path.join(output_dir, "{}.png".format(dup.getTitle()))
+    foci_path = os.path.join(output_dir, "{}.png".format(dup_title))
     IJ.save(dup, foci_path)
 
     # -- Closed windows ---
     close_window("ThunderSTORM: results")
-
+    close_all_images()
 
 
 
