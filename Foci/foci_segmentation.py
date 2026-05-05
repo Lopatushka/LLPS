@@ -140,7 +140,7 @@ def foci_image(imp, parameters, output_dir):
     
     # Duplicate image
     dup = imp.duplicate()
-    dup.setTitle("{}_foci.tif".format(img_base))
+    dup.setTitle("{}_foci".format(img_base))
     dup.show()
 
     # Convert image into 16-bit if needed
@@ -169,6 +169,10 @@ def foci_image(imp, parameters, output_dir):
 
     IJ.selectWindow("ThunderSTORM: results")
     IJ.run("Export results", export_opts)
+
+    # Save foci image
+    foci_path = os.path.join(output_dir, "{}.png".format(dup.getTitle()))
+    IJ.save(dup, foci_path)
 
     # -- Closed windows ---
     close_window("ThunderSTORM: results")
