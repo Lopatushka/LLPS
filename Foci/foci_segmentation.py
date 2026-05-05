@@ -224,52 +224,48 @@ def main():
         and "ROI" in f
     ]
     images.sort()
-    n_images = len(images)
 
-    IJ.log("Found {} images.".format(n_images))
+    # Number of founded images to process
+    n = len(images)
+
+    IJ.log("Found {} images.".format(n))
     
-    if n_images == 0:
-        IJ.error("No images found in the directory! Please check the directory.")
-        raise SystemExit
-
+    if n == 0:
+        IJ.error("No images found in the directory! Please check the directory. Exiting.")
+        return
 
     # Set ThunderSTORM parameters once for all images
-    #ts_params = ask_params_for_thunderstorm()
-    #if ts_params is None:
-        #IJ.log("Parameters for ThunderSTORM are not set. Exiting.")
-        #raise SystemExit
-    #ts_opts = thunderstorm_options(ts_params)
+    ts_params = ask_params_for_thunderstorm()
+    if ts_params is None:
+        IJ.log("Parameters for ThunderSTORM are not set. Exiting.")
+        return
+    ts_opts = thunderstorm_options(ts_params)
 
     # Ask user where to save outputs
-    #output_dir = IJ.getDirectory("Choose a directory to save data")
-    #check_dir(output_dir)
+    output_dir = IJ.getDirectory("Choose a directory to save data")
+    check_dir(output_dir)
 
-    # ---- open subsequently in Fiji ----
-    #rm = RoiManager.getRoiManager()
+    # --- Iterate over images ---
+    for call_id, filename in enumerate(images, start=1):
+        # Open image
+        path = os.path.join(input_dir, filename)
+        imp = IJ.openImage(path)
 
-    # Iterate over matched pairs of ROI and images
-    #for img, roi in pairs:
-        #IJ.log("Open image: " + img)
+        title = imp.getTitle()
+
+        # Make Log message
+        msg = "Processing {}/{}: {}".format(call_id, n, title)
+        IJ.log(msg)
 
         # Open the image
         #imp = IJ.openImage(os.path.join(input_dir, img))
         #if imp is None:
-            #IJ.log("SKIP (cannot open image): " + img)
+            #IJ.log("SKIP (cannot open image): " + title)
             #continue
 
         #imp.show()
 
-        # Reset ROI Manager before loading new ROIs
-        #rm.reset()
-        #IJ.log("Open ROI: " + roi)
-
-        # Open the ROI zip file (loads all ROIs into the manager)
-        #roi_path = os.path.join(input_dir, roi)
-        #rm.open(roi_path)
-
         #try:
-            # Get ROIs AFTER loading them
-            #rois = list(rm.getRoisAsArray())
             #foci_image(imp, rois, ts_opts, output_dir)
 
         #except Exception as e:
@@ -278,7 +274,6 @@ def main():
         #finally:
             #if imp is not None:
                 #imp.close()
-            #rm.reset()
 
     # Fininsh up and close everything
     #cleanup_iteration()
