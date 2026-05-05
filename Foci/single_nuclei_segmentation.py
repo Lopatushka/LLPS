@@ -135,7 +135,7 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
     )
     imp.updateAndDraw()
 
-def ():
+def close_results_table():
 	"""
     Closes the standard ImageJ 'Results' table window if it exists.
     Uses dispose() because Results is usually a Swing window.
@@ -153,9 +153,9 @@ def semi_manual_img_process(imp, output_dir, p):
     imp, output_dir, params
     '''
     # Parameteres
-    DAPI_CHANNEL = p["DAPI_CHANNEL"]
-    MEASURE_CHANNEL = p["MEASURE_CHANNEL"]
-    one_roi = p["one_roi"]
+    DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
+    MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
+    one_roi = p["one_roi"] # bool
     substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"] # numeric
 
@@ -228,11 +228,11 @@ def semi_manual_img_process(imp, output_dir, p):
     if len(rois) == 0:
         return
 
-    # --- Measuremtemts of ROIs ---
+    # --- Measurements of ROIs ---
     # Results table
     rt = ResultsTable()
 
-    # Set ROIs at the MEASUREMENT images
+    # Itearation through the ROIs
     for i, roi in enumerate(rois):
         roi_name = roi.getName()
         if roi_name is None or roi_name.strip() == "":
@@ -271,7 +271,7 @@ def semi_manual_img_process(imp, output_dir, p):
     rt.show("ROI measurements")
 
     # --- SAVE DATA ---
-    # Save MEASUREMENT channel
+    # Save MEASUREMENT channel in the .tif format
     MEASURE_CHANNEL_name = "C{}_{}.tif".format(MEASURE_CHANNEL, img_title)
     MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
     IJ.save(meas_imp, MEASURE_CHANNEL_path)
@@ -281,7 +281,7 @@ def semi_manual_img_process(imp, output_dir, p):
     rm.runCommand("Save", roi_path)
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "C{}_{}_ROI_{}.csv".format(MEASURE_CHANNEL, img_title, roi_name))
+    results_path = os.path.join(output_dir, "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title))
     IJ.saveAs("Results", results_path)
     close_results_table()
 
@@ -326,11 +326,8 @@ def main():
     # Ask user where to save outputs
     output_dir = IJ.getDirectory("Choose a directory to save data")
     if output_dir is None:
-        IJ.error("No output directory selected!")
+        IJ.error("No output directory is selected!")
         return
-    
-    # Collect all errors here
-    errors = []  
 
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
