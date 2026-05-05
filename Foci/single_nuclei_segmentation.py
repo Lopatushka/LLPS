@@ -142,6 +142,12 @@ def close_all_csv_tables():
             title = w.getTitle()
             if title.endswith(".csv"):
                 w.dispose()
+
+def cleanup_iteration():
+    rm = RoiManager.getInstance()
+    if rm is not None:
+        rm.reset()
+        rm.close()
     
 def semi_manual_img_process(imp, output_dir, p):
     '''
@@ -344,6 +350,9 @@ def main():
             IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
             IJ.log(traceback.format_exc())  # comment out if too verbose
             continue
+        
+        finally:
+            cleanup_iteration()
 
 
 # Run program
