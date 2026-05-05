@@ -10,47 +10,7 @@ def check_dir(dir):
 	if dir is None:
 		IJ.error("No directory selected!")
 		raise SystemExit
-	
-def make_key(filename):
-    s = filename.lower()
 
-    # remove leading channel prefix like "c1_" or "c2_"
-    s = re.sub(r'^c\d+_', '', s)
-
-    # remove roi suffix
-    s = re.sub(r'_rois(?=\.|$)', '', s)
-
-    # strip known extensions repeatedly (handles ".nd2.jpg", ".ome.tif", etc.)
-    while True:
-        new = re.sub(r'(\.ome)?\.(tif|tiff|png|jpg|jpeg|zip|nd2|czi|lif)$', '', s)
-        if new == s:
-            break
-        s = new
-
-    # cleanup leftover underscores/spaces
-    s = re.sub(r'[\s_]+$', '', s)
-    s = re.sub(r'^[\s_]+', '', s)
-
-    return s
-
-def img_roi_pairs(images, rois):
-	roi_map = {}
-	for r in rois:
-		k = make_key(r)
-		roi_map.setdefault(k, []).append(r)
-
-	pairs = []
-	unmatched_images = []
-
-	for img in images:
-		k = make_key(img)
-		if k in roi_map and len(roi_map[k]) > 0:
-			roi_file = roi_map[k].pop(0)  # take one matching roi
-			pairs.append((img, roi_file))
-		else:
-			unmatched_images.append(img)
-
-	return pairs, unmatched_images
 
 def cleanup_iteration():
     rm = RoiManager.getInstance()
@@ -254,7 +214,6 @@ def main():
     check_dir(input_dir)
 
     # Open images from the Input directory
-    #exts = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
     exts = (".tif", ".tiff")
 
     # List of images with desired extension and filtration
@@ -266,31 +225,13 @@ def main():
     ]
     images.sort()
     n_images = len(images)
-    print(images)
 
-    # List of ROIs for the corresponding images
-    #rois = [
-        #f for f in os.listdir(input_dir)
-        #if os.path.isfile(os.path.join(input_dir, f))
-        #and f.lower().endswith('.zip')
-        #and 'rois' in f.lower()
-    #]
-    #rois.sort()
-    #n_rois = len(rois)
-
+    IJ.log("Found {} images.".format(n_images))
+    
     if n_images == 0:
         IJ.error("No images found in the directory! Please check the directory.")
         raise SystemExit
 
-    # Match images and ROIs based on filename keys
-    #pairs, unmatched_images = img_roi_pairs(images, rois)
-    #if len(pairs) == 0:
-        #IJ.error("No matching image-ROI pairs found! Please check the directory.")
-        #raise SystemExit
-    #if unmatched_images:
-        #IJ.log("Images without ROI: {}".format(len(unmatched_images)))
-
-    #IJ.log("Found {} image-ROI pairs to process.".format(len(pairs)))
 
     # Set ThunderSTORM parameters once for all images
     #ts_params = ask_params_for_thunderstorm()
