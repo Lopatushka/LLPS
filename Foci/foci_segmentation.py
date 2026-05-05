@@ -11,7 +11,6 @@ def check_dir(dir):
 		IJ.error("No directory selected!")
 		raise SystemExit
 
-
 def cleanup_iteration():
     rm = RoiManager.getInstance()
     if rm is not None:
@@ -129,17 +128,31 @@ def close_window(title):
     win = WindowManager.getWindow(title)
     if win: win.dispose()
 
-def foci_image(imp, rois, parameters, output_dir):
+def foci_image(imp, parameters, output_dir):
     """
-    Process a single image for multiple ROIs.
+    Process a single image.
 
     imp  : ImagePlus
-    rois : list of Roi objects
     p    : dict-like parameters (optional, used later)
     """
     img_name = imp.getTitle()
     img_base = safe_name(os.path.splitext(img_name)[0])
+    
+    # Duplicate image
+    dup = imp.duplicate()
+    dup.show()
 
+    # Convert image into 16-bit if needed
+    dup_type = dup.getType()
+    if dup_type not in (ImagePlus.GRAY8, ImagePlus.GRAY16):
+        IJ.run(dup, "16-bit", "")
+        dup.changes = False
+    
+    # Run ThunderSTORM for the image
+    IJ.run(dup, "Run analysis", parameters)
+
+
+def _foo():
     for i, roi in enumerate(rois):
         dup = None
         roi_name = None
@@ -265,11 +278,11 @@ def main():
         # Show image
         imp.show()
 
-        #try:
-            #foci_image(imp, rois, ts_opts, output_dir)
+        try:
+            foci_image(imp, ts_opts, output_dir)
 
-        #except Exception as e:
-            #IJ.log("IMAGE FAILED {}: {}".format(img, e))
+        except Exception as e:
+            IJ.log("IMAGE ANALYSIS FAILED {}: {}".format(title, e))
 
         #finally:
             #if imp is not None:
