@@ -135,11 +135,11 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
     )
     imp.updateAndDraw()
 
-def close_results_table(table_name):
+def close_results_table(name):
 	"""
     Closes the standard ImageJ 'Results' table window if it exists.
     """
-	w = WindowManager.getWindow(table_name)
+	w = WindowManager.getWindow(name)
 	if w is not None:
 	    w.close()
     
@@ -266,8 +266,7 @@ def semi_manual_img_process(imp, output_dir, p):
         meas_imp_work.close()
 
     # Show results
-    table_name = "ROI measurements"
-    rt.show(table_name)
+    rt.show("ROI measurements")
 
     # --- SAVE DATA ---
     # Save MEASUREMENT channel in the .tif format
@@ -280,9 +279,13 @@ def semi_manual_img_process(imp, output_dir, p):
     rm.runCommand("Save", roi_path)
 
     # Save Results as CSV
-    results_path = os.path.join(output_dir, "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title))
+    table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
+    results_path = os.path.join(output_dir, table_name)
     IJ.saveAs("Results", results_path)
-    close_results_table(table_name)
+    w = WindowManager.getWindow(table_name)
+    if w is not None:
+        print(w)
+        w.dispose()
 
     # Close splitted images
     close_images(split_imps)
