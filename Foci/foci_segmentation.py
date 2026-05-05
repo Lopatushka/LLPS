@@ -251,19 +251,19 @@ def main():
         path = os.path.join(input_dir, filename)
         imp = IJ.openImage(path)
 
+        # Check that there is image
+        if imp is None:
+            IJ.log("SKIP (cannot open image): " + title)
+            continue
+
         title = imp.getTitle()
 
         # Make Log message
         msg = "Processing {}/{}: {}".format(call_id, n, title)
         IJ.log(msg)
 
-        # Open the image
-        #imp = IJ.openImage(os.path.join(input_dir, img))
-        #if imp is None:
-            #IJ.log("SKIP (cannot open image): " + title)
-            #continue
-
-        #imp.show()
+        # Show image
+        imp.show()
 
         #try:
             #foci_image(imp, rois, ts_opts, output_dir)
