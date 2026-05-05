@@ -135,13 +135,13 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
     )
     imp.updateAndDraw()
 
-def close_results_table(name):
-	"""
-    Closes the standard ImageJ 'Results' table window if it exists.
-    """
-	w = WindowManager.getWindow(name)
-	if w is not None:
-	    w.close()
+def close_all_csv_tables():
+    windows = WindowManager.getAllNonImageWindows()
+    if windows is not None:
+        for w in windows:
+            title = w.getTitle()
+            if title.endswith(".csv"):
+                w.dispose()
     
 def semi_manual_img_process(imp, output_dir, p):
     '''
@@ -282,10 +282,9 @@ def semi_manual_img_process(imp, output_dir, p):
     table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
     results_path = os.path.join(output_dir, table_name)
     IJ.saveAs("Results", results_path)
-    w = WindowManager.getWindow(table_name)
-    if w is not None:
-        print(w)
-        w.dispose()
+
+    # Close result table
+    close_all_csv_tables()
 
     # Close splitted images
     close_images(split_imps)
