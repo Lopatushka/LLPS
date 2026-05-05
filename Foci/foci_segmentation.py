@@ -152,6 +152,13 @@ def foci_image(imp, parameters, output_dir):
     # Run ThunderSTORM for the image
     IJ.run(dup, "Run analysis", parameters)
 
+    # Check that output exists
+    if WindowManager.getWindow("ThunderSTORM: results") is None:
+        raise RuntimeError("ThunderSTORM results window not found (analysis may have failed).")
+
+    # --- Save results ---
+
+
 
 def _foo():
     for i, roi in enumerate(rois):
