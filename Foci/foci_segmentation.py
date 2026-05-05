@@ -152,11 +152,27 @@ def foci_image(imp, parameters, output_dir):
     # Run ThunderSTORM for the image
     IJ.run(dup, "Run analysis", parameters)
 
-    # Check that output exists
+    # Check that ThunderSTORM output exists
     if WindowManager.getWindow("ThunderSTORM: results") is None:
         raise RuntimeError("ThunderSTORM results window not found (analysis may have failed).")
 
     # --- Save results ---
+    # Export CSV
+    csv_path = os.path.abspath(os.path.join(output_dir, "{}_foci.csv".format(img_base)))
+    csv_path_ij = csv_path.replace("\\", "/")
+    export_opts = (
+        'filepath=[{}] '
+        'fileformat=[CSV (comma separated)] '
+        'sigma=true intensity=true chi2=false offset=false saveprotocol=false '
+        'x=true y=true bkgstd=false id=true uncertainty=false frame=false'
+    ).format(csv_path_ij)
+
+    IJ.selectWindow("ThunderSTORM: results")
+    IJ.run("Export results", export_opts)
+
+    # -- Closed windows ---
+    close_window("ThunderSTORM: results")
+
 
 
 
