@@ -140,6 +140,7 @@ def foci_image(imp, parameters, output_dir):
     
     # Duplicate image
     dup = imp.duplicate()
+    dup.setTitle("{}_foci.tif".format(img_base))
     dup.show()
 
     # Convert image into 16-bit if needed
