@@ -10,12 +10,6 @@ def check_dir(dir):
 	if dir is None:
 		IJ.error("No directory selected!")
 		raise SystemExit
-
-def cleanup_iteration():
-    rm = RoiManager.getInstance()
-    if rm is not None:
-        rm.reset()
-        rm.close()
         
 def ask_params_for_thunderstorm():
     """
@@ -323,13 +317,6 @@ def main():
         except Exception as e:
             IJ.log("IMAGE ANALYSIS FAILED {}: {}".format(title, e))
 
-        #finally:
-            #if imp is not None:
-                #imp.close()
-
-    # Fininsh up and close everything
-    #cleanup_iteration()
-
-    #IJ.log("Analysis is finished!")
+    IJ.log("Analysis is finished!")
 
 main()
