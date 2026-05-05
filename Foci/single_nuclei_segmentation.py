@@ -195,7 +195,7 @@ def semi_manual_img_process(imp, output_dir, p):
     # Bring this image above all others
     dapi_imp.getWindow().toFront()
 
-    # WHILE Loop to fill Roi manager
+    # WHILE Loop to fill Roi manager.haha
     while len(rois) == 0:
         gd = NonBlockingGenericDialog("ROI Manager is empty")
         gd.addMessage(
