@@ -248,99 +248,100 @@ def foci_image(imp, rois, parameters, output_dir):
             #imp.killRoi()    
 
 # --- Main ---
-# Ask user about the directory with data to process
-input_dir = IJ.getDirectory("Choose a directory with data to process")
-check_dir(input_dir)
+def main():
+    # Ask user about the directory with data to process
+    input_dir = IJ.getDirectory("Choose a directory with data to process")
+    check_dir(input_dir)
 
-# Open images from the Input directory
-exts = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
+    # Open images from the Input directory
+    #exts = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
+    exts = (".tif", ".tiff")
 
-# List of images with desired extension and filtration
-images = [
-    f for f in os.listdir(input_dir)
-    if os.path.isfile(os.path.join(input_dir, f))
-    and f.lower().endswith(exts)
-    and "mask" not in f.lower()
-]
-images.sort()
-n_images = len(images)
+    # List of images with desired extension and filtration
+    images = [
+        f for f in os.listdir(input_dir)
+        if os.path.isfile(os.path.join(input_dir, f))
+        and f.lower().endswith(exts)
+        and "ROI" in f
+    ]
+    images.sort()
+    n_images = len(images)
+    print(images)
 
-# List of ROIs for the corresponding images
-rois = [
-    f for f in os.listdir(input_dir)
-    if os.path.isfile(os.path.join(input_dir, f))
-    and f.lower().endswith('.zip')
-	and 'rois' in f.lower()
-]
-rois.sort()
-n_rois = len(rois)
+    # List of ROIs for the corresponding images
+    #rois = [
+        #f for f in os.listdir(input_dir)
+        #if os.path.isfile(os.path.join(input_dir, f))
+        #and f.lower().endswith('.zip')
+        #and 'rois' in f.lower()
+    #]
+    #rois.sort()
+    #n_rois = len(rois)
 
-if n_images == 0:
-	IJ.error("No images found in the directory! Please check the directory.")
-	raise SystemExit
+    if n_images == 0:
+        IJ.error("No images found in the directory! Please check the directory.")
+        raise SystemExit
 
-# Match images and ROIs based on filename keys
-pairs, unmatched_images = img_roi_pairs(images, rois)
-if len(pairs) == 0:
-	IJ.error("No matching image-ROI pairs found! Please check the directory.")
-	raise SystemExit
-if unmatched_images:
-    IJ.log("Images without ROI: {}".format(len(unmatched_images)))
+    # Match images and ROIs based on filename keys
+    #pairs, unmatched_images = img_roi_pairs(images, rois)
+    #if len(pairs) == 0:
+        #IJ.error("No matching image-ROI pairs found! Please check the directory.")
+        #raise SystemExit
+    #if unmatched_images:
+        #IJ.log("Images without ROI: {}".format(len(unmatched_images)))
 
-IJ.log("Found {} image-ROI pairs to process.".format(len(pairs)))
+    #IJ.log("Found {} image-ROI pairs to process.".format(len(pairs)))
 
-# Set ThunderSTORM parameters once for all images
-ts_params = ask_params_for_thunderstorm()
-if ts_params is None:
-    IJ.log("Parameters for ThunderSTORM are not set. Exiting.")
-    raise SystemExit
-ts_opts = thunderstorm_options(ts_params)
+    # Set ThunderSTORM parameters once for all images
+    #ts_params = ask_params_for_thunderstorm()
+    #if ts_params is None:
+        #IJ.log("Parameters for ThunderSTORM are not set. Exiting.")
+        #raise SystemExit
+    #ts_opts = thunderstorm_options(ts_params)
 
-# Ask user where to save outputs
-output_dir = IJ.getDirectory("Choose a directory to save data")
-check_dir(output_dir)
+    # Ask user where to save outputs
+    #output_dir = IJ.getDirectory("Choose a directory to save data")
+    #check_dir(output_dir)
 
-# ---- open subsequently in Fiji ----
-rm = RoiManager.getRoiManager()
+    # ---- open subsequently in Fiji ----
+    #rm = RoiManager.getRoiManager()
 
-# Iterate over matched pairs of ROI and images
-for img, roi in pairs:
-    IJ.log("Open image: " + img)
+    # Iterate over matched pairs of ROI and images
+    #for img, roi in pairs:
+        #IJ.log("Open image: " + img)
 
-    # Open the image
-    imp = IJ.openImage(os.path.join(input_dir, img))
-    if imp is None:
-        IJ.log("SKIP (cannot open image): " + img)
-        continue
+        # Open the image
+        #imp = IJ.openImage(os.path.join(input_dir, img))
+        #if imp is None:
+            #IJ.log("SKIP (cannot open image): " + img)
+            #continue
 
-    imp.show()
+        #imp.show()
 
-    # Reset ROI Manager before loading new ROIs
-    rm.reset()
-    IJ.log("Open ROI: " + roi)
+        # Reset ROI Manager before loading new ROIs
+        #rm.reset()
+        #IJ.log("Open ROI: " + roi)
 
-    # Open the ROI zip file (loads all ROIs into the manager)
-    roi_path = os.path.join(input_dir, roi)
-    rm.open(roi_path)
+        # Open the ROI zip file (loads all ROIs into the manager)
+        #roi_path = os.path.join(input_dir, roi)
+        #rm.open(roi_path)
 
-    try:
-        # Get ROIs AFTER loading them
-        rois = list(rm.getRoisAsArray())
-        foci_image(imp, rois, ts_opts, output_dir)
+        #try:
+            # Get ROIs AFTER loading them
+            #rois = list(rm.getRoisAsArray())
+            #foci_image(imp, rois, ts_opts, output_dir)
 
-    except Exception as e:
-        IJ.log("IMAGE FAILED {}: {}".format(img, e))
+        #except Exception as e:
+            #IJ.log("IMAGE FAILED {}: {}".format(img, e))
 
-    finally:
-        if imp is not None:
-            imp.close()
-        rm.reset()
+        #finally:
+            #if imp is not None:
+                #imp.close()
+            #rm.reset()
 
-# Fininsh up and close everything
-cleanup_iteration()
+    # Fininsh up and close everything
+    #cleanup_iteration()
 
-IJ.log("Analysis is finished!")
+    #IJ.log("Analysis is finished!")
 
-
-
-	
+main()
