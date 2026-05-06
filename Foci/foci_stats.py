@@ -38,89 +38,86 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def draw_foci_with_radius(image_path, df, px_size_um, output_path):
-
-
-
-
-
-
-
-def foci_one_image(image_path, df, px_size_um, output_path):
+def foci_one_image(image_path, df, px_size_um, output_path, plot = True):
     image = Image.open(image_path)  # load image
     image_name = filename(image_path) # get image name
     arr = np.array(image) # convert image to numpy matrix
     H, W = arr.shape # get number of pixels (512*512 for 16-bit image)
 
+    # Storage lists
+    x_list = []
+    y_list = []
+    sigma_list = []
+    mean_list = []
+
     # Iteration through the thunderSTORM dataframe
     for _, row in df.iterrows():
         x_px = int(row["x_um"] / px_size_um)
         y_px = int(row["y_um"] / px_size_um)
-        r_px = math.ceil(row["sigma_um"] / px_size_um)
+        r_px = max(1, int(row["sigma_um"] / px_size_um)) # minimal possible value for radius is 1 pixel!
 
         # Build circular mask (clipped automatically)
         rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
         mask = np.zeros((H, W), dtype=bool)
         mask[rr, cc] = True
 
+        n_pixels_mask = np.sum(mask)
+
         # Compute mean intensity
-        if mask.sum() > 0:
+        if n_pixels_mask > 1:
             mean_intensity = arr[mask].mean()
         else:
             mean_intensity = np.nan
+        #print(x_px, x_px, r_px, n_pixels_mask, mean_intensity)
 
-    # Plot image
-    #fig, ax = plt.subplots(figsize=(8, 8))
-    #ax.imshow(arr, cmap="gray")
+        # Add values to the corresponding lists
+        x_list.append(x_px)
+        y_list.append(y_px)
+        sigma_list.append(r_px)
+        mean_list.append(mean_intensity)
+    
+    # Return modified copy
+    df_out = df.copy()
+    df_out["x_pixel"] = x_list
+    df_out["y_pixel"] = y_list
+    df_out["sigma_pixel"] = sigma_list
+    df_out["foci_MFI"] = mean_list
 
-    # Draw red circles
-    for _, row in df.iterrows():
-        x_px = row["x_um"] / px_size_um
-        y_px = row["y_um"] / px_size_um
-        r_px = row["sigma_um"] / px_size_um
+    # Make a plot and save image
+    if plot:
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.imshow(arr, cmap="gray")
 
-        circle = Circle(
-            (x_px, y_px),
-            r_px,
+        for _, row in df_out.iterrows():
+            x = row["x_pixel"]
+            y = row["y_pixel"]
+            r = row["sigma_pixel"]
+
+            circle = Circle(
+            (x, y),
+            r,
             fill=False,
             edgecolor="red",
             linewidth=1
+            )
+
+            ax.add_patch(circle)
+        
+        # Match image coordinates
+        ax.set_xlim(0, arr.shape[1])
+        ax.set_ylim(arr.shape[0], 0)
+
+        # Save imafe
+        plt.savefig(
+            f"{output_path}/{image_name}_sigma.png",
+            dpi=300,
+            bbox_inches="tight"
         )
 
-        ax.add_patch(circle)
+        # Do not display image
+        plt.close(fig)
 
-    # Match image coordinates
-    ax.set_xlim(0, arr.shape[1])
-    ax.set_ylim(arr.shape[0], 0)
-
-    # Save imafe
-    plt.savefig(
-        f"{output_path}/{image_name}_foci_sigma.png",
-        dpi=300,
-        bbox_inches="tight"
-    )
-
-    # Do not display image
-    plt.close(fig)
-
-
-
-
- 
-
-            x_list.append(x_px)
-            y_list.append(y_px)
-            sigma_list.append(sigma_px)
-            mean_list.append(mean_intensity)
-
-        # Return modified copy
-        df_out = df.copy()
-        df_out["x_px"] = x_list
-        df_out["y_px"] = y_list
-        df_out["sigma_px"] = sigma_list
-        df_out["mean_intensity"] = mean_list
-
-        return df_out
+    return df_out
 
 def nuclei_data(dir, output_dir):
     paths_csv_files = [
