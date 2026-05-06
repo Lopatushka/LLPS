@@ -196,16 +196,33 @@ def plot_histogram(df, column, bins=50,
     plt.close(fig)
 
 
-def MFI_foci_all(dir_images, dir_foci):
-    # Paths to files
-    images_path = Path(str(dir_images).strip())
-    foci_data_path = Path(str(dir_foci).strip())
+def foci_all(dir_images, dir_foci):
+    paths_images = [
+    os.path.join(dir_images, f)
+    for f in os.listdir(dir_images)
+    if os.path.isfile(os.path.join(dir_images, f))
+    and f.lower().endswith(".tif")   
+    ]
 
-    # Check path
-    if not images_path.exists():
-        raise FileNotFoundError(f"Directory {images_path} is not found!")
-    if not foci_data_path.exists():
-        raise FileNotFoundError(f"Directory {foci_data_path} is not found!")
+    paths_foci_csv = [
+    os.path.join(dir_foci, f)
+    for f in os.listdir(dir_foci)
+    if os.path.isfile(os.path.join(dir_foci, f))
+    and f.lower().endswith(".csv")   
+    ]
+    
+    # Number of files and check
+    n_images = len(paths_images)
+    n_csv_files = len(paths_foci_csv)
+
+    if n_images == 0:
+        raise FileNotFoundError(f"No images founded in the directory: {dir_images}")
+    if n_csv_files == 0:
+        raise FileNotFoundError(f"No .csv files founded in the directory: {dir_foci}")
+    if n_images != n_csv_files:
+        raise FileNotFoundError("Different amount of images and corresponding .csv files!")
+
+
     
     # Check that there are files
     images = sorted(images_path.glob("*.tif"))
