@@ -31,15 +31,6 @@ def check_directory(path):
 
     return os.path.abspath(path)
 
-def key_from_csv(p: Path) -> str:
-    """
-    C2...nd2_(series_01)_0233-0247.csv  ->  C2...nd2_(series_01)
-    """
-    name = p.stem  # no .csv
-    # remove trailing _####-#### (or similar) if present
-    name = re.sub(r"_\d+-\d+$", "", name)
-    name = re.sub(r"_roi$", "", name, flags=re.IGNORECASE)
-    return name
 
 def key_from_img(p: Path) -> str:
     """
@@ -114,13 +105,29 @@ def MFI_foci(
         return df_out
 
 def nuclei_data(dir):
-    csv_files = [
-    f for f in os.listdir(dir)
-    if f.lower().endswith(".csv")
+    paths_csv_files = [
+    os.path.join(dir, f)
+    for f in os.listdir(dir)
+    if os.path.isfile(os.path.join(dir, f))
+    and f.lower().endswith(".csv")
     ]
-    
-    n = len(csv_files)
+
+    # Number of .csv files and check
+    n = len(paths_csv_files)
+    if n == 0:
+        raise FileNotFoundError(f"No CSV files found in the directory: {dir}")
     print(f"Founded {n} .csv files")
+
+    # Create list of dataframes
+    dfs = []
+    for f in paths_csv_files:
+        filname = os.path.splitext(os.path.basename(f))[0]
+        print(filname)
+        #df = pd.read_csv(f)
+        #df.columns = df.columns.str.strip()  # remove hidden spaces in headers
+
+    #print(df)
+
 
 def _aggregate_nuclei_data(dir_nuclei_stat):
     # Paths to files
