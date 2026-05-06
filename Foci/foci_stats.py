@@ -231,24 +231,18 @@ def foci_all(dir_images, dir_foci):
     combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key}
     n_pairs = len(combined)
     print(f"Found {n_pairs} (image.tif foci.csv) pairs.")
-        
-    # Calculate MFI of each foci
-    for file, image in pairs:
-        df = pd.read_csv(file)
+
+    # Iteration through the combined dictionary
+    for name, (image_path, csv_path) in combined.items():
+        # Read ThunderSTORM csv file: one file per nucleus
+        df = pd.read_csv(csv_path) 
         df.columns = df.columns.str.strip()
-        df_added = MFI_foci(image_path = image,
-                            df = df,
-                            px_size_ts_x = 11.6,
-                            px_size_ts_y = 11.6,
-                            px_size_x = 57.5,
-                            px_size_y = 58.7,
-                            x_col="x [nm]",
-                            y_col="y [nm]",
-                            sigma_col="sigma [nm]"
-                            )
-        
-        # Filtration based on sigma_nm value
-        filtered = df_added[df_added["sigma [nm]"] > 75]
+
+        # Run function to analyse one nucleus
+        result = foci_one_image(image_path, df, px_size_um, output_path, plot = True)
+
+        # Make filtration based on sigma_nm value
+        filtered = result[result["sigma [nm]"] > 75]
         
         # Calculate outliers based on mean intensity of foci
         data = filtered["mean_intensity"]
@@ -261,7 +255,7 @@ def foci_all(dir_images, dir_foci):
         filtered["Outlier"] = filtered["mean_intensity"] > upper_bound
         n_outliers = sum(filtered["Outlier"])
 
-        print(f"File {key_from_csv(file)}: keep {filtered.shape[0]} out of {df_added.shape[0]} foci. Number of outliers: {n_outliers}")
+        print(f"File {name}: keep {filtered.shape[0]} out of {result.shape[0]} foci. Number of outliers: {n_outliers}")
         
         # Export
         new_name = key_from_csv(file) + "_extent.csv"
