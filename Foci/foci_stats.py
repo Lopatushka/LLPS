@@ -140,43 +140,6 @@ def nuclei_data(dir):
     final = pd.concat(dfs, ignore_index=True)
     return final
 
-
-def _aggregate_nuclei_data(dir_nuclei_stat):
-    # Paths to files
-    nuclei_path = Path(str(dir_nuclei_stat).strip()) # path to data about nucleus in total
-
-    # Check path
-    if not nuclei_path.exists():
-        raise FileNotFoundError(f"dir1 not found: {nuclei_path}")
-    
-    # Check that there are .csv files
-    nuclei_files = sorted(dir_nuclei_stat.glob("*.csv"))
-    if not nuclei_files:
-        raise FileNotFoundError(f"No CSV files found in: {nuclei_path}")
-    
-    dfs = []
-
-    for f in nuclei_files:
-        key = key_from_csv(f)
-        df = pd.read_csv(f)
-        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
-
-        # ensure expected columns exist
-        if "Area" not in df.columns or "Mean" not in df.columns:
-            raise KeyError(
-                f"In nuclei file {f.name} expected columns 'Area' and 'Mean'. "
-                f"Found: {list(df.columns)}"
-            )
-        
-        df["File_name"] = key
-        df = df.rename(columns={"Area": "Nucleus_area", "Mean": "Nucleus_MFI"})
-        df = df[["File_name", "Nucleus_area", "Nucleus_MFI"]]
-        dfs.append(df)
-
-    final = pd.concat(dfs, ignore_index=True)
-
-    return final
-
 def plot_histogram(df, column, bins=50,
                    xlabel=None,
                    title=None,
@@ -373,7 +336,8 @@ def main():
             print("Please enter Y or N.")
 
     # --- Processed nuclei info (Area, Mean) ---
-    nuclei_data(nuclei_dir)
+    nuclei_info = nuclei_data(nuclei_dir)
+    print(nuclei_info)
 
 
  
