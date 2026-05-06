@@ -113,7 +113,16 @@ def MFI_foci(
 
         return df_out
 
-def aggregate_nuclei_data(dir_nuclei_stat):
+def nuclei_data(dir):
+    csv_files = [
+    f for f in os.listdir(dir)
+    if f.lower().endswith(".csv")
+    ]
+    
+    n = len(csv_files)
+    print(f"Founded {n} .csv files")
+
+def _aggregate_nuclei_data(dir_nuclei_stat):
     # Paths to files
     nuclei_path = Path(str(dir_nuclei_stat).strip()) # path to data about nucleus in total
 
@@ -122,7 +131,7 @@ def aggregate_nuclei_data(dir_nuclei_stat):
         raise FileNotFoundError(f"dir1 not found: {nuclei_path}")
     
     # Check that there are .csv files
-    nuclei_files = sorted(nuclei_path.glob("*.csv"))
+    nuclei_files = sorted(dir_nuclei_stat.glob("*.csv"))
     if not nuclei_files:
         raise FileNotFoundError(f"No CSV files found in: {nuclei_path}")
     
@@ -332,17 +341,22 @@ def main():
     # Ask about paths with data and output directory to save results
     # Example of path: /mnt/c/users/elopatukhin/Desktop/Miscroscopy/160226_U2OS_fixed/MP_WT_0.3
     nuclei_dir = check_directory(input("Enter pathway to the directory with the information about nuclei (Area and Mean): "))
-    foci_dir = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
+    #foci_dir = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
         if answer == "Y":
-            output_dir = foci_dir
+            #output_dir = foci_dir
             break
         elif answer == "N":
-            output_dir = check_directory(input("Enter output folder path: ").strip())
+            #output_dir = check_directory(input("Enter output folder path: ").strip())
             break
         else:
             print("Please enter Y or N.")
+
+    # --- Processed nuclei info (Area, Mean) ---
+    nuclei_data(nuclei_dir)
+
+
  
 if __name__ == "__main__":
     main()
