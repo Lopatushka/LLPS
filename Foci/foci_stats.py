@@ -223,14 +223,14 @@ def foci_all(dir_images, dir_foci):
         raise FileNotFoundError("Different amount of images and corresponding .csv files!")
     
     # --- Make list of tuples called pairs = [(image_path, csv foci filem path)] ---
-    # Create a dictionary: 
-    img_by_key = {filename(image_name): image_name for image_name in paths_images} # dictionary {image name: image path}
-    pairs = []
-    for f in foci:
-        k = key_from_csv(f)
-        img_path = img_by_key.get(k)
-        pairs.append((f, img_path))
-    print(f"Found {len(pairs)} (image.tif foci.csv) pairs.")
+    # Create a dictionary {image name: image path}
+    img_by_key = {filename(image_name): image_name for image_name in paths_images}
+    csv_by_key = {filename(csv_name)[:-5]: csv_name for csv_name in paths_foci_csv} # delete _foci in the name
+
+    # Combine two dictionaries: {name: (path_to_image, path_to_csv)}
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key}
+    n_pairs = len(combined)
+    print(f"Found {n_pairs} (image.tif foci.csv) pairs.")
         
     # Calculate MFI of each foci
     for file, image in pairs:
