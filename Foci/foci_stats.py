@@ -1,14 +1,35 @@
+import os
+
 from pathlib import Path
 import re
 import pandas as pd
 import numpy as np
-from PIL import Image, ImageDraw
-from skimage.color import rgb2gray
-from skimage.draw import disk
+from PIL import Image
+#from skimage.color import rgb2gray
+#from skimage.draw import disk
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
-#from scipy.stats import spearmanr
+from scipy.stats import spearmanr
 
+def check_directory(path):
+    if not isinstance(path, str):
+        raise TypeError("Path must be a string.")
+    
+    path = path.strip()
+    if path == "":
+        raise ValueError("Path is empty.")
+    
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            "Directory does not exist:\n{}".format(path)
+        )
+
+    if not os.path.isdir(path):
+        raise NotADirectoryError(
+            "Path is not a directory:\n{}".format(path)
+        )
+
+    return os.path.abspath(path)
 
 def key_from_csv(p: Path) -> str:
     """
@@ -296,7 +317,7 @@ def _sprearman_correlation(df):
     return pairs_df
 
 
-def main(p1, p2, output_dir):
+def _main1(p1, p2, output_dir):
     df_nuclei = aggregate_nuclei_data(dir_nuclei_stat = p1)
     MFI_foci_all(dir_images = p1, dir_foci = p2)
     results = aggregation_foci(dir = p2)
@@ -306,10 +327,28 @@ def main(p1, p2, output_dir):
     # Results export
     merged.to_csv(f"{output_dir}/results.csv", index=False)
     print(f"Aggregated results.csv file is saved in the directory: {output_dir}.")
+
+def main():
+    # Ask about paths with data and output directory to save results
+    nuclei_dir = input("Enter pathway to the directory with the information about nuclei (Area and Mean): ")
+    foci_dir = input("Enter pathway to the directory with the information about foci (ThunderSTORM output): ")
+    while True:
+        answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
+        if answer == "Y":
+            output_dir = foci_dir
+            break
+        elif answer == "N":
+            output_dir = input("Enter output folder path: ").strip()
+            break
+        else:
+            print("Please enter Y or N.")
  
 if __name__ == "__main__":
-    p1 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new" # path to directory with nucleus Area and Mean
-    p2 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run" # path to ThunderSTORM data
-    output_dir = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run"
+    main()
+    #p1 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new" # path to directory with nucleus Area and Mean
+    #p2 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run" # path to ThunderSTORM data
+    #output_dir = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run"
+
+
     
-    main(p1, p2, output_dir)
+    
