@@ -1,12 +1,11 @@
 import os
-
-from pathlib import Path
-import re
+#from pathlib import Path
+#import re
 import pandas as pd
 import numpy as np
 from PIL import Image
-#from skimage.color import rgb2gray
-#from skimage.draw import disk
+from skimage.color import rgb2gray
+from skimage.draw import disk
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
@@ -32,11 +31,50 @@ def check_directory(path):
     return os.path.abspath(path)
 
 
-def _key_from_img(p: Path) -> str:
+def filename(path):
     """
-    C2...nd2_(series_01).jpg -> C2...nd2_(series_01)
+    Return filename without extenstion
     """
-    return p.stem  # no .extention
+    return os.path.splitext(os.path.basename(path))[0]
+
+def draw_foci_with_radius(image_path, df, px_size_um, output_path):
+    # Load image
+    image = Image.open(image_path)
+    image_name = filename(image_path)
+    arr = np.array(image) # convert image to numpy matrix
+
+    # Plot image
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(arr, cmap="gray")
+
+    # Draw red circles
+    for _, row in df.iterrows():
+
+        x_px = row["x_um"] / px_size_um
+        y_px = row["y_um"] / px_size_um
+        r_px = row["sigma_um"] / px_size_um
+
+        circle = Circle(
+            (x_px, y_px),
+            r_px,
+            fill=False,
+            edgecolor="red",
+            linewidth=1
+        )
+
+        ax.add_patch(circle)
+
+    # Match image coordinates
+    ax.set_xlim(0, arr.shape[1])
+    ax.set_ylim(arr.shape[0], 0)
+
+    # Save imafe
+    plt.savefig(
+        f"{output_path}/{image_name}.png",
+        dpi=300,
+        bbox_inches="tight"
+    )
+
 
 def MFI_foci(
         image_path,
