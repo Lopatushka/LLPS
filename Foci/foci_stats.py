@@ -257,22 +257,21 @@ def foci_all(dir_images, dir_foci):
 
         print(f"File {name}: keep {filtered.shape[0]} out of {result.shape[0]} foci. Number of outliers: {n_outliers}")
         
-        # Export
-        new_name = key_from_csv(file) + "_extent.csv"
-        new_path = file.with_name(new_name)
+        # Export fileterd results
+        new_name = name + "_extent.csv"
+        new_path = os.path.join(dir_foci, new_name)
         filtered.to_csv(new_path, index=False) # export new extended dataframe
 
         # Plot histogram of foci mean and intensity and save it
-        plot_path = file.with_name(key_from_csv(file) + "_hist.jpg")
+        hist_name = name + "_hist.jpg"
+        plot_path = os.path.join(dir_foci, hist_name)
         plot_histogram(df = filtered, column = "mean_intensity", bins=50,
                    xlabel="Foci mean intensity",
-                   title=key_from_csv(file),
+                   title=name,
                    figsize=(4, 3),
                    dpi=300,
                    save_path=plot_path,
                    threshold = upper_bound)
-
-        #print(f"File {new_name} is saved.")
     
 def aggregation_foci(dir):
     path_files = Path(str(dir).strip())
