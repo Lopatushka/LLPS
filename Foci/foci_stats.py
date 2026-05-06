@@ -201,7 +201,7 @@ def foci_all(dir_images, dir_foci):
     os.path.join(dir_images, f)
     for f in os.listdir(dir_images)
     if os.path.isfile(os.path.join(dir_images, f))
-    and f.lower().endswith(".tif")   
+    and f.lower().endswith(".tif") and "_ROI_".lower() in f.lower()
     ]
 
     paths_foci_csv = [
@@ -221,22 +221,10 @@ def foci_all(dir_images, dir_foci):
         raise FileNotFoundError(f"No .csv files founded in the directory: {dir_foci}")
     if n_images != n_csv_files:
         raise FileNotFoundError("Different amount of images and corresponding .csv files!")
-
-
-    
-    # Check that there are files
-    images = sorted(images_path.glob("*.tif"))
-    if not images:
-        raise FileNotFoundError(f"No .TIF files found in: {images_path}")
-    foci = sorted(
-        f for f in foci_data_path.glob("*.csv")
-        if not f.stem.endswith(("_roi", "_extent"))
-    )
-    if not foci:
-         raise FileNotFoundError(f"No .CSV files found in: {foci_data_path}")
     
     # --- Make list of tuples called pairs = [(image_path, csv foci filem path)] ---
-    img_by_key = {key_from_img(p): p for p in images} # dictionary {image name: image path}
+    # Create a dictionary: 
+    img_by_key = {filename(image_name): image_name for image_name in paths_images} # dictionary {image name: image path}
     pairs = []
     for f in foci:
         k = key_from_csv(f)
