@@ -47,7 +47,7 @@ def ask_params_for_thunderstorm():
 
     # ---- Camera parameters ----
     gd.addNumericField("Pixel size:", 58.7, 1)
-    gd.addNumericField("Photoelectrons per ADU:", 3.6, 1)
+    gd.addNumericField("Photoelectrons per ADU:", 1.0, 1)
     gd.addNumericField("Quantum efficiency (0..1):", 1, 1)
     gd.addNumericField("ADU offset:", 0, 1)
     gd.addNumericField("Electrons/pixel:", 1, 1)
