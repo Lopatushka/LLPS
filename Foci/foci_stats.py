@@ -32,7 +32,7 @@ def check_directory(path):
     return os.path.abspath(path)
 
 
-def key_from_img(p: Path) -> str:
+def _key_from_img(p: Path) -> str:
     """
     C2...nd2_(series_01).jpg -> C2...nd2_(series_01)
     """
@@ -104,7 +104,7 @@ def MFI_foci(
 
         return df_out
 
-def nuclei_data(dir):
+def nuclei_data(dir, output_dir):
     paths_csv_files = [
     os.path.join(dir, f)
     for f in os.listdir(dir)
@@ -137,7 +137,10 @@ def nuclei_data(dir):
         df = df[["Filename", "Nucleus_area", "Nucleus_MFI"]] # change columns order
         dfs.append(df) # add df to the list of dataframes
 
+    # Make final dataframe and export
     final = pd.concat(dfs, ignore_index=True)
+    final.to_csv(f"{output_dir}/nuclei_results.csv", index=False)
+
     return final
 
 def plot_histogram(df, column, bins=50,
@@ -328,6 +331,7 @@ def main():
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
         if answer == "Y":
             #output_dir = foci_dir
+            output_dir = nuclei_dir # temporaly!!!
             break
         elif answer == "N":
             #output_dir = check_directory(input("Enter output folder path: ").strip())
@@ -336,8 +340,7 @@ def main():
             print("Please enter Y or N.")
 
     # --- Processed nuclei info (Area, Mean) ---
-    nuclei_info = nuclei_data(nuclei_dir)
-    print(nuclei_info)
+    nuclei_info = nuclei_data(nuclei_dir, output_dir)
 
 
  
