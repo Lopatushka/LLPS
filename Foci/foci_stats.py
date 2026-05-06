@@ -9,6 +9,7 @@ from skimage.draw import disk
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
+import math
 
 def check_directory(path):
     if not isinstance(path, str):
@@ -38,18 +39,42 @@ def filename(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 def draw_foci_with_radius(image_path, df, px_size_um, output_path):
-    # Load image
-    image = Image.open(image_path)
-    image_name = filename(image_path)
+
+
+
+
+
+
+
+def foci_one_image(image_path, df, px_size_um, output_path):
+    image = Image.open(image_path)  # load image
+    image_name = filename(image_path) # get image name
     arr = np.array(image) # convert image to numpy matrix
+    H, W = arr.shape # get number of pixels (512*512 for 16-bit image)
+
+    # Iteration through the thunderSTORM dataframe
+    for _, row in df.iterrows():
+        x_px = int(row["x_um"] / px_size_um)
+        y_px = int(row["y_um"] / px_size_um)
+        r_px = math.ceil(row["sigma_um"] / px_size_um)
+
+        # Build circular mask (clipped automatically)
+        rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
+        mask = np.zeros((H, W), dtype=bool)
+        mask[rr, cc] = True
+
+        # Compute mean intensity
+        if mask.sum() > 0:
+            mean_intensity = arr[mask].mean()
+        else:
+            mean_intensity = np.nan
 
     # Plot image
-    fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(arr, cmap="gray")
+    #fig, ax = plt.subplots(figsize=(8, 8))
+    #ax.imshow(arr, cmap="gray")
 
     # Draw red circles
     for _, row in df.iterrows():
-
         x_px = row["x_um"] / px_size_um
         y_px = row["y_um"] / px_size_um
         r_px = row["sigma_um"] / px_size_um
@@ -79,57 +104,9 @@ def draw_foci_with_radius(image_path, df, px_size_um, output_path):
     plt.close(fig)
 
 
-def MFI_foci(
-        image_path,
-        df,
-        px_size_ts_x = 11.6,
-        px_size_ts_y = 11.6,
-        px_size_x = 57.5,
-        px_size_y = 58.7,
-        x_col="x [nm]",
-        y_col="y [nm]",
-        sigma_col="sigma [nm]"
-    ):
 
-        # Open image
-        image = Image.open(image_path).convert("RGB")
 
-        # Convert image to grayscale
-        gray = rgb2gray(image)
-        H, W = gray.shape # number of pixels
-
-        # Scaling factors
-        sx = px_size_ts_x/px_size_x
-        sy = px_size_ts_y/px_size_y
-        ssigma = np.mean([px_size_ts_x, px_size_ts_y]) / np.mean([px_size_x, px_size_y])
-
-        # Storage lists
-        x_list = []
-        y_list = []
-        sigma_list = []
-        mean_list = []
-
-        for _, row in df.iterrows():
-            x_nm = row[x_col]
-            y_nm = row[y_col]
-            sigma_nm = row[sigma_col]
-
-            # original pixels → current image pixels
-            x_px = int(round(sx * x_nm / px_size_ts_x))
-            y_px = int(round(sy * y_nm / px_size_ts_y))
-            sigma_px = max(1, int(round(ssigma * sigma_nm / np.mean([px_size_ts_x, px_size_ts_y])))) # minimal possible value is 1 pixel!
-
-            # Build circular mask (clipped automatically)
-            rr, cc = disk((y_px, x_px), sigma_px, shape=(H, W))
-            mask = np.zeros((H, W), dtype=bool)
-            mask[rr, cc] = True
-            disk((y_px, x_px), sigma_px, shape=(H, W))
-
-            # Compute mean intensity
-            if mask.sum() > 0:
-                mean_intensity = gray[mask].mean()
-            else:
-                mean_intensity = np.nan
+ 
 
             x_list.append(x_px)
             y_list.append(y_px)
