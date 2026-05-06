@@ -46,12 +46,12 @@ def ask_params_for_thunderstorm():
     gd.addChoice("Renderer:", ["No Renderer", "Gaussian rendering"], "No Renderer")
 
     # ---- Camera parameters ----
-    gd.addNumericField("Pixel size:", 58.1, 1)
+    gd.addNumericField("Pixel size:", 58.7, 1)
     gd.addNumericField("Photoelectrons per ADU:", 3.6, 1)
-    gd.addNumericField("Quantum efficiency (0..1):", 0.8, 1)
+    gd.addNumericField("Quantum efficiency (0..1):", 1, 1)
     gd.addNumericField("ADU offset:", 0, 1)
-    gd.addNumericField("Electrons/pixel:", 1.5, 1)
-    gd.addNumericField("EMCCD gain:", 100, 1)
+    gd.addNumericField("Electrons/pixel:", 1, 1)
+    gd.addNumericField("EMCCD gain:", 1, 1)
 
     gd.showDialog()
     if gd.wasCanceled():
