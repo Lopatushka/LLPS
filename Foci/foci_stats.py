@@ -70,10 +70,13 @@ def draw_foci_with_radius(image_path, df, px_size_um, output_path):
 
     # Save imafe
     plt.savefig(
-        f"{output_path}/{image_name}.png",
+        f"{output_path}/{image_name}_foci_sigma.png",
         dpi=300,
         bbox_inches="tight"
     )
+
+    # Do not display image
+    plt.close(fig)
 
 
 def MFI_foci(
@@ -378,7 +381,7 @@ def main():
             print("Please enter Y or N.")
 
     # --- Processed nuclei info (Area, Mean) ---
-    nuclei_info = nuclei_data(nuclei_dir, output_dir)
+    nuclei_info = nuclei_data(nuclei_dir, output_dir) # export results
 
 
  
