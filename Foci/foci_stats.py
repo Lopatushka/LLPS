@@ -330,24 +330,22 @@ def _main1(p1, p2, output_dir):
 
 def main():
     # Ask about paths with data and output directory to save results
-    nuclei_dir = input("Enter pathway to the directory with the information about nuclei (Area and Mean): ")
-    foci_dir = input("Enter pathway to the directory with the information about foci (ThunderSTORM output): ")
+    # Example of path: /mnt/c/users/elopatukhin/Desktop/Miscroscopy/160226_U2OS_fixed/MP_WT_0.3
+    nuclei_dir = check_directory(input("Enter pathway to the directory with the information about nuclei (Area and Mean): "))
+    foci_dir = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
         if answer == "Y":
             output_dir = foci_dir
             break
         elif answer == "N":
-            output_dir = input("Enter output folder path: ").strip()
+            output_dir = check_directory(input("Enter output folder path: ").strip())
             break
         else:
             print("Please enter Y or N.")
  
 if __name__ == "__main__":
     main()
-    #p1 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new" # path to directory with nucleus Area and Mean
-    #p2 = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run" # path to ThunderSTORM data
-    #output_dir = "/mnt/c/users/Elena/Desktop/Data_processing/020226/WT_new_run"
 
 
     
