@@ -122,11 +122,23 @@ def nuclei_data(dir):
     dfs = []
     for f in paths_csv_files:
         filname = os.path.splitext(os.path.basename(f))[0]
-        print(filname)
-        #df = pd.read_csv(f)
-        #df.columns = df.columns.str.strip()  # remove hidden spaces in headers
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
 
-    #print(df)
+        # Ensure expected columns exist
+        if "Area" not in df.columns or "Mean" not in df.columns:
+            raise KeyError(
+                f"In nuclei file {f.name} expected columns 'Area' and 'Mean'. "
+                f"Found: {list(df.columns)}"
+            )
+        
+        df["Filename"] = filname # Add Filename column
+        df = df.rename(columns={"Area": "Nucleus_area", "Mean": "Nucleus_MFI"}) # Rename columns
+        df = df[["Filename", "Nucleus_area", "Nucleus_MFI"]] # change columns order
+        dfs.append(df) # add df to the list of dataframes
+
+    final = pd.concat(dfs, ignore_index=True)
+    return final
 
 
 def _aggregate_nuclei_data(dir_nuclei_stat):
