@@ -165,3 +165,76 @@ def plot_histogram(df, column, bins=50,
         plt.savefig(save_path, dpi=dpi, bbox_inches="tight")
 
     plt.close(fig)
+
+
+def main():
+    # Ask about paths with data and output directory to save results
+    # Example of path: /mnt/c/users/elopatukhin/Desktop/Miscroscopy/160226_U2OS_fixed/MP_WT_0.3
+
+    #nuclei_dir = check_directory(input("Enter pathway to the directory with the information about nuclei (Area and Mean): "))
+    dir_images = check_directory(input("Enter pathway to the directory with the images: "))
+    dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
+    px = float(input("Enter the pixel size in nm [default value is 58.739]: ") or 58.739)
+
+    while True:
+        answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
+        if answer == "Y":
+            output_dir = dir_foci
+            #output_dir = nuclei_dir # temporaly!!!
+            break
+        elif answer == "N":
+            output_dir = check_directory(input("Enter output folder path: ").strip())
+            break
+        else:
+            print("Please enter Y or N.")
+
+    # --- Processed nuclei info (Area, Mean) ---
+    #nuclei_info = nuclei_data(nuclei_dir, output_dir) # export results
+
+    # --- Process foci data ---
+    # List of paths to the images
+    paths_images = [
+    os.path.join(dir_images, f)
+    for f in os.listdir(dir_images)
+    if os.path.isfile(os.path.join(dir_images, f))
+    and f.lower().endswith(".tif") and "_ROI_".lower() in f.lower()
+    ]
+
+    # List of paths to the foci.csv
+    paths_foci_csv = [
+        os.path.join(dir_foci, f)
+        for f in os.listdir(dir_foci)
+        if os.path.isfile(os.path.join(dir_foci, f))
+        and f.lower().endswith(".csv")   
+        ]
+
+    # Create dictionaries
+    img_by_key = {filename(image_name): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
+    csv_by_key = {filename(csv_name)[:-5]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
+
+    n_images = len(combined)
+    print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
+
+    # Create empty list
+    all_foci = []
+
+    # Iteration through combined dictioanry
+    for name, (img_path, csv_path) in combined.items():
+        df = pd.read_csv(csv_path)
+        
+        # Foci analysis and plot
+        result = foci_one_image(img_path,
+                                df,
+                                px_size_nm = px,
+                                output_path = output_dir,
+                                plot = True,
+                                show_plot = False,
+                                save_image = True)
+        all_foci.append(result)
+
+
+
+ 
+if __name__ == "__main__":
+    main()
