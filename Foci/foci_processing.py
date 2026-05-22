@@ -241,6 +241,17 @@ def main():
         IQR = Q3 - Q1
         upper_bound = Q3 + 3 * IQR
 
+        # Plot histogram for sigma_nm with upper bound
+        path_to_hist = os.path.join(dir_images, f"{name}_hist.png")
+        plot_histogram(df = result, column = "sigma_nm", bins=50,
+                   xlabel= "Sigma, nm",
+                   title = name,
+                   figsize=(4, 3),
+                   dpi=300,
+                   save_image = True,
+                   save_path=path_to_hist,
+                   threshold = upper_bound)
+
         # Make filtration for Sigma_nm
         result_filetered = result[result["sigma_nm"] <= upper_bound]
 
