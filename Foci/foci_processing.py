@@ -192,6 +192,7 @@ def main():
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
     px = float(input("Enter the pixel size in nm [default value is 58.739]: ") or 58.739)
+    resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 75 nm]: ") or 75)
 
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
@@ -263,6 +264,9 @@ def main():
                                 plot = True,
                                 save_path = f"{new_dir_foci_mapped}/{name}_mapped.png")
         
+        # Imply the resolution threshold
+        result = result[result["sigma_nm"] >= resolution_threshold]
+             
         # --- Save results ---
         path_to_result = os.path.join(new_dir_to_foci, f"{name}.csv")
         result.to_csv(path_to_result, index=False)
