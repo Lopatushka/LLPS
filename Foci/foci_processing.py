@@ -248,8 +248,7 @@ def main():
         path_to_result_filtered = os.path.join(dir_images, f"{name}_filtered.csv")
         result_filetered.to_csv(path_to_result_filtered, index=False)
 
-
-
+        print(f"Sucessfully processed image {name}.")
 
  
 if __name__ == "__main__":
