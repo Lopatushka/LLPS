@@ -193,6 +193,7 @@ def main():
     dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
     px = float(input("Enter the pixel size in nm [default value is 58.739]: ") or 58.739)
     resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 75 nm]: ") or 75)
+    upper_bound = float(input("Enter the upper bound threshold for sigma in nm [default value is 230 nm]: ") or 230)
 
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
@@ -270,10 +271,10 @@ def main():
         result.to_csv(path_to_result, index=False)
         
         # Make a threshold for Sigma_nm
-        Q1 = np.percentile(result["sigma_nm"], 25)
-        Q3 = np.percentile(result["sigma_nm"], 75)
-        IQR = Q3 - Q1
-        upper_bound = Q3 + 3 * IQR
+        #Q1 = np.percentile(result["sigma_nm"], 25)
+        #Q3 = np.percentile(result["sigma_nm"], 75)
+        #IQR = Q3 - Q1
+        #upper_bound = Q3 + 3 * IQR
 
         # Plot histogram for sigma_nm with upper bound and save the plot
         path_to_hist = os.path.join(new_dir_to_hist, f"{name}.png")
