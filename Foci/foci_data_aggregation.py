@@ -40,6 +40,9 @@ def foci_data(dir, output_dir):
     if n == 0:
         raise FileNotFoundError(f"No CSV files found in the directory: {dir}")
     print(f"Founded {n} .csv files")
+
+    # Create a list of dictionaries
+    rows = []
     
     # Create list of dataframes
     for f in paths_csv_files:
@@ -62,6 +65,25 @@ def foci_data(dir, output_dir):
 
         foci_MFI_mean = df["foci_MFI"].mean()
         foci_MFI_sd = df["foci_MFI"].sd()
+
+        rows.append({
+            "filname": name,
+            "n_foci": n_foci,
+            "sigma_nm_mean": sigma_nm_mean,
+            "sigma_nm_sd": sigma_nm_sd,
+            "intensity_photon_mean": intensity_photon_mean,
+            "intensity_photon_sd": intensity_photon_sd,
+            "sigma_pixel_mean": sigma_pixel_mean,
+            "sigma_pixel_sd": sigma_pixel_sd,
+            "foci_MFI_mean": foci_MFI_mean,
+            "foci_MFI_sd": foci_MFI_sd
+        })
+
+    final = pd.DataFrame(rows)
+
+    # Save final file
+    path_to_save = os.path.join(output_dir, "foci_aggregation.csv")
+    final.to_csv(path_to_save, index=False)
 
 
 def main():
