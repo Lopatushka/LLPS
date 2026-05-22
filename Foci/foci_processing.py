@@ -35,6 +35,46 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
+def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""):
+    # Load image
+    image = Image.open(image_path)
+    image_name = filename(image_path)
+    arr = np.array(image) # convert image to numpy matrix
+
+    # Plot image
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(arr, cmap="gray")
+
+    # Draw red circles
+    for _, row in df.iterrows():
+        circle = Circle(
+            (df["x_pixel"], df["y_pixel"]),
+            df["sigma_pixel"],
+            fill=False,
+            edgecolor="red",
+            linewidth=1
+        )
+
+        ax.add_patch(circle)
+
+    # Match image coordinates
+    ax.set_xlim(0, arr.shape[1])
+    ax.set_ylim(arr.shape[0], 0)
+
+    # Show image
+    if showplot:
+        plt.show(fig)
+
+    # Save image
+    if save_image: 
+        plt.savefig(save_path,
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+        # Do not display image
+        plt.close(fig)
+
 def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, save_image = True, save_path = ""):
     image = Image.open(image_path)  # load image
     image_name = filename(image_path) # get image name
@@ -69,7 +109,6 @@ def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, sa
             mean_intensity = arr[mask].mean()
         else:
             mean_intensity = np.nan
-        #print(x_px, x_px, r_px, n_pixels_mask, mean_intensity)
 
         # Add values to the corresponding lists
         x_list.append(x_px)
