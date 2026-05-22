@@ -35,7 +35,7 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def foci_one_image(image_path, df, px_size_nm, output_path, plot = True, show_plot = True, save_image = True):
+def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, save_image = True, save_path = ""):
     image = Image.open(image_path)  # load image
     image_name = filename(image_path) # get image name
     arr = np.array(image) # convert image to numpy matrix
@@ -114,8 +114,7 @@ def foci_one_image(image_path, df, px_size_nm, output_path, plot = True, show_pl
 
         # Save image
         if save_image:
-            plt.savefig(
-                f"{output_path}/{image_name}_sigma.png",
+            plt.savefig(save_path,
                 dpi=300,
                 bbox_inches="tight"
             )
@@ -226,10 +225,11 @@ def main():
         result = foci_one_image(img_path,
                                 df,
                                 px_size_nm = px,
-                                output_path = output_dir,
-                                plot = False,
+                                plot = True,
                                 show_plot = False,
-                                save_image = False)
+                                save_image = True,
+                                save_path = f"{output_dir}/{name}_foci_map.png")
+        
         # Save results
         path_to_result = os.path.join(output_dir, f"{name}_foci_processed.csv")
         result.to_csv(path_to_result, index=False)
