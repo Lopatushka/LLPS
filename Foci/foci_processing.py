@@ -35,7 +35,6 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-
 def foci_one_image(image_path, df, px_size_nm, output_path, plot = True, show_plot = True, save_image = True):
     image = Image.open(image_path)  # load image
     image_name = filename(image_path) # get image name
@@ -217,7 +216,7 @@ def main():
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
 
     # Create empty list
-    all_foci = []
+    #all_foci = []
 
     # Iteration through combined dictioanry
     for name, (img_path, csv_path) in combined.items():
@@ -231,7 +230,10 @@ def main():
                                 plot = False,
                                 show_plot = False,
                                 save_image = False)
-        all_foci.append(result)
+        # Save results
+        path_to_result = os.path.join(dir_images, f"{name}.csv")
+        result.to_csv(path_to_result, index=False)
+        #all_foci.append(result)
         
         # Make a threshold for Sigma_nm
         Q1 = np.percentile(result)
@@ -241,6 +243,10 @@ def main():
 
         # Make filtration for Sigma_nm
         result_filetered = result[result["sigma_nm"] <= upper_bound]
+
+        # Save filtered results
+        path_to_result_filtered = os.path.join(dir_images, f"{name}_filtered.csv")
+        result_filetered.to_csv(path_to_result_filtered, index=False)
 
 
 
