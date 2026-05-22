@@ -38,7 +38,7 @@ def filename(path):
 def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""):
     # Load image
     image = Image.open(image_path)
-    image_name = filename(image_path)
+    #image_name = filename(image_path)
     arr = np.array(image) # convert image to numpy matrix
 
     # Plot image
@@ -253,9 +253,6 @@ def main():
     n_images = len(combined)
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
 
-    # Create empty list
-    #all_foci = []
-
     # Iteration through combined dictioanry
     for name, (img_path, csv_path) in combined.items():
         df = pd.read_csv(csv_path)
@@ -295,8 +292,16 @@ def main():
         result_filetered = result[result["sigma_nm"] <= upper_bound]
 
         # Save filtered results
-        path_to_result_filtered = os.path.join(dir_images, f"{name}_foci_processed_filtered.csv")
+        path_to_result_filtered = os.path.join(output_dir, f"{name}_foci_processed_filtered.csv")
         result_filetered.to_csv(path_to_result_filtered, index=False)
+
+        # Plot foci from filtered dataframe
+        save_foci_filtered = os.path.join(output_dir, f"{name}_foci_map_filtered.png")
+        draw_foci(image_path = img_path,
+                  df = result_filetered,
+                  showplot = False,
+                  save_image = True,
+                  save_path = save_foci_filtered)
 
         print(f"Sucessfully processed image {name}.")
 
