@@ -1,13 +1,6 @@
 import os
 import pandas as pd
-import numpy as np
-from PIL import Image
-from skimage.color import rgb2gray
-from skimage.draw import disk
-from matplotlib.patches import Circle
-import matplotlib.pyplot as plt
-from scipy.stats import spearmanr
-import math
+#from scipy.stats import spearmanr
 
 def check_directory(path):
     if not isinstance(path, str):
@@ -73,6 +66,8 @@ def nuclei_data(dir, output_dir):
     # Make final dataframe and export
     final = pd.concat(dfs, ignore_index=True)
     final.to_csv(f"{output_dir}/nuclei_results.csv", index=False)
+
+    print("Sucessfylly finished with nuclei data aggregation.")
 
 
 def _sprearman_correlation(df):
