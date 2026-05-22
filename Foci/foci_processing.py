@@ -29,6 +29,11 @@ def check_directory(path):
 
     return os.path.abspath(path)
 
+def create_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+        print(f"The directrory {path} is created.")
+
 def filename(path):
     """
     Return filename without extenstion
@@ -184,7 +189,6 @@ def main():
     # Ask about paths with data and output directory to save results
     # Example of path: /mnt/c/users/elopatukhin/Desktop/Miscroscopy/160226_U2OS_fixed/MP_WT_0.3
 
-    #nuclei_dir = check_directory(input("Enter pathway to the directory with the information about nuclei (Area and Mean): "))
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
     px = float(input("Enter the pixel size in nm [default value is 58.739]: ") or 58.739)
@@ -200,9 +204,6 @@ def main():
             break
         else:
             print("Please enter Y or N.")
-
-    # --- Processed nuclei info (Area, Mean) ---
-    #nuclei_info = nuclei_data(nuclei_dir, output_dir) # export results
 
     # --- Process foci data ---
     # List of paths to the images
@@ -229,6 +230,28 @@ def main():
     n_images = len(combined)
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
 
+    # --- Create new directories to save data ---
+    # Dir to store foci.csv extended
+    new_dir_to_foci = os.path.join(output_dir, "foci_ext")
+    create_dir(new_dir_to_foci)
+
+    # Dir to store histograms
+    new_dir_to_hist = os.path.join(output_dir, "hists")
+    create_dir(new_dir_to_hist)
+    
+    # Dir to store foci.csv extended and filtered
+    new_dir_to_foci_filtered = os.path.join(output_dir, "foci_ext_filtr")
+    create_dir(new_dir_to_foci_filtered)
+
+    # Dir to store mapped foci images
+    new_dir_foci_mapped = os.path.join(output_dir, "foci_mapped")
+    create_dir(new_dir_foci_mapped)
+
+    # Dir to store mapped and filtered foci images
+    new_dir_foci_mapped_filtr = os.path.join(output_dir, "foci_mapped_filtr")
+    create_dir(new_dir_foci_mapped_filtr)
+    
+
     # Iteration through combined dictioanry
     for name, (img_path, csv_path) in combined.items():
         df = pd.read_csv(csv_path)
@@ -238,12 +261,11 @@ def main():
                                 df,
                                 px_size_nm = px,
                                 plot = True,
-                                save_path = f"{output_dir}/{name}_foci_map.png")
+                                save_path = f"{new_dir_foci_mapped}/{name}_mapped.png")
         
-        # Save results
-        path_to_result = os.path.join(output_dir, f"{name}_foci_processed.csv")
+        # --- Save results ---
+        path_to_result = os.path.join(new_dir_to_foci, f"{name}.csv")
         result.to_csv(path_to_result, index=False)
-        #all_foci.append(result)
         
         # Make a threshold for Sigma_nm
         Q1 = np.percentile(result["sigma_nm"], 25)
@@ -252,7 +274,7 @@ def main():
         upper_bound = Q3 + 3 * IQR
 
         # Plot histogram for sigma_nm with upper bound and save the plot
-        path_to_hist = os.path.join(output_dir, f"{name}_sigma_hist.png")
+        path_to_hist = os.path.join(new_dir_to_hist, f"{name}.png")
         plot_histogram(df = result, column = "sigma_nm", bins=50,
                    xlabel= "Sigma, nm",
                    title = name,
@@ -266,11 +288,11 @@ def main():
         result_filetered = result[result["sigma_nm"] <= upper_bound]
 
         # Save filtered results
-        path_to_result_filtered = os.path.join(output_dir, f"{name}_foci_processed_filtered.csv")
+        path_to_result_filtered = os.path.join(new_dir_to_foci_filtered, f"{name}.csv")
         result_filetered.to_csv(path_to_result_filtered, index=False)
 
         # Plot foci from filtered dataframe
-        save_foci_filtered = os.path.join(output_dir, f"{name}_foci_map_filtered.png")
+        save_foci_filtered = os.path.join(new_dir_foci_mapped_filtr, f"{name}_mapped_filtered.png")
         draw_foci(image_path = img_path,
                   df = result_filetered,
                   showplot = False,
