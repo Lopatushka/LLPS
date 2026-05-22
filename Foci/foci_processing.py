@@ -236,12 +236,12 @@ def main():
         #all_foci.append(result)
         
         # Make a threshold for Sigma_nm
-        Q1 = np.percentile(result)
+        Q1 = np.percentile(result, 25)
         Q3 = np.percentile(result["sigma_nm"], 75)
         IQR = Q3 - Q1
         upper_bound = Q3 + 3 * IQR
 
-        # Plot histogram for sigma_nm with upper bound
+        # Plot histogram for sigma_nm with upper bound and save the plot
         path_to_hist = os.path.join(dir_images, f"{name}_hist.png")
         plot_histogram(df = result, column = "sigma_nm", bins=50,
                    xlabel= "Sigma, nm",
