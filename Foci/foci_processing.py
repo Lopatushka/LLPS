@@ -264,9 +264,7 @@ def main():
                                 plot = True,
                                 save_path = f"{new_dir_foci_mapped}/{name}_mapped.png")
         
-        # Imply the resolution threshold
-        result = result[result["sigma_nm"] >= resolution_threshold]
-             
+      
         # --- Save results ---
         path_to_result = os.path.join(new_dir_to_foci, f"{name}.csv")
         result.to_csv(path_to_result, index=False)
@@ -289,16 +287,19 @@ def main():
                    threshold = upper_bound)
 
         # Make filtration for Sigma_nm
-        result_filetered = result[result["sigma_nm"] <= upper_bound]
+        result_filtered = result[
+            (result["sigma_nm"] >= resolution_threshold) &
+            (result["sigma_nm"] <= upper_bound)
+        ]
 
         # Save filtered results
         path_to_result_filtered = os.path.join(new_dir_to_foci_filtered, f"{name}.csv")
-        result_filetered.to_csv(path_to_result_filtered, index=False)
+        result_filtered.to_csv(path_to_result_filtered, index=False)
 
         # Plot foci from filtered dataframe
         save_foci_filtered = os.path.join(new_dir_foci_mapped_filtr, f"{name}_mapped_filtered.png")
         draw_foci(image_path = img_path,
-                  df = result_filetered,
+                  df = result_filtered,
                   showplot = False,
                   save_image = True,
                   save_path = save_foci_filtered)
