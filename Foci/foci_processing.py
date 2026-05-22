@@ -47,9 +47,13 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
 
     # Draw red circles
     for _, row in df.iterrows():
+        x = row["x_pixel"]
+        y = row["y_pixel"]
+        r = row["sigma_pixel"]
+
         circle = Circle(
-            (row["x_pixel"], row["y_pixel"]),
-            row["sigma_pixel"],
+            (x, y),
+            r,
             fill=False,
             edgecolor="red",
             linewidth=1
