@@ -27,8 +27,42 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def foci_data():
-    return
+def foci_data(dir, output_dir):
+    paths_csv_files = [
+    os.path.join(dir, f)
+    for f in os.listdir(dir)
+    if os.path.isfile(os.path.join(dir, f))
+    and f.lower().endswith(".csv")
+    ]
+
+    # Number of .csv files and check
+    n = len(paths_csv_files)
+    if n == 0:
+        raise FileNotFoundError(f"No CSV files found in the directory: {dir}")
+    print(f"Founded {n} .csv files")
+    
+    # Create list of dataframes
+    for f in paths_csv_files:
+        name = filename(f)
+        df = pd.read_csv(f)
+        df.columns = df.columns.str.strip()  # remove hidden spaces in headers
+
+        # Number of foci
+        n_foci = df.shape[0]
+
+        # Calculate mean and sd values
+        sigma_nm_mean = df["sigma_nm"].mean()
+        sigma_nm_sd = df["sigma_nm"].sd()
+
+        intensity_photon_mean = df["intensity_photon"].mean()
+        intensity_photon_sd = df["intensity_photon"].sd()
+
+        sigma_pixel_mean = df["sigma_pixel"].mean()
+        sigma_pixel_sd = df["sigma_pixel"].sd()
+
+        foci_MFI_mean = df["foci_MFI"].mean()
+        foci_MFI_sd = df["foci_MFI"].sd()
+
 
 def main():
     # Ask about paths with data and output directory to save results
