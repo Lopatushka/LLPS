@@ -228,10 +228,20 @@ def main():
                                 df,
                                 px_size_nm = px,
                                 output_path = output_dir,
-                                plot = True,
+                                plot = False,
                                 show_plot = False,
-                                save_image = True)
+                                save_image = False)
         all_foci.append(result)
+        
+        # Make a threshold for Sigma_nm
+        Q1 = np.percentile(result)
+        Q3 = np.percentile(result["sigma_nm"], 75)
+        IQR = Q3 - Q1
+        upper_bound = Q3 + 3 * IQR
+
+        # Make filtration for Sigma_nm
+        result_filetered = result[result["sigma_nm"] <= upper_bound]
+
 
 
 
