@@ -79,9 +79,9 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
         # Do not display image
         plt.close(fig)
 
-def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, save_image = True, save_path = ""):
+def foci_one_image(image_path, df, px_size_nm, plot = True, save_path = ""):
     image = Image.open(image_path)  # load image
-    image_name = filename(image_path) # get image name
+    #image_name = filename(image_path) # get image name
     arr = np.array(image) # convert image to numpy matrix
     H, W = arr.shape # get number of pixels (512*512 for 16-bit image)
 
@@ -93,7 +93,10 @@ def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, sa
 
     # Prepare dataframe
     df.columns = df.columns.str.strip()  # remove hidden spaces in headers
-    df = df.rename(columns={"x [nm]": "x_nm", "y [nm]": "y_nm", "sigma [nm]": "sigma_nm", "intensity [photon]": "intensity_photon"}) # Rename columns
+    df = df.rename(columns={"x [nm]": "x_nm",
+                            "y [nm]": "y_nm",
+                            "sigma [nm]": "sigma_nm",
+                            "intensity [photon]": "intensity_photon"}) # Rename columns
 
     # Iteration through the thunderSTORM dataframe
     for _, row in df.iterrows():
@@ -129,41 +132,46 @@ def foci_one_image(image_path, df, px_size_nm, plot = True, show_plot = True, sa
 
     # Make a plot
     if plot:
-        fig, ax = plt.subplots(figsize=(8, 8))
-        ax.imshow(arr, cmap="gray")
+        draw_foci(image_path = image_path,
+                  df = df_out,
+                  showplot = False,
+                  save_image = True,
+                  save_path = save_path)
+        #fig, ax = plt.subplots(figsize=(8, 8))
+        #ax.imshow(arr, cmap="gray")
 
-        for _, row in df_out.iterrows():
-            x = row["x_pixel"]
-            y = row["y_pixel"]
-            r = row["sigma_pixel"]
+        #for _, row in df_out.iterrows():
+            #x = row["x_pixel"]
+            #y = row["y_pixel"]
+            #r = row["sigma_pixel"]
 
-            circle = Circle(
-            (x, y),
-            r,
-            fill=False,
-            edgecolor="red",
-            linewidth=1
-            )
+            #circle = Circle(
+            #(x, y),
+            #r,
+            #fill=False,
+            #edgecolor="red",
+            #linewidth=1
+            #)
 
-            ax.add_patch(circle)
+            #ax.add_patch(circle)
         
         # Match image coordinates
-        ax.set_xlim(0, arr.shape[1])
-        ax.set_ylim(arr.shape[0], 0)
+        #ax.set_xlim(0, arr.shape[1])
+        #ax.set_ylim(arr.shape[0], 0)
 
         # Show plot
-        if show_plot:
-            plt.show(fig)
+        #if show_plot:
+        #    plt.show(fig)
 
         # Save image
-        if save_image:
-            plt.savefig(save_path,
-                dpi=300,
-                bbox_inches="tight"
-            )
+        #if save_image:
+        #    plt.savefig(save_path,
+        #        dpi=300,
+        #        bbox_inches="tight"
+        #    )
 
         # Do not display image
-        plt.close(fig)
+        #plt.close(fig)
 
     return df_out
 
@@ -266,8 +274,6 @@ def main():
                                 df,
                                 px_size_nm = px,
                                 plot = True,
-                                show_plot = False,
-                                save_image = True,
                                 save_path = f"{output_dir}/{name}_foci_map.png")
         
         # Save results
