@@ -42,7 +42,7 @@ def nuclei_data(dir, output_dir):
     os.path.join(dir, f)
     for f in os.listdir(dir)
     if os.path.isfile(os.path.join(dir, f))
-    and f.lower().endswith("_roi.csv")
+    and f.lower().endswith("_rois.csv")
     ]
 
     # Number of .csv files and check
