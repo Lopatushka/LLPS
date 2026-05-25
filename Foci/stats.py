@@ -86,6 +86,72 @@ def add_stat_bracket(ax, x1, x2, y, h, text):
     ax.plot([x1, x1, x2, x2], [y, y+h, y+h, y], color="black", linewidth=1)
     ax.text((x1 + x2) / 2, y + h, text, ha="center", va="bottom", fontsize=9)
 
+def compare_to_reference(
+    dfs,
+    col,
+    reference_idx=0,
+    equal_var=True,
+    alpha=0.05
+):
+    """
+    Compare all dataframes to a reference dataframe using t-test.
+
+    Parameters
+    ----------
+    dfs : list of pandas DataFrame
+    col : str
+        Column for comparison
+    reference_idx : int
+        Index of reference dataframe
+    equal_var : bool
+        Student t-test if True, Welch t-test if False
+    alpha : float
+        Significance threshold
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
+
+    reference = dfs[reference_idx]
+
+    results = []
+
+    for i, group in enumerate(dfs):
+
+        if i == reference_idx:
+            continue
+
+        x = reference[col].dropna()
+        y = group[col].dropna()
+
+        t_stat, p_value = ttest_ind(
+            x,
+            y,
+            equal_var=equal_var
+        )
+
+        results.append({
+            "comparison": f"dfs[{reference_idx}] vs dfs[{i}]",
+            "variable_name": col,
+            "n_reference": len(x),
+            "n_group": len(y),
+            "mean_reference": x.mean(),
+            "mean_group": y.mean(),
+            "std_reference": x.std(),
+            "std_group": y.std(),
+            "t_stat": t_stat,
+            "p_value": p_value,
+            "significant": p_value < alpha
+        })
+
+    result_df = pd.DataFrame(results)
+
+    result_df["p_value"] = result_df["p_value"].map(lambda x: f"{x:.3e}")
+    result_df["t_stat"] = result_df["t_stat"].map(lambda x: f"{x:.3f}")
+
+    return result_df
+
 def beautiful_boxplot(
     df_list,
     labels,
@@ -195,6 +261,12 @@ def main():
         {'name': 'PDS, 5 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv"},
         {'name': 'PDS, 20 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"}
     ]
+
+    # Index of Control sample in the list of dictionaries 
+    index_control = next(
+        i for i, item in enumerate(data)
+        if item["name"] == "Control"
+    )
     
     # Path to save plot
     path_plots = "/mnt/c/users/elopatukhin/Desktop/all_WT"
@@ -232,6 +304,16 @@ def main():
         # Take desired column 'var' of all dataframes.
         selected = [df[arg['var']] for df in dfs]
 
+        # Calculate statistics
+        stats = compare_to_reference(dfs = dfs,
+                            col = arg['var'],
+                            reference_idx=index_control,
+                            equal_var=True,
+                            alpha=0.05
+                            )
+        
+        print(stats)
+
         # Path to save plot
         plot_name = f"plot_{arg['var']}.png"
         full_path_to_save = os.path.join(path_plots, plot_name)
@@ -251,7 +333,7 @@ def main():
         dpi=300,
         show=False,
         stat_pairs=None,
-        save=True,
+        save=False,
         path_to_save = full_path_to_save
         )
         print(f"Plot for {arg['var']} is saved in the directory: {path_plots}")
