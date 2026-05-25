@@ -233,7 +233,7 @@ def beautiful_boxplot(
     ax.tick_params(axis="both", direction="out", length=4, width=1, labelsize=9)
 
     ax.set_xticks(range(1, len(labels) + 1))
-    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_xticklabels(labels, fontsize=9, rotation=45, ha="right")
 
     if xlabel:
         ax.set_xlabel(xlabel, fontsize=10)
