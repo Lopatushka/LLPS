@@ -292,8 +292,8 @@ def main():
     reference_name = 'Control'  
     data = [
         {'name': reference_name, 'path': "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv"},
-        {'name': 'PDS, 5 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv"},
-        {'name': 'PDS, 20 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"}
+        {'name': 'NC aptamer, 100 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/NC_100uM/foci_aggregation.csv"},
+        {'name': 'ORC1 aptamer, 100 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_Apt3_100uM/foci_aggregation.csv"}
     ]
 
     # Index of Control sample in the list of dictionaries 
