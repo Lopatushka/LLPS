@@ -288,9 +288,10 @@ def beautiful_boxplot(
     return fig, ax
 
 def main():
-    # Paths to tables with data   
+    # Paths to tables with data
+    reference_name = 'Control'  
     data = [
-        {'name': 'Control', 'path': "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv"},
+        {'name': reference_name, 'path': "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv"},
         {'name': 'PDS, 5 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv"},
         {'name': 'PDS, 20 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"}
     ]
@@ -372,7 +373,7 @@ def main():
         dpi=300,
         show=False,
         stats_df=stats,
-        reference_name="Control",
+        reference_name=reference_name,
         save=True,
         path_to_save = full_path_to_plot
         )
