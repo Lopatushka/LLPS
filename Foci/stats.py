@@ -272,8 +272,7 @@ def main():
     )
     
     # Path to save plot
-    path_plots = "/mnt/c/users/elopatukhin/Desktop/all_WT"
-    
+    output_dir = "/mnt/c/users/elopatukhin/Desktop/all_WT"
     
     # Arguments for boxplot
     args = [{
@@ -316,11 +315,17 @@ def main():
                                     alpha=0.05
                                     )
         
-        print(stats)
+        # Path to save statistics
+        stats_name = f"statistics_{arg['var']}.csv"
+        full_path_to_stats = os.path.join(output_dir, stats_name)
+
+        # Save statistics
+        stats.to_csv(full_path_to_stats, index=False)
+        print(f"Statistics for {arg['var']} is saved in the directory: {output_dir}")
 
         # Path to save plot
         plot_name = f"plot_{arg['var']}.png"
-        full_path_to_save = os.path.join(path_plots, plot_name)
+        full_path_to_plot = os.path.join(output_dir, plot_name)
 
         # Make boxplot and save
         beautiful_boxplot(
@@ -338,9 +343,11 @@ def main():
         show=False,
         stat_pairs=None,
         save=False,
-        path_to_save = full_path_to_save
+        path_to_save = full_path_to_plot
         )
-        print(f"Plot for {arg['var']} is saved in the directory: {path_plots}")
+
+        print(f"Plot for {arg['var']} is saved in the directory: {output_dir}")
+        print("\n")
 
 
 
