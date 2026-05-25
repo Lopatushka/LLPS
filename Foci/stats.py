@@ -70,6 +70,23 @@ def compare_to_reference(
 
     return result_df
 
+def make_stat_pairs_from_results(stats_df, labels, reference_name="Control"):
+    stat_pairs = []
+
+    x1 = labels.index(reference_name) + 1  # boxplot positions start from 1
+
+    for _, row in stats_df.iterrows():
+        comparison = row["comparison"]
+
+        group_name = comparison.split(" vs ")[1]
+        x2 = labels.index(group_name) + 1
+
+        p_value = float(row["p_value"])
+
+        stat_pairs.append((x1, x2, p_value))
+
+    return stat_pairs
+
 def p_to_stars(p):
     if p <= 0.0001:
         return "****"
@@ -168,6 +185,8 @@ def beautiful_boxplot(
     figsize=(4.8, 4.2),
     dpi=300,
     show=False,
+    stats_df=None,
+    reference_name="Control",
     stat_pairs=None,
     save=True,
     path_to_save = None    
@@ -226,11 +245,22 @@ def beautiful_boxplot(
     if log_scale:
         ax.set_yscale("log")
 
-    # Add p-value
+    # Create stat_pairs automatically from stats_df
+    if stat_pairs is None and stats_df is not None:
+        stat_pairs = make_stat_pairs_from_results(
+            stats_df=stats_df,
+            labels=labels,
+            reference_name=reference_name
+        )
+    
+    # Add significance brackets
     if stat_pairs:
-        y_max = max([np.nanmax(y) for y in data])
-        y_min = min([np.nanmin(y) for y in data])
+        y_max = max([np.nanmax(y) for y in data]) # find the largest value
+        y_min = min([np.nanmin(y) for y in data]) # find the minimal value
         y_range = y_max - y_min
+
+        if y_range == 0:
+            y_range = y_max * 0.1 if y_max != 0 else 1
 
         for idx, (x1, x2, p_value) in enumerate(stat_pairs):
             y = y_max + y_range * (0.08 + idx * 0.12)
@@ -341,8 +371,9 @@ def main():
         figsize=(4.8, 4.2),
         dpi=300,
         show=False,
-        stat_pairs=None,
-        save=False,
+        stats_df=stats,
+        reference_name="Control",
+        save=True,
         path_to_save = full_path_to_plot
         )
 
