@@ -98,8 +98,9 @@ def beautiful_boxplot(
     figsize=(4.8, 4.2),
     dpi=300,
     show=False,
-    stat_pairs=None
-    save=True    
+    stat_pairs=None,
+    save=True,
+    path_to_save = None    
 ):
     """
     df_list : list of pandas Series (or 1D arrays)
@@ -174,21 +175,78 @@ def beautiful_boxplot(
 
     if show:
         plt.show()
+    
+    if save:
+        fig.savefig(
+        path_to_save,
+        dpi=dpi,              # resolution
+        bbox_inches="tight",  # removes extra white margins
+        transparent=False     # transparent background if True
+        )
+
 
     return fig, ax
 
 def main():
-    paths = [
+    # Paths to tables with data
+    data_paths = [
     "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv",
-     "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv"
+    "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv",
+    "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"
      ]
+    
+    # Names of dataframes
+    tables_names =["Control", "PDS, 5 uM", "PDS, 20 uM"]
+    
+    # Arguments for boxplot
+    args = [{
+            'var': "n_foci",
+            'ylabel':'Number of foci',
+            'title':''
+            },
+            {
+            'var': "sigma_nm_mean",
+            'ylabel':'Sigma, nm',
+            'title':''
+            },
+            {
+            'var': "foci_MFI_mean",
+            'ylabel':'Mean Fluorescent intensity of foci',
+            'title':''
+            }]
 
+    # Load data
     dfs = []
-    for p in paths:
+    for p in data_paths:
         df = pd.read_csv(p)
         dfs.append(df)
 
-    print(f"Loaded {len(dfs)} dataframes.")
+    N_files = len(dfs)
+    print(f"Loaded {N_files} dataframes.")
+
+    # Loop to make statistics and plot
+    for arg in args:
+        selected = [df[arg['var']] for df in dfs]
+
+        # Make boxplot and save
+        beautiful_boxplot(
+        df_list = selected,
+        labels = tables_names,
+        ylabel=None,
+        xlabel=None,
+        title=None,
+        log_scale=False,
+        colors=None,         # list of colors per box (optional)
+        dot_size=20,
+        jitter=0.06,
+        figsize=(4.8, 4.2),
+        dpi=300,
+        show=False,
+        stat_pairs=None,
+        save=True,
+        path_to_save = None
+        )
+
 
 
 if __name__ == "__main__":
