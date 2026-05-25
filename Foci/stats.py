@@ -88,6 +88,7 @@ def add_stat_bracket(ax, x1, x2, y, h, text):
 
 def compare_to_reference(
     dfs,
+    data,
     col,
     reference_idx=0,
     equal_var=True,
@@ -114,13 +115,15 @@ def compare_to_reference(
     """
 
     reference = dfs[reference_idx]
+    reference_name = data[reference_idx]["name"]
 
     results = []
 
     for i, group in enumerate(dfs):
-
         if i == reference_idx:
             continue
+        
+        group_name = data[i]["name"]
 
         x = reference[col].dropna()
         y = group[col].dropna()
@@ -132,7 +135,7 @@ def compare_to_reference(
         )
 
         results.append({
-            "comparison": f"dfs[{reference_idx}] vs dfs[{i}]",
+            "comparison": f"{reference_name} vs {group_name}",
             "variable_name": col,
             "n_reference": len(x),
             "n_group": len(y),
@@ -306,11 +309,12 @@ def main():
 
         # Calculate statistics
         stats = compare_to_reference(dfs = dfs,
-                            col = arg['var'],
-                            reference_idx=index_control,
-                            equal_var=True,
-                            alpha=0.05
-                            )
+                                    data = data,
+                                    col = arg['var'],
+                                    reference_idx=index_control,
+                                    equal_var=True,
+                                    alpha=0.05
+                                    )
         
         print(stats)
 
