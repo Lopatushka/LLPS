@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -188,15 +189,16 @@ def beautiful_boxplot(
     return fig, ax
 
 def main():
-    # Paths to tables with data
-    data_paths = [
-    "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv",
-    "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv",
-    "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"
-     ]
+    # Paths to tables with data   
+    data = [
+        {'name': 'Control', 'path': "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv"},
+        {'name': 'PDS, 5 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_5uM/foci_aggregation.csv"},
+        {'name': 'PDS, 20 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_PDS_20uM/foci_aggregation.csv"}
+    ]
     
-    # Names of dataframes
-    tables_names =["Control", "PDS, 5 uM", "PDS, 20 uM"]
+    # Path to save plot
+    path_plots = "/mnt/c/users/elopatukhin/Desktop/all_WT"
+    
     
     # Arguments for boxplot
     args = [{
@@ -217,7 +219,8 @@ def main():
 
     # Load data
     dfs = []
-    for p in data_paths:
+    for item in data:
+        p = item["path"]
         df = pd.read_csv(p)
         dfs.append(df)
 
@@ -226,17 +229,22 @@ def main():
 
     # Loop to make statistics and plot
     for arg in args:
+        # Take desired column 'var' of all dataframes.
         selected = [df[arg['var']] for df in dfs]
+
+        # Path to save plot
+        plot_name = f"plot_{arg['var']}.png"
+        full_path_to_save = os.path.join(path_plots, plot_name)
 
         # Make boxplot and save
         beautiful_boxplot(
         df_list = selected,
-        labels = tables_names,
-        ylabel=None,
+        labels = [item["name"] for item in data],
+        ylabel=arg['ylabel'],
         xlabel=None,
-        title=None,
+        title=arg['title'],
         log_scale=False,
-        colors=None,         # list of colors per box (optional)
+        colors=None,      
         dot_size=20,
         jitter=0.06,
         figsize=(4.8, 4.2),
@@ -244,8 +252,9 @@ def main():
         show=False,
         stat_pairs=None,
         save=True,
-        path_to_save = None
+        path_to_save = full_path_to_save
         )
+        print(f"Plot for {arg['var']} is saved in the directory: {path_plots}")
 
 
 
