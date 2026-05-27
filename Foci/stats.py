@@ -289,21 +289,20 @@ def beautiful_boxplot(
 
 def main():
     # Paths to tables with data
-    reference_name = 'Control'  
+    reference_name = 'ORC1 WT'  
     data = [
-        {'name': reference_name, 'path': "/mnt/c/users/elopatukhin/Desktop/all_WT/foci_aggregation.csv"},
-        {'name': 'NC aptamer, 100 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/NC_100uM/foci_aggregation.csv"},
-        {'name': 'ORC1 aptamer, 100 uM', 'path': "/mnt/c/users/elopatukhin/Desktop/all_Apt3_100uM/foci_aggregation.csv"}
+        {'name': reference_name, 'path': "/mnt/c/users/elopatukhin/Desktop/190226/all_WT/foci_ext/foci_aggregation.csv"},
+        {'name': 'ORC1 MGS3', 'path':  "/mnt/c/users/elopatukhin/Desktop/190226/all_MGS3/foci_ext/foci_aggregation.csv"}
     ]
 
     # Index of Control sample in the list of dictionaries 
     index_control = next(
         i for i, item in enumerate(data)
-        if item["name"] == "Control"
+        if item["name"] == reference_name
     )
     
     # Path to save plot
-    output_dir = "/mnt/c/users/elopatukhin/Desktop/all_WT"
+    output_dir = "/mnt/c/users/elopatukhin/Desktop/190226"
     
     # Arguments for boxplot
     args = [{
