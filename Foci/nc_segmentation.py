@@ -1,17 +1,128 @@
 from ij import IJ, WindowManager
-from ij.gui import WaitForUserDialog
+from ij.gui import GenericDialog
 from ij.plugin.frame import RoiManager
-from ij.measure import ResultsTable
-from ij.plugin import Duplicator
-from ij.process import ImageProcessor
+from ij.gui import ShapeRoi
+from ij.plugin.filter import BackgroundSubtracter
+from ij.measure import Measurements, ResultsTable
+from ij.process import ImageStatistics
+from ij.gui import NonBlockingGenericDialog
+from ij.gui import WaitForUserDialog
+from ij.plugin.filter import Analyzer
 import os
+import csv
+import traceback
 
-def get_roi_manager():
-    rm = RoiManager.getInstance()
-    if rm is None:
-        rm = RoiManager()
-    rm.reset()
-    return rm
+def ask_params_for_image():
+    gd = GenericDialog("Nuclei and cytoplasm semi-manual segmentation params")
+    gd.addMessage("Set parameters.")
+
+    # Fields
+    gd.addNumericField("DAPI channel (1-based):", 1, 0)
+    gd.addNumericField("Measurement channel (1-based):", 2, 0)
+    gd.addNumericField("Brightfield channel (1-based):", 3, 0)
+    gd.addCheckbox("One nucleus per image", False)
+    gd.addCheckbox("Apply background subtraction", True)
+    gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
+
+    gd.showDialog()
+    if gd.wasCanceled():
+        return None
+
+    params = {}
+    params["DAPI_CHANNEL"] = int(gd.getNextNumber())
+    params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
+    params["BRIGHTFIELD_CHANNEL"] = int(gd.getNextNumber())
+    params["one_roi"] = bool(gd.getNextBoolean())
+    params["do_bg_subtraction"] = bool(gd.getNextBoolean())
+    params["bg_value"] = float(gd.getNextNumber())
+
+    return params
+
+
+def ensure_roi_manager(reset=True):
+	"""
+    Gets the ROI Manager instance.
+    Optionally resets it to avoid mixing old ROIs with new ones.
+    """
+	rm = RoiManager.getInstance()
+	if rm is None:
+		rm = RoiManager()
+	if reset:
+		rm.reset()
+	return rm
+
+def split_channels(imp):
+    """
+    Runs ImageJ command 'Split Channels' on the input image.
+    Returns a list of split channel ImagePlus objects that belong to the original image.
+    The list is sorted as [C1, C2, C3, ...].
+    """
+    orig_title = imp.getTitle()
+
+    # IDs before splitting
+    before = set(WindowManager.getIDList() or [])
+    
+    # Split channels: creates new windows like "C1-<orig_title>", "C2-<orig_title>", ...
+    IJ.run(imp, "Split Channels", "")
+
+    # IDs after splitting
+    after = set(WindowManager.getIDList() or [])
+    new_ids = list(after - before)
+    
+    # Get all currently opened image window IDs
+    ids = WindowManager.getIDList()
+    if not ids:
+        IJ.error("No windows after Split Channels.")
+        raise SystemExit
+
+    split_imps = []
+    for wid in new_ids:
+        wimp = WindowManager.getImage(wid)
+        if wimp is None:
+            continue
+        title = wimp.getTitle()
+        # Keep only windows that look like split channels of THIS image
+        if title.startswith("C") and "-" in title and (orig_title in title):
+            split_imps.append(wimp)
+
+    if len(split_imps) == 0:
+        IJ.error("Could not find split channel images. Make sure your image is multichannel/composite.")
+        raise SystemExit
+    
+    return split_imps
+
+def pick_channel_by_index(split_imps, one_based_index):
+	"""
+    Picks a channel ImagePlus from split_imps using 1-based indexing.
+    Example: one_based_index=1 -> C1
+    """
+	idx = int(one_based_index) - 1
+	if idx < 0 or idx >= len(split_imps):
+		return None
+	return split_imps[idx]
+
+def close_images(imps):
+    for im in imps:
+        if im is None:
+            continue
+        im.changes = False
+        im.close()
+        
+def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
+    radius = float(radius)
+    ip = imp.getProcessor()  # ImageProcessor of current slice
+    BackgroundSubtracter().rollingBallBackground(
+        ip,
+        radius,
+        False,
+        bool(light_background),
+        bool(use_paraboloid),
+        bool(do_presmooth),
+        False
+    )
+    imp.updateAndDraw()
+
+        
 
 def cleanup_iteration():
     rm = RoiManager.getInstance()
