@@ -155,8 +155,30 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
     rm.rename(roi_name)
 
     return roi
+
+def create_cytoplasm_roi(nucleus_roi, cell_roi, rm):
+    # XOR works if nucleus is completely inside the whole-cell ROI.
+    cytoplasm_roi = ShapeRoi(cell_roi).xor(ShapeRoi(nucleus_roi))
+
+    rm.addRoi(cytoplasm_roi)
+    rm.select(rm.getCount() - 1)
+    rm.rename("Cytoplasm")
+
+    return cytoplasm_roi
+
+def delete_whole_cell_roi(rm):
+    for i in range(rm.getCount()):
+        name = rm.getName(i)
+        if name == "Whole_cell":
+            rm.select(i)
+            rm.runCommand("Delete")
+            
+def measure_current_channel(imp, roi):
+    IJ.run("Set Measurements...", "area mean display redirect=None decimal=3")
+    imp.setRoi(roi)
+    IJ.run(imp, "Measure")
     
-def image_processing(imp, output_dir, p):
+def image_processing(imp, p):
     '''
     This function process semi-manually a single image
     imp - image
@@ -206,7 +228,47 @@ def image_processing(imp, output_dir, p):
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
-
+    
+    # User is drawing nucleus ROI on the DAPI channel image
+    nucleus_roi = ask_user_to_draw_roi(
+        "Draw nucleus",
+        "Draw the nucleus ROI on the image.\n\n"
+        "Then click OK.",
+        "Nucleus",
+        rm
+    )
+    # Check if the user drew a nucleus ROI
+    if nucleus_roi is None:
+        return
+    
+    # User is drawing whole-cell ROI on the brightfield channel image
+    cell_roi = ask_user_to_draw_roi(
+        "Draw whole cell",
+        "Draw the whole-cell ROI on the image.\n\n"
+        "Then click OK.",
+        "Whole_cell",
+        rm
+    )
+    # Check if the user drew a whole-cell ROI
+    if cell_roi is None:
+        return
+    
+    # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
+    cytoplasm_roi = create_cytoplasm_roi(
+        nucleus_roi,
+        cell_roi,
+        rm
+    )
+    
+    # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
+    delete_whole_cell_roi(rm)
+    
+    # Measure area and mean intensity in the measurement channel for the cytoplasm ROI
+    measure_current_channel(
+        imp,
+        cytoplasm_roi
+    )
+    
 
 
 def cleanup_iteration():
@@ -229,7 +291,6 @@ def main():
         imp = WindowManager.getImage(wid)
         if imp is None:
             continue
-        title = imp.getTitle()
         
     # Check if there are some suitable images
     if not images:
@@ -240,60 +301,36 @@ def main():
     unique_images = list(set(images))
     n = len(unique_images) # total amount of images to process
     
-    # Ask user where to save outputs
-    output_dir = IJ.getDirectory("Choose a directory to save data")
-    if output_dir is None:
-        IJ.error("No output directory is selected!")
+    # Ask user about the parameters
+    params = ask_params_for_image()
+    if params is None:
+        IJ.error("No parameters provided!")
         return
+    
+    # Ask user where to save outputs
+    #output_dir = IJ.getDirectory("Choose a directory to save data")
+    #if output_dir is None:
+        #IJ.error("No output directory is selected!")
+        #return
     
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
         # Make Log message
         msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
         IJ.log(msg)
-
-
-
-    rm = get_roi_manager()
-
-    n_nuclei = draw_nuclei(rm)
-    n_cells = draw_cells(rm, n_nuclei)
-
-    nuclei_mask, cell_mask = build_masks(
-        rm,
-        n_nuclei,
-        n_cells,
-        imp.getWidth(),
-        imp.getHeight()
-    )
-
-    cyto_mask = create_cytoplasm_mask(
-        cell_mask,
-        nuclei_mask
-    )
-
-    results_table = measure_rois(
-        imp,
-        rm,
-        n_nuclei,
-        n_cells
-    )
-
-    if output_dir:
-        save_results(
-            output_dir,
-            imp.getTitle(),
-            nuclei_mask,
-            cell_mask,
-            cyto_mask,
-            rm,
-            results_table
-        )
-
-    IJ.showMessage(
-        "Finished",
-        "Segmentation completed successfully."
-    )
+        
+        try:
+            image_processing(imp, params)
+        
+        except Exception as e:
+            # log immediately
+            IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
+            IJ.log(traceback.format_exc())  # comment out if too verbose
+            continue
+        
+        finally:
+            cleanup_iteration()
+            IJ.showMessage("Finished.")
 
 
 if __name__ == "__main__":
