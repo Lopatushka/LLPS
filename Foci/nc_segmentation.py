@@ -13,6 +13,12 @@ def get_roi_manager():
     rm.reset()
     return rm
 
+def cleanup_iteration():
+    rm = RoiManager.getInstance()
+    if rm is not None:
+        rm.reset()
+        rm.close()
+
 def draw_nuclei(rm):
     IJ.setTool("freehand")
 
@@ -88,14 +94,42 @@ def create_cytoplasm_mask(cell_mask, nuclei_mask):
     return result
 
 def main():
-
-    imp = IJ.getImage()
-
-    if imp is None:
-        IJ.showMessage("Error", "No image open.")
+    # Check if at least one image is opened
+    ids = WindowManager.getIDList()
+    if not ids:
+        IJ.error("No images open.")
         return
+    
+    # Opened images checking and filtration
+    images = [] # store images in the list
+    for wid in ids:
+        imp = WindowManager.getImage(wid)
+        if imp is None:
+            continue
+        title = imp.getTitle()
+        
+    # Check if there are some suitable images
+    if not images:
+        IJ.error("No suitable images found (only derived windows are open)!")
+        return
+    
+    # Keep only unique images
+    unique_images = list(set(images))
+    n = len(unique_images) # total amount of images to process
+    
+    # Ask user where to save outputs
+    output_dir = IJ.getDirectory("Choose a directory to save data")
+    if output_dir is None:
+        IJ.error("No output directory is selected!")
+        return
+    
+    # ---- Loop: show GUI per image, then process ----
+    for call_id, imp in enumerate(unique_images, start=1):
+        # Make Log message
+        msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
+        IJ.log(msg)
 
-    output_dir = IJ.getDirectory("Choose output folder")
+
 
     rm = get_roi_manager()
 
