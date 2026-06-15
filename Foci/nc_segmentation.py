@@ -38,6 +38,22 @@ def ask_params_for_image():
 
     return params
 
+def img_name_processing(name):
+    try:
+        if "MP" in name and " - " in name:
+            if "Deconvolved" in name:
+                name = name.split("-")[0] + "_" + name.split("-")[2]
+                name = name.replace(" ", "", 1).replace(",", "").replace(" ", "_")
+            else:
+                name = name.split("-")[1] # split string
+                name = name.replace(" ", "", 1) # delete fist blank in the string
+                name = name.replace(" ", "_") # repalce other blanks to underscore
+        else:
+            name = os.path.splitext(name)[0] # delete extention
+        return name
+    except Exception as e:
+         raise Exception("ERROR in parsing image name")
+
 
 def ensure_roi_manager(reset=True):
 	"""
@@ -121,8 +137,59 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
         False
     )
     imp.updateAndDraw()
+    
+def image_processing(imp, output_dir, p):
+    '''
+    This function process semi-manually a single image
+    imp - image
+    p - parameters
+    imp, output_dir, params
+    '''
+    # Parameteres
+    DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
+    MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
+    BRIGHTFIELD_CHANNEL = p["BRIGHTFIELD_CHANNEL"] # integer
+    one_roi = p["one_roi"] # bool
+    substruct_bg = p["do_bg_subtraction"] # bool
+    bg_radius = p["bg_value"] # numeric
 
+    # Processing image title
+    img_title = imp.getTitle()
+    img_title = img_name_processing(img_title)
+    
+    # Split channels into separate images (C1, C2, ...)
+    split_imps = split_channels(imp)
+    
+    # Select DAPI channel image (used for nuclei segmentation)
+    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
+
+    # Select the measurement channel image (used for mean intensity measurement)
+    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+
+    # Select the brightfield channel image (used for cytoplasmic segmentation)
+    brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
+    
+    # Check splitting
+    if dapi_imp is None or meas_imp is None or brightfield_imp is None:
+        IJ.error("Missing channels for: " + img_title)
+        close_images(split_imps)
+        return
+    
+    # Automatically adjust brightness/contrast for each splitted image (display only)
+    for split_img in split_imps:
+        split_img.getProcessor().resetMinAndMax()   # reset first
+        IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
+        split_img.updateAndDraw()
         
+    # --- Background substurction in MEASUREMENT channel ---
+    if substruct_bg:
+        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+        
+    # Run ROI manager
+    rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
+    rois = rm.getRoisAsArray() # list of ROIs in roi manager
+
+
 
 def cleanup_iteration():
     rm = RoiManager.getInstance()
