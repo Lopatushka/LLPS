@@ -140,29 +140,36 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
     
 
 def ask_user_to_draw_roi(title, message, roi_name, rm):
-    IJ.setTool("freehand")
-
-    WaitForUserDialog(title, message).show()
-
-    roi = IJ.getImage().getRoi()
+    gd = NonBlockingGenericDialog(title)
+    gd.addMessage(
+        "Draw ROI on the image, then click 'Add' in ROI Manager.\n"
+        "When finished, click OK here to continue."
+        )
+    gd.showDialog()   # non-blocking UI still works
+    if gd.wasCanceled():
+        IJ.showMessage("Cancelled. Stopping.")
+        return None
+    
+    roi = rm.getRoisAsArray() #returns all ROIs currently stored in ROI Manager.
 
     if roi is None:
-        IJ.showMessage("Error", "No ROI was drawn.")
+        IJ.showMessage("No ROI was drawn.")
         return None
 
-    rm.addRoi(roi)
-    rm.select(rm.getCount() - 1)
-    rm.rename(roi_name)
+    roi_index = rm.getCount() - 1 
+    #rm.rename(roi_index,  roi_name)
+    print("ROI index:", roi_index, "ROI name:", roi_name)
 
     return roi
 
-def create_cytoplasm_roi(nucleus_roi, cell_roi, rm):
-    # XOR works if nucleus is completely inside the whole-cell ROI.
+def create_cytoplasm_roi(nucleus_roi, cell_roi, rm, roi_name="Cytoplasm"):
+    # XOR works if nucleus is completely inside the whole-cell ROI.  
     cytoplasm_roi = ShapeRoi(cell_roi).xor(ShapeRoi(nucleus_roi))
 
     rm.addRoi(cytoplasm_roi)
-    rm.select(rm.getCount() - 1)
-    rm.rename("Cytoplasm")
+    roi_index = rm.getCount() - 1 
+    #rm.rename(roi_index, roi_name)
+    print("ROI index:", roi_index, "ROI name:", roi_name)
 
     return cytoplasm_roi
 
@@ -230,16 +237,15 @@ def image_processing(imp, p):
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
     
     # User is drawing nucleus ROI on the DAPI channel image
-    nucleus_roi = ask_user_to_draw_roi(  # title, message, roi_name, rm
+    # WHILE Loop to fill Roi manager.haha
+    while len(rois) == 0:
+        nucleus_roi = ask_user_to_draw_roi(  # title, message, roi_name, rm
         "Draw nucleus",
         "Draw the nucleus ROI on the image.\n\n"
         "Then click OK.",
         "Nucleus",
         rm
     )
-    # Check if the user drew a nucleus ROI
-    if nucleus_roi is None:
-        return
     
     # User is drawing whole-cell ROI on the brightfield channel image
     cell_roi = ask_user_to_draw_roi(
@@ -261,7 +267,7 @@ def image_processing(imp, p):
     )
     
     # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
-    delete_whole_cell_roi(rm)
+    #delete_whole_cell_roi(rm)
     
     # Measure area and mean intensity in the measurement channel for the cytoplasm ROI
     #measure_current_channel(
@@ -331,7 +337,7 @@ def main():
             continue
         
         finally:
-            cleanup_iteration()
+            #cleanup_iteration()
             IJ.showMessage("Finished.")
 
 
