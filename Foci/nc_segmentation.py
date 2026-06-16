@@ -317,102 +317,104 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     brightfield_lut = p["BRIGHTFIELD_LUT"] # string
     substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"] # numeric
-
-    # Processing image title
-    img_title = imp.getTitle()
-    img_title = img_name_processing(img_title)
     
-    # Split channels into separate images (C1, C2, ...)
-    split_imps = split_channels(imp)
-    
-    # Select DAPI channel image (used for nuclei segmentation)
-    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
-    
-    # Select the measurement channel image (used for mean intensity measurement)
-    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-    
-    # Select the brightfield channel image (used for cytoplasmic segmentation)
-    brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
-    
-    # Check splitting
-    if dapi_imp is None or meas_imp is None or brightfield_imp is None:
-        IJ.error("Missing channels for: " + img_title)
-        close_images(split_imps)
-        return
-    
-    # Apply LUTs to each channel image
-    apply_lut(dapi_imp, dapi_lut)
-    apply_lut(meas_imp, measure_lut)
-    apply_lut(brightfield_imp, brightfield_lut)
-    
-    # Automatically adjust brightness/contrast for each splitted image (display only)
-    for split_img in split_imps:
-        split_img.getProcessor().resetMinAndMax()   # reset first
-        IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
-        split_img.updateAndDraw()
-        
-    # --- Background substurction in MEASUREMENT channel ---
-    if substruct_bg:
-        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
-        
-    # Run ROI manager
-    rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
-    
-    # User is drawing nucleus ROI on the DAPI channel image: title, message, roi_name, rm
-    nucleus_roi = ask_user_to_draw_roi(  
-        "Draw nucleus",
-        "Draw the nucleus ROI on the image.\n\n"
-        "Then click OK.",
-        "Nucleus",
-        rm
-    )
-    
-    # User is drawing whole-cell ROI on the brightfield channel image
-    cell_roi = ask_user_to_draw_roi(
-        "Draw whole cell",
-        "Draw the whole-cell ROI on the image.\n\n"
-        "Then click OK.",
-        "Whole_cell",
-        rm
-    )
-    
-    if not nucleus_roi or not cell_roi:
-        IJ.log("ROI drawing was cancelled or failed. Skipping this image.")
-        return
-    
-    if not is_nucleus_inside_cell(nucleus_roi, cell_roi):
-        IJ.log("Warning: Nucleus ROI is not inside the whole-cell ROI!")    
-    
-    # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
-    cytoplasm_roi = create_cytoplasm_roi(
-        cell_index=rm.getCount() - 1,  # last added ROI is whole-cell
-        nucleus_index=rm.getCount() - 2,  # second last added ROI is nucleus
-        rm=rm,
-        roi_name="Cytoplasm"
-    )
-    
-    # Measure AREA and MEAN in the measurement channel
     try:
-        measure_current_channel(meas_imp, rm)
-    except Exception as e:
-        IJ.log("Error during measurement: {}".format(e))
-        IJ.log(traceback.format_exc())
-        return
+        # Processing image title
+        img_title = imp.getTitle()
+        img_title = img_name_processing(img_title)
     
-    # --- SAVE RESULTS ---
-    # Save ROIs to a .zip file
-    roi_path = os.path.join(output_dir, "{}_{}_rois.zip".format(repeat_id, img_title))
-    rm.runCommand("Save", roi_path)
+        # Split channels into separate images (C1, C2, ...)
+        split_imps = split_channels(imp)
+        
+        # Select DAPI channel image (used for nuclei segmentation)
+        dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
+        
+        # Select the measurement channel image (used for mean intensity measurement)
+        meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+        
+        # Select the brightfield channel image (used for cytoplasmic segmentation)
+        brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
     
-    # Save Results table as .csv file
-    table_name = "C{}_{}_{}_rois.csv".format(MEASURE_CHANNEL, repeat_id, img_title)
-    results_path = os.path.join(output_dir, table_name)
-    IJ.saveAs("Results", results_path)
+        # Check splitting
+        if dapi_imp is None or meas_imp is None or brightfield_imp is None:
+            IJ.error("Missing channels for: " + img_title)
+            close_images(split_imps)
+            return
     
-    # Close
-    close_images(split_imps)
-    close_all_csv_tables()
-    cleanup_iteration()
+        # Apply LUTs to each channel image
+        apply_lut(dapi_imp, dapi_lut)
+        apply_lut(meas_imp, measure_lut)
+        apply_lut(brightfield_imp, brightfield_lut)
+    
+        # Automatically adjust brightness/contrast for each splitted image (display only)
+        for split_img in split_imps:
+            split_img.getProcessor().resetMinAndMax()   # reset first
+            IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
+            split_img.updateAndDraw()
+        
+        # --- Background substurction in MEASUREMENT channel ---
+        if substruct_bg:
+            subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+            
+        # Run ROI manager
+        rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
+    
+        # User is drawing nucleus ROI on the DAPI channel image: title, message, roi_name, rm
+        nucleus_roi = ask_user_to_draw_roi(  
+            "Draw nucleus",
+            "Draw the nucleus ROI on the image.\n\n"
+            "Then click OK.",
+            "Nucleus",
+            rm
+        )
+    
+        # User is drawing whole-cell ROI on the brightfield channel image
+        cell_roi = ask_user_to_draw_roi(
+            "Draw whole cell",
+            "Draw the whole-cell ROI on the image.\n\n"
+            "Then click OK.",
+            "Whole_cell",
+            rm
+        )
+    
+        if not nucleus_roi or not cell_roi:
+            IJ.log("ROI drawing was cancelled or failed. Skipping this image.")
+            return
+        
+        if not is_nucleus_inside_cell(nucleus_roi, cell_roi):
+            IJ.log("Warning: Nucleus ROI is not inside the whole-cell ROI!")    
+    
+        # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
+        cytoplasm_roi = create_cytoplasm_roi(
+            cell_index=rm.getCount() - 1,  # last added ROI is whole-cell
+            nucleus_index=rm.getCount() - 2,  # second last added ROI is nucleus
+            rm=rm,
+            roi_name="Cytoplasm"
+        )
+    
+        # Measure AREA and MEAN in the measurement channel
+        try:
+            measure_current_channel(meas_imp, rm)
+        except Exception as e:
+            IJ.log("Error during measurement: {}".format(e))
+            IJ.log(traceback.format_exc())
+            return
+    
+        # --- SAVE RESULTS ---
+        # Save ROIs to a .zip file
+        roi_path = os.path.join(output_dir, "{}_{}_rois.zip".format(repeat_id, img_title))
+        rm.runCommand("Save", roi_path)
+        
+        # Save Results table as .csv file
+        table_name = "C{}_{}_{}_rois.csv".format(MEASURE_CHANNEL, repeat_id, img_title)
+        results_path = os.path.join(output_dir, table_name)
+        IJ.saveAs("Results", results_path)
+    
+    finally:
+        # Close
+        close_images(split_imps)
+        close_all_csv_tables()
+        cleanup_iteration()
    
 # --- MAIN FUNCTION ---    
 def main():
