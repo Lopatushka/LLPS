@@ -17,6 +17,7 @@ def ask_params_for_image():
     gd.addMessage("Set parameters.")
     
     lut_options = [
+        "Blue",
         "Green",
         "Red",
         "Magenta",
