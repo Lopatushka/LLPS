@@ -376,6 +376,10 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         rm
     )
     
+    if not nucleus_roi or not cell_roi:
+        IJ.log("ROI drawing was cancelled or failed. Skipping this image.")
+        return
+    
     if not is_nucleus_inside_cell(nucleus_roi, cell_roi):
         IJ.log("Warning: Nucleus ROI is not inside the whole-cell ROI!")    
     
