@@ -189,7 +189,7 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
 
     return cytoplasm_roi
 
-def delete_roi(rm, name):
+def _delete_roi(rm, name):
     rois = rm.getRoisAsArray() 
     for i, roi in enumerate(rois):
         roi_name = roi.getName()
