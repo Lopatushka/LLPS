@@ -15,11 +15,27 @@ import traceback
 def ask_params_for_image():
     gd = GenericDialog("Nuclei and cytoplasm semi-manual segmentation params")
     gd.addMessage("Set parameters.")
+    
+    lut_options = [
+        "Green",
+        "Red",
+        "Magenta",
+        "Cyan",
+        "Yellow",
+        "Fire",
+        "Grays"
+    ]
 
     # Fields
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
     gd.addNumericField("Brightfield channel (1-based):", 3, 0)
+    
+    # LUT choices
+    gd.addChoice("DAPI LUT:", lut_options, "Blue")
+    gd.addChoice("Measurement LUT:", lut_options, "Green")
+    gd.addChoice("Brightfield LUT:", lut_options, "Grays")
+    
     gd.addCheckbox("Apply background subtraction", True)
     gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
 
@@ -31,6 +47,9 @@ def ask_params_for_image():
     params["DAPI_CHANNEL"] = int(gd.getNextNumber())
     params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
     params["BRIGHTFIELD_CHANNEL"] = int(gd.getNextNumber())
+    params["DAPI_LUT"] = gd.getNextChoice()
+    params["MEASURE_LUT"] = gd.getNextChoice()
+    params["BRIGHTFIELD_LUT"] = gd.getNextChoice()
     params["do_bg_subtraction"] = bool(gd.getNextBoolean())
     params["bg_value"] = float(gd.getNextNumber())
 
