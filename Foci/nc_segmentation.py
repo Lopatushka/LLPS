@@ -129,6 +129,12 @@ def close_all_csv_tables():
             title = w.getTitle()
             if title.endswith(".csv"):
                 w.dispose()
+                
+def cleanup_iteration():
+    rm = RoiManager.getInstance()
+    if rm is not None:
+        rm.reset()
+        rm.close()
         
 def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
     radius = float(radius)
@@ -225,6 +231,28 @@ def measure_current_channel(imp, rm):
         imp.killRoi()
         
     rt.show("ROI measurements")
+    
+def ask_continue_same_image(image_title, repeat_id):
+    gd = GenericDialog("Continue?")
+    gd.addMessage(
+        "Finished object %d for image:\n%s" %
+        (repeat_id, image_title)
+    )
+
+    gd.addChoice(
+        "Next action:",
+        ["Process another ROI in this image",
+         "Go to next image",
+         "Stop analysis"],
+        "Process another ROI in this image"
+    )
+
+    gd.showDialog()
+
+    if gd.wasCanceled():
+        return "next_image"
+
+    return gd.getNextChoice()
     
     
 def image_processing(imp, p, output_dir="."):
@@ -325,14 +353,6 @@ def image_processing(imp, p, output_dir="."):
     cleanup_iteration()
     
     
-    
-def cleanup_iteration():
-    rm = RoiManager.getInstance()
-    if rm is not None:
-        rm.reset()
-        rm.close()
-
-
 def main():
     # Check if at least one image is opened
     ids = WindowManager.getIDList()
@@ -371,23 +391,58 @@ def main():
         return
     
     # ---- Loop: show GUI per image, then process ----
+    stop_all = False
+    
     for call_id, imp in enumerate(unique_images, start=1):
-        # Make Log message
-        msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
-        IJ.log(msg)
+        repeat_id = 1
         
-        try:
-            image_processing(imp, params, output_dir)
+        while True:
         
-        except Exception as e:
-            # log immediately
-            IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
-            IJ.log(traceback.format_exc())  # comment out if too verbose
-            continue
+            # Make Log message
+            msg = "Processing image {}/{}: {}, object {}".format(
+            call_id,
+            n,
+            imp.getTitle(),
+            repeat_id
+            )
+            IJ.log(msg)
         
-        finally:
-            #cleanup_iteration()
-            IJ.showMessage("Finished.")
+            try:
+                image_processing(imp, params, output_dir)
+        
+            except Exception as e:
+                # log immediately
+                IJ.log("ERROR in {}, object {}: {}".format(
+                imp.getTitle(),
+                repeat_id,
+                e
+                ))
+                IJ.log(traceback.format_exc())  # comment out if too verbose
+                break
+        
+            finally:
+                cleanup_iteration()
+            
+            action = ask_continue_same_image(
+            imp.getTitle(),
+            repeat_id
+            )
+            
+            if action == "Process another ROI in this image":
+                repeat_id += 1
+                continue
+
+            elif action == "Go to next image":
+                break
+
+            elif action == "Stop analysis":
+                stop_all = True
+                break
+        
+        if stop_all:
+            break
+    
+    IJ.showMessage("Finished", "Analysis finished.")
 
 
 if __name__ == "__main__":
