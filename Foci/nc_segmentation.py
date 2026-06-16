@@ -158,10 +158,13 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
     # Select the first ROI (assuming only one ROI is drawn)
     roi = rois[0]
     
+    # Rename the ROI in the ROI Manager to include the user-defined name
     auto_roi_name = roi.getName()
+    new_roi_name = roi_name + "_" + auto_roi_name
     roi_index = rm.getCount() - 1 
-    #rm.rename(roi_index,  roi_name)
-    print("ROI index:", roi_index, "Auto ROI name:", auto_roi_name, "ROI name:", roi_name)
+    rm.rename(roi_index, new_roi_name)  # Rename ROI in ROI Manager
+    
+    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return roi
 
@@ -183,8 +186,10 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
     
     roi_index = rm.getCount() - 1
     auto_roi_name = cytoplasm_roi.getName()
-    #rm.rename(roi_index, roi_name)
-    print("ROI index:", roi_index, "Auto ROI name:", auto_roi_name, "ROI name:", roi_name)
+    new_roi_name = roi_name + "_" + auto_roi_name
+    rm.rename(roi_index, new_roi_name)
+    
+    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return cytoplasm_roi
 
