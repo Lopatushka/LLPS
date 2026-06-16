@@ -199,10 +199,7 @@ def delete_roi(rm, name):
             rm.select(i)
             rm.runCommand("Delete")
             
-def measure_current_channel(imp, roi):
-    # Create an empty results table
-    rt = ResultsTable()
-    
+def measure_current_channel(imp, roi, table):   
     roi_name = roi.getName()
     imp.setRoi(roi)
     stats = imp.getStatistics(
@@ -210,14 +207,14 @@ def measure_current_channel(imp, roi):
     )
     
     # Fill the table with results
-    rt.incrementCounter()
-    rt.addValue("ROI", roi_name)
-    rt.addValue("Area", stats.area)
-    rt.addValue("Mean", stats.mean)
+    table.incrementCounter()
+    table.addValue("ROI", roi_name)
+    table.addValue("Area", stats.area)
+    table.addValue("Mean", stats.mean)
         
     imp.killRoi()
         
-    rt.show("ROI measurements")
+    table.show("ROI measurements")
     
     
 def image_processing(imp, p):
@@ -269,7 +266,7 @@ def image_processing(imp, p):
         
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
-    rois = rm.getRoisAsArray() # list of ROIs in roi manager
+    #rois = rm.getRoisAsArray() # list of ROIs in roi manager
     
     # User is drawing nucleus ROI on the DAPI channel image: title, message, roi_name, rm
     nucleus_roi = ask_user_to_draw_roi(  
@@ -297,13 +294,16 @@ def image_processing(imp, p):
         roi_name="Cytoplasm"
     )
     
-    # Measure AREA and MEAN in the measurement channel   
-    measure_current_channel(meas_imp, nucleus_roi)
-    measure_current_channel(meas_imp, cytoplasm_roi)
-    measure_current_channel(meas_imp, cell_roi)
+    # Measure AREA and MEAN in the measurement channel
+    # Create an empty results table
+    rt = ResultsTable()
+       
+    measure_current_channel(meas_imp, nucleus_roi, rt)
+    measure_current_channel(meas_imp, cytoplasm_roi, rt)
+    measure_current_channel(meas_imp, cell_roi, rt)
 
     # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
-    delete_roi(rm, name = "Whole_cell")
+    #delete_roi(rm, name = "Whole_cell")
     
 
 
