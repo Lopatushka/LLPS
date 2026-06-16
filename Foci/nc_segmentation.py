@@ -147,15 +147,21 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
         IJ.showMessage("Cancelled. Stopping.")
         return None
     
-    roi = rm.getRoisAsArray() #returns all ROIs currently stored in ROI Manager.
-
-    if roi is None:
+    # Returns all ROIs currently stored in ROI Manager.
+    rois = rm.getRoisAsArray()
+    
+    # Check if any ROIs were drawn
+    if len(rois) == 0 or rois is None:
         IJ.showMessage("No ROI was drawn.")
         return None
-
+    
+    # Select the first ROI (assuming only one ROI is drawn)
+    roi = rois[0]
+    
+    auto_roi_name = roi.getName()
     roi_index = rm.getCount() - 1 
     #rm.rename(roi_index,  roi_name)
-    print("ROI index:", roi_index, "ROI name:", roi_name)
+    print("ROI index:", roi_index, "Auto ROI name:", auto_roi_name, "ROI name:", roi_name)
 
     return roi
 
@@ -174,9 +180,11 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
     cytoplasm_roi = ShapeRoi(cell_roi).xor(ShapeRoi(nucleus_roi))
 
     rm.addRoi(cytoplasm_roi)
-    roi_index = rm.getCount() - 1 
+    
+    roi_index = rm.getCount() - 1
+    auto_roi_name = cytoplasm_roi.getName()
     #rm.rename(roi_index, roi_name)
-    print("ROI index:", roi_index, "ROI name:", roi_name)
+    print("ROI index:", roi_index, "Auto ROI name:", auto_roi_name, "ROI name:", roi_name)
 
     return cytoplasm_roi
 
