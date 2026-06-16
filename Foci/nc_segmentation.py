@@ -327,21 +327,23 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     
     # Select DAPI channel image (used for nuclei segmentation)
     dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
-    apply_lut(dapi_imp, dapi_lut)
-
+    
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-    apply_lut(meas_imp, measure_lut)
-
+    
     # Select the brightfield channel image (used for cytoplasmic segmentation)
     brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
-    apply_lut(brightfield_imp, brightfield_lut)
     
     # Check splitting
     if dapi_imp is None or meas_imp is None or brightfield_imp is None:
         IJ.error("Missing channels for: " + img_title)
         close_images(split_imps)
         return
+    
+    # Apply LUTs to each channel image
+    apply_lut(dapi_imp, dapi_lut)
+    apply_lut(meas_imp, measure_lut)
+    apply_lut(brightfield_imp, brightfield_lut)
     
     # Automatically adjust brightness/contrast for each splitted image (display only)
     for split_img in split_imps:
@@ -386,7 +388,12 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     )
     
     # Measure AREA and MEAN in the measurement channel
-    measure_current_channel(meas_imp, rm)
+    try:
+        measure_current_channel(meas_imp, rm)
+    except Exception as e:
+        IJ.log("Error during measurement: {}".format(e))
+        IJ.log(traceback.format_exc())
+        return
     
     # --- SAVE RESULTS ---
     # Save ROIs to a .zip file
