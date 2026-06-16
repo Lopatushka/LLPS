@@ -121,6 +121,12 @@ def close_images(imps):
             continue
         im.changes = False
         im.close()
+        
+def close_single_channel_imgs():
+    images = WindowManager.getImageList()
+    for imp in images:
+        if imp is not None and imp.getNChannels() == 1:
+            imp.close()
 
 def close_all_csv_tables():
     windows = WindowManager.getAllNonImageWindows()
@@ -429,7 +435,8 @@ def main():
             elif action == "Go to next image":
                 export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
-                close_images(split_imps)
+                close_images(imp) # close the current multichannel image
+                close_single_channel_imgs()
                 cleanup_iteration()
                 break
 
@@ -437,7 +444,8 @@ def main():
                 stop_all = True
                 export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
-                close_images(split_imps)
+                close_images(imp) # close the current multichannel image
+                close_single_channel_imgs()
                 cleanup_iteration()
                 break
         
