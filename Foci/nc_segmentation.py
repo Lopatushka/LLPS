@@ -177,8 +177,14 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
         IJ.showMessage("No ROI was drawn.")
         return None
     
-    # Select the first ROI (assuming only one ROI is drawn)
-    roi = rois[0]
+    # Select one ROI - nucleus or whole-cell, depending on the number of ROIs
+    if len(rois) == 1:
+        roi = rois[0]
+    elif len(rois) == 2:
+        roi = rois[1]
+    else:
+        IJ.showMessage("More than 2 ROIs found. Please draw only one ROI.")
+        return None
     
     # Rename the ROI in the ROI Manager to include the user-defined name
     auto_roi_name = roi.getName()
