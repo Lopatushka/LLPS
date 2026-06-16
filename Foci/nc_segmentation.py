@@ -411,7 +411,7 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         IJ.saveAs("Results", results_path)
     
     finally:
-        # Close
+        # Cleanup: close all split images, close CSV tables, reset ROI manager
         close_images(split_imps)
         close_all_csv_tables()
         cleanup_iteration()
