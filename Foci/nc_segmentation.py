@@ -125,12 +125,6 @@ def close_images(imps):
 def close_image(imp):
     imp.changes = False
     imp.close()
-        
-def _close_single_channel_imgs():
-    images = WindowManager.getImageList()
-    for imp in images:
-        if imp is not None and imp.getNChannels() == 1:
-            imp.close()
 
 def close_all_csv_tables():
     windows = WindowManager.getAllNonImageWindows()
@@ -226,6 +220,13 @@ def _delete_roi(rm, name):
         if name in roi_name:
             rm.select(i)
             rm.runCommand("Delete")
+
+def is_nucleus_inside_cell(nucleus_roi, cell_roi):
+    polygon = nucleus_roi.getPolygon()
+    for x, y in zip(polygon.xpoints, polygon.ypoints):
+        if not cell_roi.contains(x, y):
+            return False
+    return True
             
 def measure_current_channel(imp, rm):
     # Create a new ResultsTable to store measurements
@@ -337,6 +338,9 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         "Whole_cell",
         rm
     )
+    
+    if not is_nucleus_inside_cell(nucleus_roi, cell_roi):
+        IJ.log("Warning: Nucleus ROI is not inside the whole-cell ROI!")    
     
     # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
     cytoplasm_roi = create_cytoplasm_roi(
