@@ -163,8 +163,7 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
     new_roi_name = roi_name + "_" + auto_roi_name
     roi_index = rm.getCount() - 1 
     rm.rename(roi_index, new_roi_name)  # Rename ROI in ROI Manager
-    
-    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return roi
 
@@ -188,15 +187,15 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
     auto_roi_name = cytoplasm_roi.getName()
     new_roi_name = roi_name + "_" + auto_roi_name
     rm.rename(roi_index, new_roi_name)
-    
-    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return cytoplasm_roi
 
-def delete_whole_cell_roi(rm, name="Whole_cell"):
-    for i in range(rm.getCount()):
-        name = rm.getName(i)
-        if name == name:
+def delete_roi(rm, name):
+    rois = rm.getRoisAsArray() 
+    for i, roi in enumerate(rois):
+        roi_name = roi.getName()
+        if name in roi_name:
             rm.select(i)
             rm.runCommand("Delete")
             
@@ -283,7 +282,7 @@ def image_processing(imp, p):
     )
     
     # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
-    #delete_whole_cell_roi(rm)
+    delete_roi(rm, name = "Whole_cell")
     
     # Measure area and mean intensity in the measurement channel for the cytoplasm ROI
     #measure_current_channel(
