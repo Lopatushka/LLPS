@@ -338,19 +338,13 @@ def image_processing(imp, p, output_dir="."):
     roi_path = os.path.join(output_dir, "{}_rois.zip".format(img_title))
     rm.runCommand("Save", roi_path)
     
+def export_data(imp, channel, output_dir):
+    img_title = imp.getTitle()
+       
     # Save Results table as .csv file
-    table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
+    table_name = "C{}_{}_rois.csv".format(channel, img_title)
     results_path = os.path.join(output_dir, table_name)
     IJ.saveAs("Results", results_path)
-    
-    # Close result table
-    close_all_csv_tables()
-
-    # Close splitted images
-    close_images(split_imps)
-    
-    # Clean and close ROI manager
-    cleanup_iteration()
     
     
 def main():
@@ -433,10 +427,18 @@ def main():
                 continue
 
             elif action == "Go to next image":
+                export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
+                close_all_csv_tables()
+                close_images(split_imps)
+                cleanup_iteration()
                 break
 
             elif action == "Stop analysis":
                 stop_all = True
+                export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
+                close_all_csv_tables()
+                close_images(split_imps)
+                cleanup_iteration()
                 break
         
         if stop_all:
