@@ -122,7 +122,7 @@ def close_images(imps):
         im.changes = False
         im.close()
         
-def close_single_channel_imgs():
+def _close_single_channel_imgs():
     images = WindowManager.getImageList()
     for imp in images:
         if imp is not None and imp.getNChannels() == 1:
@@ -344,6 +344,9 @@ def image_processing(imp, p, output_dir="."):
     roi_path = os.path.join(output_dir, "{}_rois.zip".format(img_title))
     rm.runCommand("Save", roi_path)
     
+    close_images(split_imps)
+    cleanup_iteration()
+    
 def export_data(imp, channel, output_dir):
     img_title = imp.getTitle()
        
@@ -408,7 +411,7 @@ def main():
             IJ.log(msg)
         
             try:
-                image_processing(imp, params, output_dir)
+                image_processing(imp, params, repeat_id, output_dir)
         
             except Exception as e:
                 # log immediately
@@ -436,8 +439,6 @@ def main():
                 export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
                 close_images(imp) # close the current multichannel image
-                close_single_channel_imgs()
-                cleanup_iteration()
                 break
 
             elif action == "Stop analysis":
@@ -445,8 +446,6 @@ def main():
                 export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
                 close_images(imp) # close the current multichannel image
-                close_single_channel_imgs()
-                cleanup_iteration()
                 break
         
         if stop_all:
