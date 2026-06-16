@@ -20,7 +20,6 @@ def ask_params_for_image():
     gd.addNumericField("DAPI channel (1-based):", 1, 0)
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
     gd.addNumericField("Brightfield channel (1-based):", 3, 0)
-    gd.addCheckbox("One nucleus per image", False)
     gd.addCheckbox("Apply background subtraction", True)
     gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
 
@@ -32,7 +31,6 @@ def ask_params_for_image():
     params["DAPI_CHANNEL"] = int(gd.getNextNumber())
     params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
     params["BRIGHTFIELD_CHANNEL"] = int(gd.getNextNumber())
-    params["one_roi"] = bool(gd.getNextBoolean())
     params["do_bg_subtraction"] = bool(gd.getNextBoolean())
     params["bg_value"] = float(gd.getNextNumber())
 
@@ -163,7 +161,7 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
     new_roi_name = roi_name + "_" + auto_roi_name
     roi_index = rm.getCount() - 1 
     rm.rename(roi_index, new_roi_name)  # Rename ROI in ROI Manager
-    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return roi
 
@@ -187,7 +185,7 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
     auto_roi_name = cytoplasm_roi.getName()
     new_roi_name = roi_name + "_" + auto_roi_name
     rm.rename(roi_index, new_roi_name)
-    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return cytoplasm_roi
 
@@ -232,7 +230,6 @@ def image_processing(imp, p):
     DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
     BRIGHTFIELD_CHANNEL = p["BRIGHTFIELD_CHANNEL"] # integer
-    one_roi = p["one_roi"] # bool
     substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"] # numeric
 
@@ -300,7 +297,6 @@ def image_processing(imp, p):
     # Measure AREA and MEAN in the measurement channel
     measure_current_channel(meas_imp, rm)  
 
-    
 
 def cleanup_iteration():
     rm = RoiManager.getInstance()
