@@ -159,8 +159,18 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
 
     return roi
 
-def create_cytoplasm_roi(nucleus_roi, cell_roi, rm, roi_name="Cytoplasm"):
-    # XOR works if nucleus is completely inside the whole-cell ROI.  
+def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
+    # Take 2 ROIs from the ROI Manager
+    cell_roi = rm.getRoi(cell_index)
+    nucleus_roi = rm.getRoi(nucleus_index)
+    
+    # Check if ROIs are valid
+    if cell_roi is None:
+        raise Exception("Cell ROI is None")
+
+    if nucleus_roi is None:
+        raise Exception("Nucleus ROI is None")
+    
     cytoplasm_roi = ShapeRoi(cell_roi).xor(ShapeRoi(nucleus_roi))
 
     rm.addRoi(cytoplasm_roi)
@@ -253,9 +263,10 @@ def image_processing(imp, p):
     
     # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
     cytoplasm_roi = create_cytoplasm_roi(
-        nucleus_roi,
-        cell_roi,
-        rm
+        cell_index=rm.getCount() - 1,  # last added ROI is whole-cell
+        nucleus_index=rm.getCount() - 2,  # second last added ROI is nucleus
+        rm=rm,
+        roi_name="Cytoplasm"
     )
     
     # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
