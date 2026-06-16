@@ -166,10 +166,10 @@ def create_cytoplasm_roi(nucleus_roi, cell_roi, rm):
 
     return cytoplasm_roi
 
-def delete_whole_cell_roi(rm):
+def delete_whole_cell_roi(rm, name="Whole_cell"):
     for i in range(rm.getCount()):
         name = rm.getName(i)
-        if name == "Whole_cell":
+        if name == name:
             rm.select(i)
             rm.runCommand("Delete")
             
@@ -230,7 +230,7 @@ def image_processing(imp, p):
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
     
     # User is drawing nucleus ROI on the DAPI channel image
-    nucleus_roi = ask_user_to_draw_roi(
+    nucleus_roi = ask_user_to_draw_roi(  # title, message, roi_name, rm
         "Draw nucleus",
         "Draw the nucleus ROI on the image.\n\n"
         "Then click OK.",
