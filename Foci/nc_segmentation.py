@@ -121,6 +121,14 @@ def close_images(imps):
             continue
         im.changes = False
         im.close()
+
+def close_all_csv_tables():
+    windows = WindowManager.getAllNonImageWindows()
+    if windows is not None:
+        for w in windows:
+            title = w.getTitle()
+            if title.endswith(".csv"):
+                w.dispose()
         
 def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
     radius = float(radius)
@@ -306,6 +314,12 @@ def image_processing(imp, p, output_dir="."):
     table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
     results_path = os.path.join(output_dir, table_name)
     IJ.saveAs("Results", results_path)
+    
+    # Close result table
+    close_all_csv_tables()
+
+    # Close splitted images
+    close_images(split_imps)
     
     
     
