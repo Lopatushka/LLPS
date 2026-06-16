@@ -414,7 +414,7 @@ def main():
             IJ.log(msg)
         
             try:
-                image_processing(imp, params, output_dir)
+                image_processing(imp, params, repeat_id, output_dir)
         
             except Exception as e:
                 # log immediately
