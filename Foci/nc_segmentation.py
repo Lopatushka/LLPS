@@ -141,10 +141,7 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
 
 def ask_user_to_draw_roi(title, message, roi_name, rm):
     gd = NonBlockingGenericDialog(title)
-    gd.addMessage(
-        "Draw ROI on the image, then click 'Add' in ROI Manager.\n"
-        "When finished, click OK here to continue."
-        )
+    gd.addMessage(message)
     gd.showDialog()   # non-blocking UI still works
     if gd.wasCanceled():
         IJ.showMessage("Cancelled. Stopping.")
@@ -236,10 +233,8 @@ def image_processing(imp, p):
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
     
-    # User is drawing nucleus ROI on the DAPI channel image
-    # WHILE Loop to fill Roi manager.haha
-    while len(rois) == 0:
-        nucleus_roi = ask_user_to_draw_roi(  # title, message, roi_name, rm
+    # User is drawing nucleus ROI on the DAPI channel image: title, message, roi_name, rm
+    nucleus_roi = ask_user_to_draw_roi(  
         "Draw nucleus",
         "Draw the nucleus ROI on the image.\n\n"
         "Then click OK.",
@@ -255,9 +250,6 @@ def image_processing(imp, p):
         "Whole_cell",
         rm
     )
-    # Check if the user drew a whole-cell ROI
-    if cell_roi is None:
-        return
     
     # Create cytoplasm ROI by subtracting nucleus ROI from whole-cell ROI
     cytoplasm_roi = create_cytoplasm_roi(
