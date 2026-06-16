@@ -433,7 +433,7 @@ def main():
                 continue
 
             elif action == "Go to next image":
-                export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
+                export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
                 close_images(imp) # close the current multichannel image
                 close_single_channel_imgs()
@@ -442,7 +442,7 @@ def main():
 
             elif action == "Stop analysis":
                 stop_all = True
-                export_data(imp=imp, channel=p["MEASURE_CHANNEL"], output_dir=output_dir)
+                export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
                 close_images(imp) # close the current multichannel image
                 close_single_channel_imgs()
