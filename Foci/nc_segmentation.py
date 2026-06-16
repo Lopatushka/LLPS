@@ -200,9 +200,25 @@ def delete_roi(rm, name):
             rm.runCommand("Delete")
             
 def measure_current_channel(imp, roi):
-    IJ.run("Set Measurements...", "area mean display redirect=None decimal=3")
+    # Create an empty results table
+    rt = ResultsTable()
+    
+    roi_name = roi.getName()
     imp.setRoi(roi)
-    IJ.run(imp, "Measure")
+    stats = imp.getStatistics(
+    Measurements.AREA | Measurements.MEAN
+    )
+    
+    # Fill the table with results
+    rt.incrementCounter()
+    rt.addValue("ROI", roi_name)
+    rt.addValue("Area", stats.area)
+    rt.addValue("Mean", stats.mean)
+        
+    imp.killRoi()
+        
+    rt.show("ROI measurements")
+    
     
 def image_processing(imp, p):
     '''
@@ -281,14 +297,13 @@ def image_processing(imp, p):
         roi_name="Cytoplasm"
     )
     
+    # Measure AREA and MEAN in the measurement channel   
+    measure_current_channel(meas_imp, nucleus_roi)
+    measure_current_channel(meas_imp, cytoplasm_roi)
+    measure_current_channel(meas_imp, cell_roi)
+
     # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
     delete_roi(rm, name = "Whole_cell")
-    
-    # Measure area and mean intensity in the measurement channel for the cytoplasm ROI
-    #measure_current_channel(
-        #imp,
-        #cytoplasm_roi
-    #)
     
 
 
