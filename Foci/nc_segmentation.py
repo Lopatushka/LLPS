@@ -312,6 +312,9 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
     BRIGHTFIELD_CHANNEL = p["BRIGHTFIELD_CHANNEL"] # integer
+    dapi_lut = p["DAPI_LUT"] # string
+    measure_lut = p["MEASURE_LUT"] # string
+    brightfield_lut = p["BRIGHTFIELD_LUT"] # string
     substruct_bg = p["do_bg_subtraction"] # bool
     bg_radius = p["bg_value"] # numeric
 
@@ -324,15 +327,15 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     
     # Select DAPI channel image (used for nuclei segmentation)
     dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
-    apply_lut(dapi_imp, "Blue")
+    apply_lut(dapi_imp, dapi_lut)
 
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-    apply_lut(meas_imp, "Green")
+    apply_lut(meas_imp, measure_lut)
 
     # Select the brightfield channel image (used for cytoplasmic segmentation)
     brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
-    apply_lut(brightfield_imp, "Grays")
+    apply_lut(brightfield_imp, brightfield_lut)
     
     # Check splitting
     if dapi_imp is None or meas_imp is None or brightfield_imp is None:
