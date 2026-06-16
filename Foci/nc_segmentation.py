@@ -163,7 +163,7 @@ def ask_user_to_draw_roi(title, message, roi_name, rm):
     new_roi_name = roi_name + "_" + auto_roi_name
     roi_index = rm.getCount() - 1 
     rm.rename(roi_index, new_roi_name)  # Rename ROI in ROI Manager
-    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return roi
 
@@ -187,7 +187,7 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
     auto_roi_name = cytoplasm_roi.getName()
     new_roi_name = roi_name + "_" + auto_roi_name
     rm.rename(roi_index, new_roi_name)
-    #print("ROI index:", roi_index, "New ROI name:", new_roi_name)
+    print("ROI index:", roi_index, "New ROI name:", new_roi_name)
 
     return cytoplasm_roi
 
@@ -199,22 +199,26 @@ def delete_roi(rm, name):
             rm.select(i)
             rm.runCommand("Delete")
             
-def measure_current_channel(imp, roi, table):   
-    roi_name = roi.getName()
-    imp.setRoi(roi)
-    stats = imp.getStatistics(
-    Measurements.AREA | Measurements.MEAN
-    )
+def measure_current_channel(imp, rm):
+    # Create a new ResultsTable to store measurements
+    rt = ResultsTable()
+    rois = rm.getRoisAsArray()
     
-    # Fill the table with results
-    table.incrementCounter()
-    table.addValue("ROI", roi_name)
-    table.addValue("Area", stats.area)
-    table.addValue("Mean", stats.mean)
+    # Measure AREA and MEAN for each ROI in the current channel
+    for i, roi in enumerate(rois):
+        roi_name = roi.getName()
+        imp.setRoi(roi)
+        stats = imp.getStatistics(Measurements.AREA | Measurements.MEAN)
+        # Fill the table with results
+        rt.incrementCounter()
+        rt.addValue("ROI", roi_name)
+        rt.addValue("Area", stats.area)
+        rt.addValue("Mean", stats.mean)
         
-    imp.killRoi()
+        # Remove ROI selection
+        imp.killRoi()
         
-    table.show("ROI measurements")
+    rt.show("ROI measurements")
     
     
 def image_processing(imp, p):
@@ -266,7 +270,6 @@ def image_processing(imp, p):
         
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
-    #rois = rm.getRoisAsArray() # list of ROIs in roi manager
     
     # User is drawing nucleus ROI on the DAPI channel image: title, message, roi_name, rm
     nucleus_roi = ask_user_to_draw_roi(  
@@ -295,17 +298,9 @@ def image_processing(imp, p):
     )
     
     # Measure AREA and MEAN in the measurement channel
-    # Create an empty results table
-    rt = ResultsTable()
-       
-    measure_current_channel(meas_imp, nucleus_roi, rt)
-    measure_current_channel(meas_imp, cytoplasm_roi, rt)
-    measure_current_channel(meas_imp, cell_roi, rt)
+    measure_current_channel(meas_imp, rm)  
 
-    # Delete the whole-cell ROI from the ROI Manager, leaving only nucleus and cytoplasm ROIs
-    #delete_roi(rm, name = "Whole_cell")
     
-
 
 def cleanup_iteration():
     rm = RoiManager.getInstance()
