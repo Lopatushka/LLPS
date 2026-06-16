@@ -264,10 +264,10 @@ def image_processing(imp, p):
     delete_whole_cell_roi(rm)
     
     # Measure area and mean intensity in the measurement channel for the cytoplasm ROI
-    measure_current_channel(
-        imp,
-        cytoplasm_roi
-    )
+    #measure_current_channel(
+        #imp,
+        #cytoplasm_roi
+    #)
     
 
 
@@ -291,6 +291,8 @@ def main():
         imp = WindowManager.getImage(wid)
         if imp is None:
             continue
+        else:
+            images.append(imp)
         
     # Check if there are some suitable images
     if not images:
