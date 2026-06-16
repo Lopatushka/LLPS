@@ -122,6 +122,10 @@ def close_images(imps):
         im.changes = False
         im.close()
         
+def close_image(imp):
+    imp.changes = False
+    imp.close()
+        
 def _close_single_channel_imgs():
     images = WindowManager.getImageList()
     for imp in images:
@@ -438,14 +442,14 @@ def main():
             elif action == "Go to next image":
                 export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
-                close_images(imp) # close the current multichannel image
+                close_image(imp) # close the current multichannel image
                 break
 
             elif action == "Stop analysis":
                 stop_all = True
                 export_data(imp=imp, channel=params["MEASURE_CHANNEL"], output_dir=output_dir)
                 close_all_csv_tables()
-                close_images(imp) # close the current multichannel image
+                close_image(imp) # close the current multichannel image
                 break
         
         if stop_all:
