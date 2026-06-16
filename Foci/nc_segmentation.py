@@ -321,6 +321,9 @@ def image_processing(imp, p, output_dir="."):
     # Close splitted images
     close_images(split_imps)
     
+    # Clean and close ROI manager
+    cleanup_iteration()
+    
     
     
 def cleanup_iteration():
