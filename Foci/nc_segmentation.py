@@ -115,6 +115,15 @@ def pick_channel_by_index(split_imps, one_based_index):
 		return None
 	return split_imps[idx]
 
+def apply_lut(imp, lut_name):
+    imp.show()
+    imp.setDisplayMode(IJ.GRAYSCALE)
+
+    IJ.selectWindow(imp.getTitle())
+    IJ.run(imp, lut_name, "")
+
+    imp.updateAndDraw()
+
 def close_images(imps):
     for im in imps:
         if im is None:
@@ -295,12 +304,15 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     
     # Select DAPI channel image (used for nuclei segmentation)
     dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
+    apply_lut(dapi_imp, "Blue")
 
     # Select the measurement channel image (used for mean intensity measurement)
     meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+    apply_lut(meas_imp, "Green")
 
     # Select the brightfield channel image (used for cytoplasmic segmentation)
     brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
+    apply_lut(brightfield_imp, "Grays")
     
     # Check splitting
     if dapi_imp is None or meas_imp is None or brightfield_imp is None:
