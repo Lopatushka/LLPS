@@ -219,7 +219,7 @@ def measure_current_channel(imp, rm):
     rt.show("ROI measurements")
     
     
-def image_processing(imp, p):
+def image_processing(imp, p, output_dir="."):
     '''
     This function process semi-manually a single image
     imp - image
@@ -295,9 +295,20 @@ def image_processing(imp, p):
     )
     
     # Measure AREA and MEAN in the measurement channel
-    measure_current_channel(meas_imp, rm)  
-
-
+    measure_current_channel(meas_imp, rm)
+    
+    # --- SAVE RESULTS ---
+    # Save ROIs to a .zip file
+    roi_path = os.path.join(output_dir, "{}_rois.zip".format(img_title))
+    rm.runCommand("Save", roi_path)
+    
+    # Save Results table as .csv file
+    table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
+    results_path = os.path.join(output_dir, table_name)
+    IJ.saveAs("Results", results_path)
+    
+    
+    
 def cleanup_iteration():
     rm = RoiManager.getInstance()
     if rm is not None:
@@ -337,10 +348,10 @@ def main():
         return
     
     # Ask user where to save outputs
-    #output_dir = IJ.getDirectory("Choose a directory to save data")
-    #if output_dir is None:
-        #IJ.error("No output directory is selected!")
-        #return
+    output_dir = IJ.getDirectory("Choose a directory to save data")
+    if output_dir is None:
+        IJ.error("No output directory is selected!")
+        return
     
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
@@ -349,7 +360,7 @@ def main():
         IJ.log(msg)
         
         try:
-            image_processing(imp, params)
+            image_processing(imp, params, output_dir)
         
         except Exception as e:
             # log immediately
