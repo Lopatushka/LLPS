@@ -347,9 +347,12 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         # Processing image title
         img_title = imp.getTitle()
         img_title = img_name_processing(img_title)
+        
+        # copy original image to avoid changes in the original image
+        imp_copy = imp.duplicate()
     
         # Split channels into separate images (C1, C2, ...)
-        split_imps = split_channels(imp)
+        split_imps = split_channels(imp_copy)
         
         # Select DAPI channel image (used for nuclei segmentation)
         dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
@@ -442,7 +445,8 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     finally:
         # Cleanup: close all split images, close CSV tables, reset ROI manager
         close_images(split_imps)
-        close_images(meas_imp)
+        close_image(meas_imp)
+        close_image(imp_copy)
         
         close_all_csv_tables()
         cleanup_iteration()
