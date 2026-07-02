@@ -349,7 +349,7 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         # Automatically adjust brightness/contrast for each splitted image (display only)
         for split_img in split_imps:
             split_img.getProcessor().resetMinAndMax()   # reset first
-            IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
+            IJ.run(split_img, "Enhance Contrast", "saturated=2.0")
             split_img.updateAndDraw()
         
         # --- Background substurction in MEASUREMENT channel ---
