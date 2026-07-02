@@ -257,7 +257,7 @@ def is_nucleus_inside_cell(nucleus_roi, cell_roi):
             return False
     return True
             
-def measure_current_channel(imp, rm):
+def _measure_current_channel(imp, rm):
     # Create a new ResultsTable to store measurements
     rt = ResultsTable()
     rois = rm.getRoisAsArray()
@@ -267,6 +267,31 @@ def measure_current_channel(imp, rm):
         roi_name = roi.getName()
         imp.setRoi(roi)
         stats = imp.getStatistics(Measurements.AREA | Measurements.MEAN)
+        # Fill the table with results
+        rt.incrementCounter()
+        rt.addValue("ROI", roi_name)
+        rt.addValue("Area", stats.area)
+        rt.addValue("Mean", stats.mean)
+        
+        # Remove ROI selection
+        imp.killRoi()
+        
+    rt.show("ROI measurements")
+    
+def measure_current_channel(imp, rm):
+    # Create a new ResultsTable to store measurements
+    rt = ResultsTable()
+    rois = rm.getRoisAsArray()
+    
+    # Measure AREA and MEAN for each ROI in the current channel
+    for roi in rois:
+        roi_name = roi.getName()
+        
+        imp.setRoi(roi)
+        imp.updateAndDraw()
+        
+        stats = imp.getStatistics(Measurements.AREA | Measurements.MEAN)
+        
         # Fill the table with results
         rt.incrementCounter()
         rt.addValue("ROI", roi_name)
@@ -330,20 +355,20 @@ def image_processing(imp, p, repeat_id, output_dir="."):
         dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
         
         # Select the measurement channel image (used for mean intensity measurement)
-        meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
+        meas_original  = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
         
         # Select the brightfield channel image (used for cytoplasmic segmentation)
         brightfield_imp = pick_channel_by_index(split_imps, BRIGHTFIELD_CHANNEL)
     
         # Check splitting
-        if dapi_imp is None or meas_imp is None or brightfield_imp is None:
+        if dapi_imp is None or meas_original is None or brightfield_imp is None:
             IJ.error("Missing channels for: " + img_title)
             close_images(split_imps)
             return
     
         # Apply LUTs to each channel image
         apply_lut(dapi_imp, dapi_lut)
-        apply_lut(meas_imp, measure_lut)
+        apply_lut(meas_original, measure_lut)
         apply_lut(brightfield_imp, brightfield_lut)
     
         # Automatically adjust brightness/contrast for each splitted image (display only)
@@ -351,6 +376,10 @@ def image_processing(imp, p, repeat_id, output_dir="."):
             split_img.getProcessor().resetMinAndMax()   # reset first
             IJ.run(split_img, "Enhance Contrast", "saturated=2.0")
             split_img.updateAndDraw()
+            
+        # Make an independent copy of the measurement channel image for background subtraction
+        meas_imp = meas_original.duplicate()
+        meas_imp.setTitle("Measurement_bg_subtracted")
         
         # --- Background substurction in MEASUREMENT channel ---
         if substruct_bg:
@@ -413,6 +442,8 @@ def image_processing(imp, p, repeat_id, output_dir="."):
     finally:
         # Cleanup: close all split images, close CSV tables, reset ROI manager
         close_images(split_imps)
+        close_images(meas_imp)
+        
         close_all_csv_tables()
         cleanup_iteration()
    
