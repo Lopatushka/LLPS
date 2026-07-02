@@ -439,7 +439,7 @@ def main():
         return
     
     # Keep only unique images
-    unique_images = list(set(images))
+    unique_images = list(sorted(set(images)))
     n = len(unique_images) # total amount of images to process
     
     # Ask user about the parameters
