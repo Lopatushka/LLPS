@@ -242,41 +242,12 @@ def create_cytoplasm_roi(cell_index, nucleus_index, rm, roi_name="Cytoplasm"):
 
     return cytoplasm_roi
 
-def _delete_roi(rm, name):
-    rois = rm.getRoisAsArray() 
-    for i, roi in enumerate(rois):
-        roi_name = roi.getName()
-        if name in roi_name:
-            rm.select(i)
-            rm.runCommand("Delete")
-
 def is_nucleus_inside_cell(nucleus_roi, cell_roi):
     polygon = nucleus_roi.getPolygon()
     for x, y in zip(polygon.xpoints, polygon.ypoints):
         if not cell_roi.contains(x, y):
             return False
     return True
-            
-def _measure_current_channel(imp, rm):
-    # Create a new ResultsTable to store measurements
-    rt = ResultsTable()
-    rois = rm.getRoisAsArray()
-    
-    # Measure AREA and MEAN for each ROI in the current channel
-    for i, roi in enumerate(rois):
-        roi_name = roi.getName()
-        imp.setRoi(roi)
-        stats = imp.getStatistics(Measurements.AREA | Measurements.MEAN)
-        # Fill the table with results
-        rt.incrementCounter()
-        rt.addValue("ROI", roi_name)
-        rt.addValue("Area", stats.area)
-        rt.addValue("Mean", stats.mean)
-        
-        # Remove ROI selection
-        imp.killRoi()
-        
-    rt.show("ROI measurements")
     
 def measure_current_channel(imp, rm):
     # Create a new ResultsTable to store measurements
