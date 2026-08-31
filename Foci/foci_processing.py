@@ -191,8 +191,8 @@ def main():
 
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
-    px = float(input("Enter the pixel size in nm [default value is 58.739]: ") or 58.739)
-    resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 75 nm]: ") or 75)
+    px = float(input("Enter the pixel size in nm [default value is 35.3]: ") or 35.3)
+    resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 15 nm]: ") or 15)
     upper_bound = float(input("Enter the upper bound threshold for sigma in nm [default value is 230 nm]: ") or 230)
 
     while True:
@@ -215,6 +215,8 @@ def main():
     if os.path.isfile(os.path.join(dir_images, f))
     and f.lower().endswith(".tif") and "_ROI_".lower() in f.lower()
     ]
+    
+    print(f"Number of founded images is {len(paths_images)}")
 
     # List of paths to the foci.csv
     paths_foci_csv = [
@@ -223,10 +225,15 @@ def main():
         if os.path.isfile(os.path.join(dir_foci, f))
         and f.lower().endswith(".csv")   
         ]
+    
+    print(f"Number of founded .csv files is {len(paths_foci_csv)}")
 
     # Create dictionaries
     img_by_key = {filename(image_name): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
-    csv_by_key = {filename(csv_name)[:-5]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    
+    csv_by_key = {filename(csv_name)[:-5].replace(" ", "_"): csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    
+    
     combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
 
     n_images = len(combined)
