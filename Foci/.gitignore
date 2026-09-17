@@ -78,6 +78,7 @@ results/
 notebooks/
 temp/
 tmp/
+test/
 
 # Large/raw data
 data/
