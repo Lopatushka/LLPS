@@ -75,7 +75,6 @@ htmlcov/
 output/
 outputs/
 results/
-notebooks/
 temp/
 tmp/
 test/
