@@ -30,7 +30,7 @@ def ask_params_for_thunderstorm():
     # ---- Detector ----
     gd.addChoice("Detector:", ["Local maximum"], "Local maximum")
     gd.addChoice("Connectivity:", ["4-neighbourhood", "8-neighbourhood"], "8-neighbourhood")
-    gd.addStringField("Threshold expression:", "std(Wave.F1)", 20)
+    gd.addStringField("Threshold expression:", "std(Wave.F1)", 10)
 
     # ---- Estimator ----
     gd.addChoice("Estimator:", ["PSF: Integrated Gaussian"], "PSF: Integrated Gaussian")
@@ -46,7 +46,7 @@ def ask_params_for_thunderstorm():
     gd.addChoice("Renderer:", ["No Renderer", "Gaussian rendering"], "No Renderer")
 
     # ---- Camera parameters ----
-    gd.addNumericField("Pixel size:", 58.7, 1)
+    gd.addNumericField("Pixel size:", 35.3, 1)
     gd.addNumericField("Photoelectrons per ADU:", 1.0, 1)
     gd.addNumericField("Quantum efficiency (0..1):", 1, 1)
     gd.addNumericField("ADU offset:", 0, 1)
@@ -183,77 +183,10 @@ def foci_image(imp, parameters, output_dir):
     close_window("ThunderSTORM: results")
     close_all_images()
 
-
-
-def _foo():
-    for i, roi in enumerate(rois):
-        dup = None
-        roi_name = None
-        try:
-            roi_name = roi.getName()
-            if roi_name is None:
-                roi_name = "roi_{:02d}".format(i + 1)
-            roi_base = safe_name(roi_name)
-
-            IJ.log("Processing image: {} and ROI: {}".format(img_name, roi_name))
-
-            # Make sure old results window doesn't interfere
-            close_window("ThunderSTORM: results")
-
-            # Set ROI and clear data outside ROI
-            dup = imp.duplicate()
-            dup.show()
-            dup.setRoi(roi)
-            dup.setTitle("ROI_{:02d}_{}".format(i + 1, img_name))
-            IJ.run(dup, "Clear Outside", "")
-            dup.killRoi()          
-
-            # Convert to 16-bit only if needed. Optional
-            dup_type = dup.getType()
-            if dup_type not in (ImagePlus.GRAY8, ImagePlus.GRAY16):
-                IJ.run(dup, "16-bit", "")
-                dup.changes = False
-
-            IJ.run(dup, "Run analysis", parameters)
-
-            # ---- Export CSV ----
-            csv_path = os.path.abspath(os.path.join(output_dir, "{}_{}.csv".format(img_base, roi_base)))
-            csv_path_ij = csv_path.replace("\\", "/")
-
-            export_opts = (
-                'filepath=[{}] '
-                'fileformat=[CSV (comma separated)] '
-                'sigma=true intensity=true chi2=false offset=false saveprotocol=false '
-                'x=true y=true bkgstd=false id=true uncertainty=false frame=false'
-            ).format(csv_path_ij)
-            
-            # Select results and export
-            if WindowManager.getWindow("ThunderSTORM: results") is None:
-                raise RuntimeError("ThunderSTORM results window not found (analysis may have failed).")
-            
-            IJ.selectWindow("ThunderSTORM: results")
-            IJ.run("Export results", export_opts)
-
-            # Save cropped image
-            cropped_path = os.path.join(output_dir, "{}_{}.png".format(img_base, roi_name))
-            IJ.save(dup, cropped_path)
-
-        except Exception as e:
-            IJ.log(
-                "Error on ROI {} ({}): {}".format(
-                    i + 1,
-                    roi_name if roi_name is not None else "?",
-                    e
-                )
-            )
-
-        finally:
-            close_window("ThunderSTORM: results")
-            if dup is not None:
-                dup.close()
-            #imp.killRoi()    
-
-# --- Main ---
+  
+#--------------------------
+# --------- MAIN ---------
+#--------------------------
 def main():
     # Ask user about the directory with data to process
     input_dir = IJ.getDirectory("Choose a directory with data to process")
