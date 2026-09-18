@@ -31,8 +31,8 @@ def ask_params_for_image():
     params["DAPI_CHANNEL"] = int(gd.getNextNumber())
     params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
     params["one_roi"] = bool(gd.getNextBoolean())
-    params["do_bg_subtraction"] = bool(gd.getNextBoolean())
-    params["bg_value"] = float(gd.getNextNumber())
+    #params["do_bg_subtraction"] = bool(gd.getNextBoolean())
+    #params["bg_value"] = float(gd.getNextNumber())
 
     return params
 
@@ -121,19 +121,6 @@ def close_images(imps):
         im.changes = False
         im.close()
 
-def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
-    radius = float(radius)
-    ip = imp.getProcessor()  # ImageProcessor of current slice
-    BackgroundSubtracter().rollingBallBackground(
-        ip,
-        radius,
-        False,
-        bool(light_background),
-        bool(use_paraboloid),
-        bool(do_presmooth),
-        False
-    )
-    imp.updateAndDraw()
 
 def close_all_csv_tables():
     windows = WindowManager.getAllNonImageWindows()
@@ -160,8 +147,8 @@ def semi_manual_img_process(imp, output_dir, p):
     DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
     one_roi = p["one_roi"] # bool
-    substruct_bg = p["do_bg_subtraction"] # bool
-    bg_radius = p["bg_value"] # numeric
+    #substruct_bg = p["do_bg_subtraction"] # bool
+    #bg_radius = p["bg_value"] # numeric
 
     # Processing image title
     img_title = imp.getTitle()
