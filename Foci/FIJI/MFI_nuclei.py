@@ -78,7 +78,7 @@ def main():
         
             # Fill the table with results
             rt.incrementCounter()
-            rt.addValue("Filename", imp.getTitle()[:-4])
+            rt.addValue("Filename", imp.getTitle())
             rt.addValue("Area", stats.area)
             rt.addValue("Mean", stats.mean)
             
