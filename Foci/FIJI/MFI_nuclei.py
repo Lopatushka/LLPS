@@ -62,6 +62,7 @@ def main():
     # --- Measurements of ROIs ---
     # Create an empty results table
     rt = ResultsTable()
+    rt.show("Results")
     
     # ---- Loop: show GUI per image, then process ----
     for call_id, imp in enumerate(unique_images, start=1):
@@ -81,7 +82,7 @@ def main():
             rt.addValue("Mean", stats.mean)
             
             # Save Results as CSV
-            table_name = "{}_nuclei.csv".format(imp.getTitle())
+            table_name = "{}_nuclei.csv".format(imp.getTitle()[:-4])  # remove extension from title
             results_path = os.path.join(output_dir, table_name)
             IJ.saveAs("Results", results_path)
                 
