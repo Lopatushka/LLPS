@@ -78,20 +78,21 @@ def main():
         
             # Fill the table with results
             rt.incrementCounter()
+            rt.addValue("Filename", imp.getTitle()[:-4])
             rt.addValue("Area", stats.area)
             rt.addValue("Mean", stats.mean)
             
-            # Save Results as CSV
-            table_name = "{}_nuclei.csv".format(imp.getTitle()[:-4])  # remove extension from title
-            results_path = os.path.join(output_dir, table_name)
-            IJ.saveAs("Results", results_path)
                 
         except Exception as e:
             # log immediately
             IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
             IJ.log(traceback.format_exc())  # comment out if too verbose
             continue
-        
+    
+    # Save Results as CSV
+    table_name = "MFI_nuclei.csv"
+    results_path = os.path.join(output_dir, table_name)
+    IJ.saveAs("Results", results_path)
        
     close_all_csv_tables()
     close_images(images)
