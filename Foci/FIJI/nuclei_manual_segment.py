@@ -17,11 +17,11 @@ def ask_params_for_image():
     gd.addMessage("Set parameters for nuclei segmentation.")
 
     # Fields
-    gd.addNumericField("DAPI channel (1-based):", 1, 0)
-    gd.addNumericField("Measurement channel (1-based):", 2, 0)
-    gd.addCheckbox("One nucleus per image", True)
-    gd.addCheckbox("Apply background subtraction", True)
-    gd.addNumericField("Background value (rolling ball radius or constant):", 15, 0)
+    gd.addNumericField("DAPI channel (1-based):", 2, 0)
+    gd.addNumericField("Measurement channel (1-based):", 1, 0)
+    gd.addCheckbox("One nucleus per image", False)
+    #gd.addCheckbox("Apply background subtraction", False)
+    #gd.addNumericField("Background value (rolling ball radius or constant):", 15, 0)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -189,8 +189,8 @@ def semi_manual_img_process(imp, output_dir, p):
         split_img.updateAndDraw()
     
     # --- Background substurction in MEASUREMENT channel ---
-    if substruct_bg:
-        subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
+    #if substruct_bg:
+        #subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
 
     # Run ROI manager
     rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
