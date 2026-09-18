@@ -21,7 +21,7 @@ def ask_params_for_image():
     gd.addNumericField("Measurement channel (1-based):", 2, 0)
     gd.addCheckbox("One nucleus per image", True)
     gd.addCheckbox("Apply background subtraction", True)
-    gd.addNumericField("Background value (rolling ball radius or constant):", 25, 0)
+    gd.addNumericField("Background value (rolling ball radius or constant):", 15, 0)
 
     gd.showDialog()
     if gd.wasCanceled():
