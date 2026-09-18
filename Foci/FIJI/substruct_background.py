@@ -98,7 +98,7 @@ def main():
             subtract_background(imp = imp, radius = params["bg_value"])
             
             # Save the processed image
-            name = imp.getTitle() + "_bg_subtracted"
+            name = imp.getTitle()[:-4] + "_bg_subtracted"
             output_path = os.path.join(output_dir, name)
             IJ.saveAs(imp, "Tiff", output_path)
             IJ.log("Saved processed image to: {}".format(output_path))
