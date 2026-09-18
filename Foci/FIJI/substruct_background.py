@@ -98,13 +98,16 @@ def main():
             subtract_background(imp = imp, radius = params["bg_value"])
             
             # Save the processed image
-            output_path = os.path.join(output_dir, imp.getTitle())
+            name = imp.getTitle() + "_bg_subtracted"
+            output_path = os.path.join(output_dir, name)
             IJ.saveAs(imp, "Tiff", output_path)
             IJ.log("Saved processed image to: {}".format(output_path))
             
         except Exception as e:
             IJ.error("Error processing image {}: {}".format(imp.getTitle(), str(e)))
             traceback.print_exc()
+    
+    close_images(images)
             
 if __name__ == "__main__":
     main()
