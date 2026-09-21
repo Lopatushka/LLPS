@@ -20,8 +20,6 @@ def ask_params_for_image():
     gd.addNumericField("DAPI channel (1-based):", 2, 0)
     gd.addNumericField("Measurement channel (1-based):", 1, 0)
     gd.addCheckbox("One nucleus per image", False)
-    #gd.addCheckbox("Apply background subtraction", False)
-    #gd.addNumericField("Background value (rolling ball radius or constant):", 15, 0)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -31,8 +29,6 @@ def ask_params_for_image():
     params["DAPI_CHANNEL"] = int(gd.getNextNumber())
     params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
     params["one_roi"] = bool(gd.getNextBoolean())
-    #params["do_bg_subtraction"] = bool(gd.getNextBoolean())
-    #params["bg_value"] = float(gd.getNextNumber())
 
     return params
 
@@ -147,8 +143,6 @@ def semi_manual_img_process(imp, output_dir, p):
     DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
     MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
     one_roi = p["one_roi"] # bool
-    #substruct_bg = p["do_bg_subtraction"] # bool
-    #bg_radius = p["bg_value"] # numeric
 
     # Processing image title
     img_title = imp.getTitle()
@@ -175,12 +169,8 @@ def semi_manual_img_process(imp, output_dir, p):
         IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
         split_img.updateAndDraw()
     
-    # --- Background substurction in MEASUREMENT channel ---
-    #if substruct_bg:
-        #subtract_background(meas_imp, bg_radius, light_background=False, use_paraboloid=False, do_presmooth=True)
-
     # Run ROI manager
-    rm =  ensure_roi_manager(reset=True) # clean roi manager before launch
+    rm = ensure_roi_manager(reset=True) # clean roi manager before launch
     rois = rm.getRoisAsArray() # list of ROIs in roi manager
 
     # Bring this image above all others
@@ -219,10 +209,6 @@ def semi_manual_img_process(imp, output_dir, p):
     if len(rois) == 0:
         return
 
-    # --- Measurements of ROIs ---
-    # Create an empty results table
-    rt = ResultsTable()
-
     # Itearation through the ROIs
     for i, roi in enumerate(rois):
         roi_name = roi.getName()
@@ -233,33 +219,20 @@ def semi_manual_img_process(imp, output_dir, p):
         meas_imp_work = meas_imp.duplicate()
         meas_imp_work.setTitle("MEAS_work")
         meas_imp_work.show()
-
+        
         # Clear everything else outside desired ROI in the copied image
         meas_imp_work.setRoi(roi)
         IJ.run(meas_imp_work, "Clear Outside", "")
 
-        # Make measurememts on the WORK image
-        stats = meas_imp_work.getStatistics(
-        Measurements.AREA | Measurements.MEAN
-        )
-
-        # Fill the table with results
-        rt.incrementCounter()
-        rt.addValue("ROI", roi_name)
-        rt.addValue("Area", stats.area)
-        rt.addValue("Mean", stats.mean)
-        
         # Remove ROI selection from WORK image
         meas_imp_work.killRoi()
-
+        
         # Save MEASUREMENT WORK channel and close it
         MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
         MEASURE_CHANNEL_work_path = os.path.join(output_dir, MEASURE_CHANNEL_work_name)
         IJ.save(meas_imp_work, MEASURE_CHANNEL_work_path)
         meas_imp_work.close()
 
-    # Show results
-    rt.show("ROI measurements")
 
     # --- SAVE DATA ---
     # Save MEASUREMENT channel in the .tif format
@@ -270,18 +243,13 @@ def semi_manual_img_process(imp, output_dir, p):
     # Save ROI file in .zip
     roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
     rm.runCommand("Save", roi_path)
-
-    # Save Results as CSV
-    table_name = "C{}_{}_rois.csv".format(MEASURE_CHANNEL, img_title)
-    results_path = os.path.join(output_dir, table_name)
-    IJ.saveAs("Results", results_path)
-
-    # Close result table
-    close_all_csv_tables()
-
+    
     # Close splitted images
     close_images(split_imps)
 
+#----------------------------
+# MAIN
+#----------------------------
 def main():
     # Check if at least one image is opened
     ids = WindowManager.getIDList()
@@ -343,4 +311,5 @@ def main():
 
 
 # Run program
-main()
+if __name__ == "__main__":
+    main()
