@@ -44,6 +44,7 @@ def img_name_processing(name):
                 name = name.replace(" ", "_") # repalce other blanks to underscore
         else:
             name = os.path.splitext(name)[0] # delete extention
+        name = name.replace(" ", "_")
         return name
     except Exception as e:
          raise Exception("ERROR in parsing image name")
@@ -217,6 +218,7 @@ def semi_manual_img_process(imp, output_dir, p):
 
         # Duplicate the MEASUREMENT channel and show it
         meas_imp_work = meas_imp.duplicate()
+        
         meas_imp_work.setTitle("MEAS_work")
         meas_imp_work.show()
         
@@ -230,6 +232,8 @@ def semi_manual_img_process(imp, output_dir, p):
         # Save MEASUREMENT WORK channel and close it
         MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
         MEASURE_CHANNEL_work_path = os.path.join(output_dir, MEASURE_CHANNEL_work_name)
+        print(MEASURE_CHANNEL_work_path)
+        break
         IJ.save(meas_imp_work, MEASURE_CHANNEL_work_path)
         meas_imp_work.close()
 
