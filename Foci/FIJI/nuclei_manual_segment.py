@@ -232,8 +232,6 @@ def semi_manual_img_process(imp, output_dir, p):
         # Save MEASUREMENT WORK channel and close it
         MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
         MEASURE_CHANNEL_work_path = os.path.join(output_dir, MEASURE_CHANNEL_work_name)
-        print(MEASURE_CHANNEL_work_path)
-        break
         IJ.save(meas_imp_work, MEASURE_CHANNEL_work_path)
         meas_imp_work.close()
 
@@ -303,6 +301,8 @@ def main():
 
         try:
             semi_manual_img_process(imp, output_dir, params)
+            msg = "Sucessfully saving image {}".format(imp.getTitle())
+            IJ.log(msg)
 
         except Exception as e:
             # log immediately
