@@ -198,13 +198,17 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
     if showplot:
         plt.show(fig)
     
-def df_filtration(df_path, hist = True, plot = True):
-    # Process the filename
-    path = Path(df_path)
-    file_name = path.stem
+def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
+    # Process the filename from .csv path
+    df_path = Path(path_to_df)
+    file_name = df_path.stem
+    
+    if path_to_img != "":
+        img_path = Path(path_to_img)
+        img_name = img_path.stem
     
     # Load dataframe
-    df = pd.read_csv(path)
+    df = pd.read_csv(df_path)
         
     # --- Perform filrations ---
     # Sigma filtation
@@ -233,7 +237,7 @@ def df_filtration(df_path, hist = True, plot = True):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = path.with_name(file_name + "_sigma_hist.png")
+                    save_path = df_path.with_name(file_name + "_sigma_hist.png")
                     )
     
         plot_histogram(df, column = "foci_MFI", bins=50,
@@ -242,7 +246,7 @@ def df_filtration(df_path, hist = True, plot = True):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = path.with_name(file_name + "_foci_MFI_hist.png")
+                    save_path = df_path.with_name(file_name + "_foci_MFI_hist.png")
                     )
     
         plot_histogram(df, column = "foci_SD", bins=50,
@@ -251,8 +255,14 @@ def df_filtration(df_path, hist = True, plot = True):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = path.with_name(file_name + "_foci_sd_hist.png")
+                    save_path = df_path.with_name(file_name + "_foci_sd_hist.png")
                     )
+        if plot:
+            draw_foci(image_path = img_path,
+            df = df,
+            showplot = False,
+            save_image = True,
+            save_path = img_path.with_name(img_name + "_filtred_mapped.png"))
 
 # -----------------
 # MAIN FUNCTION
