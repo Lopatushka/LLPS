@@ -186,12 +186,11 @@ def plot_histogram(df, column, bins=50,
 
 
 def main():
-    # Ask about paths with data and output directory to save results
-    # Example of path: /mnt/c/users/elopatukhin/Desktop/Miscroscopy/160226_U2OS_fixed/MP_WT_0.3
-
+    # Ask user about the path to the directory with images and foci.csv files
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
-    dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
+    dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output in .csv format): "))
     
+    # Ask user about pixel size and thresholds for Sigma_nm
     px = float(input("Enter the pixel size in nm [default value is 35.3]: ") or 35.3)
     resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 90 nm]: ") or 90)
     upper_bound = float(input("Enter the upper bound threshold for sigma in nm [default value is 1050 nm]: ") or 1050)
@@ -200,7 +199,6 @@ def main():
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
         if answer == "Y":
             output_dir = dir_foci
-            #output_dir = nuclei_dir # temporaly!!!
             break
         elif answer == "N":
             output_dir = check_directory(input("Enter output folder path: ").strip())
@@ -208,13 +206,15 @@ def main():
         else:
             print("Please enter Y or N.")
 
+    # -------------------------
     # --- Process foci data ---
+    # -------------------------
     # List of paths to the images
     paths_images = [
     os.path.join(dir_images, f)
     for f in os.listdir(dir_images)
     if os.path.isfile(os.path.join(dir_images, f))
-    and f.lower().endswith(".tif") and "_ROI_".lower() in f.lower()
+    and f.lower().endswith(".tif") and "_roi_".lower() in f.lower()
     ]
     
     print(f"Number of founded images is {len(paths_images)}")
@@ -249,7 +249,7 @@ def main():
     create_dir(new_dir_to_hist)
     
     # Dir to store foci.csv extended and filtered
-    new_dir_to_foci_filtered = os.path.join(output_dir, "foci_ext_filtr")
+    new_dir_to_foci_filtered = os.path.join(output_dir, "foci_filtered")
     create_dir(new_dir_to_foci_filtered)
 
     # Dir to store mapped foci images
@@ -257,7 +257,7 @@ def main():
     create_dir(new_dir_foci_mapped)
 
     # Dir to store mapped and filtered foci images
-    new_dir_foci_mapped_filtr = os.path.join(output_dir, "foci_mapped_filtr")
+    new_dir_foci_mapped_filtr = os.path.join(output_dir, "foci_mapped_filtred")
     create_dir(new_dir_foci_mapped_filtr)
     
 
@@ -284,7 +284,7 @@ def main():
         #upper_bound = Q3 + 3 * IQR
 
         # Plot histogram for sigma_nm with upper bound and save the plot
-        path_to_hist = os.path.join(new_dir_to_hist, f"{name}.png")
+        path_to_hist = os.path.join(new_dir_to_hist, f"{name}_sigma.png")
         plot_histogram(df = result, column = "sigma_nm", bins=50,
                    xlabel= "Sigma, nm",
                    title = name,
