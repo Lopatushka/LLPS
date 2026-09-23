@@ -191,6 +191,7 @@ def main():
 
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with the information about foci (ThunderSTORM output): "))
+    
     px = float(input("Enter the pixel size in nm [default value is 35.3]: ") or 35.3)
     resolution_threshold = float(input("Enter the resolution threshold in nm [default value is 90 nm]: ") or 90)
     upper_bound = float(input("Enter the upper bound threshold for sigma in nm [default value is 1050 nm]: ") or 1050)
