@@ -225,7 +225,7 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
     if showplot:
         plt.show(fig)
     
-def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
+def df_filtration(path_to_df, path_to_img = "", output_dir = "./", hist = True, plot = True, ):
     # Process the filename from .csv path
     df_path = Path(path_to_df)
     file_name = df_path.stem
@@ -233,6 +233,8 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
     if path_to_img != "":
         img_path = Path(path_to_img)
         img_name = img_path.stem
+    
+    output_dir = Path(output_dir)
     
     # Load dataframe
     df = pd.read_csv(df_path)
@@ -256,6 +258,10 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
         threshold=0.3
     )
     
+    # Save filtrated .csv file
+    df.to_csv(output_dir.with_name(file_name + "_foci_filtered.csv"),
+              index=False)
+    
     if hist:
         # Plot and save histograms of original images
         plot_histogram(df, column = "sigma_nm", bins=50,
@@ -264,7 +270,7 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = df_path.with_name(file_name + "_sigma_hist.png")
+                    save_path = output_dir.with_name(file_name + "_sigma_hist.png")
                     )
     
         plot_histogram(df, column = "foci_MFI", bins=50,
@@ -273,7 +279,7 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = df_path.with_name(file_name + "_foci_MFI_hist.png")
+                    save_path = output_dir.with_name(file_name + "_foci_MFI_hist.png")
                     )
     
         plot_histogram(df, column = "foci_SD", bins=50,
@@ -282,21 +288,21 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = df_path.with_name(file_name + "_foci_sd_hist.png")
+                    save_path = output_dir.with_name(file_name + "_foci_sd_hist.png")
                     )
         if plot:
             draw_foci(image_path = img_path,
             df = df,
             showplot = False,
             save_image = True,
-            save_path = img_path.with_name(img_name + "_filtred_mapped.png"))
+            save_path = output_dir.with_name(img_name + "_filtred_mapped.png"))
 
 # -----------------
 # MAIN FUNCTION
 # -----------------
 def main():
     # Ask user about the path to the directory with images and foci.csv files
-    dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
+    dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format: "))
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     
     while True:
@@ -336,7 +342,7 @@ def main():
     # Create dictionaries
     img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
         
-    csv_by_key = {filename(csv_name)[:-5].replace(" ", "_"): csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    csv_by_key = {filename(csv_name)[:-12]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
         
     combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
     
