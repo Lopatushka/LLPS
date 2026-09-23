@@ -189,7 +189,7 @@ def semi_manual_img_process(imp, output_dir, p):
         # If user press Cancel
         if gd.wasCanceled():
             IJ.error("Cancelled. Stopping.")
-            break
+            return
 
         # re-fetch after user interaction in while loop
         rois = rm.getRoisAsArray()
@@ -222,12 +222,17 @@ def semi_manual_img_process(imp, output_dir, p):
         meas_imp_work.setTitle("MEAS_work")
         meas_imp_work.show()
         
+        # Make independent copy of ROI
+        roi_copy = roi.clone()
+        meas_imp_work.setRoi(roi_copy)
+        
         # Clear everything else outside desired ROI in the copied image
-        meas_imp_work.setRoi(roi)
+        #meas_imp_work.setRoi(roi)
         IJ.run(meas_imp_work, "Clear Outside", "")
 
         # Remove ROI selection from WORK image
         meas_imp_work.killRoi()
+        meas_imp_work.updateAndDraw()
         
         # Save MEASUREMENT WORK channel and close it
         MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
@@ -248,6 +253,9 @@ def semi_manual_img_process(imp, output_dir, p):
     
     # Close splitted images
     close_images(split_imps)
+    
+    # Cleanup ROI manager
+    rm.reset()
 
 #----------------------------
 # MAIN
@@ -301,7 +309,7 @@ def main():
 
         try:
             semi_manual_img_process(imp, output_dir, params)
-            msg = "Sucessfully saving image {}".format(imp.getTitle())
+            msg = "Sucessfully saving image: {}".format(imp.getTitle())
             IJ.log(msg)
 
         except Exception as e:
@@ -309,9 +317,6 @@ def main():
             IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
             IJ.log(traceback.format_exc())  # comment out if too verbose
             continue
-        
-        finally:
-            cleanup_iteration()
 
 
 # Run program
