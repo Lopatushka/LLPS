@@ -263,8 +263,10 @@ def df_filtration(path_to_df, path_to_img = "",
     )
     
     # Save filtrated .csv file
-    df.to_csv(output_dir.with_name(file_name + "_foci_filtered.csv"),
-              index=False)
+    df.to_csv(
+        output_dir / f"{file_name}_foci_filtered.csv",
+        index=False
+)
     
     if hist:
         # Plot and save histograms of original images
@@ -274,7 +276,7 @@ def df_filtration(path_to_df, path_to_img = "",
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = output_dir.with_name(file_name + "_sigma_hist.png")
+                    save_path = output_dir / f"{file_name}_sigma_hist.png",
                     )
     
         plot_histogram(df, column = "foci_MFI", bins=50,
@@ -283,7 +285,7 @@ def df_filtration(path_to_df, path_to_img = "",
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = output_dir.with_name(file_name + "_foci_MFI_hist.png")
+                    save_path = output_dir / f"{file_name}_foci_MFI_hist.png",
                     )
     
         plot_histogram(df, column = "foci_SD", bins=50,
@@ -292,14 +294,15 @@ def df_filtration(path_to_df, path_to_img = "",
                     figsize=(4, 3),
                     dpi=300,
                     save_image = True,
-                    save_path = output_dir.with_name(file_name + "_foci_sd_hist.png")
+                    save_path = output_dir / f"{file_name}_foci_sd_hist.png",
                     )
         if plot:
             draw_foci(image_path = img_path,
             df = df,
             showplot = False,
             save_image = True,
-            save_path = output_dir.with_name(img_name + "_filtred_mapped.png"))
+            save_path = output_dir / f"{img_name}_filtered_mapped.png",
+            )
 
 # -----------------
 # MAIN FUNCTION
