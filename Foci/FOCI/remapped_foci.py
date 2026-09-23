@@ -209,12 +209,12 @@ def main():
             # Read foci.csv file
             df = pd.read_csv(csv_path)
             
-            plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
+            #plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
             result = foci_one_image(image = image,
                                     df = df,
                                     px_size_nm = px,
-                                    plot = True,
-                                    save_path = plot_path)
+                                    plot = False,
+                                    save_path = "")
             
             # Save the result to a new .csv file
             result_csv_path = os.path.join(output_dir, f"{name}_foci_mapped.csv")
