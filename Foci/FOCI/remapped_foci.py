@@ -204,8 +204,22 @@ def main():
             # Read foci.csv file
             df = pd.read_csv(csv_path)
             
+            plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
             result = foci_one_image(image = image,
                                     df = df,
                                     px_size_nm = px,
                                     plot = True,
-                                    save_path = "")
+                                    save_path = plot_path)
+            
+            # Save the result to a new .csv file
+            result_csv_path = os.path.join(output_dir, f"{name}_foci_mapped.csv")
+            result.to_csv(result_csv_path, index=False)
+            
+            print(f"Sucessfully processed image {name}.")
+            
+        except Exception as e:
+            print(f"Error processing {name}: {e}")
+            continue
+        
+if __name__ == "__main__":
+    main()
