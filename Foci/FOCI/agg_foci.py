@@ -57,11 +57,11 @@ def foci_data(dir, output_dir):
         sigma_nm_mean = df["sigma_nm"].mean()
         sigma_nm_sd = df["sigma_nm"].std()
 
-        intensity_photon_mean = df["intensity_photon"].mean()
-        intensity_photon_sd = df["intensity_photon"].std()
+        #intensity_photon_mean = df["intensity_photon"].mean()
+        #intensity_photon_sd = df["intensity_photon"].std()
 
-        sigma_pixel_mean = df["sigma_pixel"].mean()
-        sigma_pixel_sd = df["sigma_pixel"].std()
+        #sigma_pixel_mean = df["sigma_pixel"].mean()
+        #sigma_pixel_sd = df["sigma_pixel"].std()
 
         foci_MFI_mean = df["foci_MFI"].mean()
         foci_MFI_sd = df["foci_MFI"].std()
@@ -71,10 +71,10 @@ def foci_data(dir, output_dir):
             "n_foci": n_foci,
             "sigma_nm_mean": sigma_nm_mean,
             "sigma_nm_sd": sigma_nm_sd,
-            "intensity_photon_mean": intensity_photon_mean,
-            "intensity_photon_sd": intensity_photon_sd,
-            "sigma_pixel_mean": sigma_pixel_mean,
-            "sigma_pixel_sd": sigma_pixel_sd,
+            #"intensity_photon_mean": intensity_photon_mean,
+            #"intensity_photon_sd": intensity_photon_sd,
+            #"sigma_pixel_mean": sigma_pixel_mean,
+            #"sigma_pixel_sd": sigma_pixel_sd,
             "foci_MFI_mean": foci_MFI_mean,
             "foci_MFI_sd": foci_MFI_sd
         })
