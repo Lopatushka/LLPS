@@ -89,6 +89,7 @@ def foci_one_image(image, df, px_size_nm, plot = True, save_path = ""):
     y_list = []
     sigma_list = []
     mean_list = []
+    sd_list = []
     
     # Prepare dataframe
     df.columns = df.columns.str.strip()  # remove hidden spaces in headers
@@ -114,14 +115,17 @@ def foci_one_image(image, df, px_size_nm, plot = True, save_path = ""):
         # Compute mean intensity
         if n_pixels_mask > 0:
             mean_intensity = arr[mask].mean()
+            sd_intensity = arr[mask].std()
         else:
             mean_intensity = np.nan
+            sd_intensity = np.nan
 
         # Add values to the corresponding lists
         x_list.append(x_px)
         y_list.append(y_px)
         sigma_list.append(r_px)
         mean_list.append(mean_intensity)
+        sd_list.append(sd_intensity)
         
     # Return modified copy
     df_out = df.copy()
@@ -129,6 +133,7 @@ def foci_one_image(image, df, px_size_nm, plot = True, save_path = ""):
     df_out["y_pixel"] = y_list
     df_out["sigma_pixel"] = sigma_list
     df_out["foci_MFI"] = mean_list
+    df_out["foci_SD"] = sd_list
     
     # Make a plot
     if plot:
