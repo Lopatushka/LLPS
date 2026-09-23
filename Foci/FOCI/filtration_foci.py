@@ -245,13 +245,13 @@ def df_filtration(path_to_df, path_to_img = "",
         
     # --- Perform filrations ---
     # Sigma filtation
-    df = df[(df['sigma_nm'] > 100) & (df['sigma_nm'] < 1000)]
+    df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 1000)]
     
     # MFI filtration
     df = df[df['foci_MFI'] > 100]
     
     # S.d. filtration
-    df[df['foci_MFI'] / df['foci_SD'] > 8]
+    df[df['foci_MFI'] / df['foci_SD'] > 3]
     
     # Overlapping
     df = remove_overlapping_circles(
@@ -259,7 +259,7 @@ def df_filtration(path_to_df, path_to_img = "",
         x_col="x_pixel",
         y_col="y_pixel",
         radius_col="sigma_pixel",
-        threshold=0.3
+        threshold=0.5
     )
     
     # Save filtrated .csv file
