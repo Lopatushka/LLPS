@@ -13,6 +13,33 @@ import matplotlib.pyplot as plt
 # MFI/SD of FI > 5
 # If to circles are overllaped > 30%, keep only the biggest
 
+def check_directory(path):
+    if not isinstance(path, str):
+        raise TypeError("Path must be a string.")
+    
+    path = path.strip()
+    if path == "":
+        raise ValueError("Path is empty.")
+    
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            "Directory does not exist:\n{}".format(path)
+        )
+
+    if not os.path.isdir(path):
+        raise NotADirectoryError(
+            "Path is not a directory:\n{}".format(path)
+        )
+
+    return os.path.abspath(path)
+
+def filename(path):
+    """
+    Return filename without extenstion
+    """
+    return os.path.splitext(os.path.basename(path))[0]
+
+
 def circles_overlap(c1, c2):
     x1, y1, r1 = c1
     x2, y2, r2 = c2
@@ -268,7 +295,63 @@ def df_filtration(path_to_df, hist = True, plot = True, path_to_img = ""):
 # MAIN FUNCTION
 # -----------------
 def main():
-    pass
+    # Ask user about the path to the directory with images and foci.csv files
+    dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
+    dir_images = check_directory(input("Enter pathway to the directory with the images: "))
+    
+    while True:
+        answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
+        if answer == "Y":
+            output_dir = dir_foci
+            break
+        elif answer == "N":
+            output_dir = check_directory(input("Enter output folder path: ").strip())
+            break
+        else:
+            print("Please enter Y or N.")
+     
+    # -------------------------
+    # --- Process foci data ---
+    # -------------------------
+    # List of paths to the images
+    paths_images = [
+    os.path.join(dir_images, f)
+    for f in os.listdir(dir_images)
+    if os.path.isfile(os.path.join(dir_images, f))
+    and f.lower().endswith(".tif") and "_roi_".lower() in f.lower()
+    ]
+    
+    print(f"Number of founded images is {len(paths_images)}")
+    
+    # List of paths to the foci.csv
+    paths_foci_csv = [
+        os.path.join(dir_foci, f)
+        for f in os.listdir(dir_foci)
+        if os.path.isfile(os.path.join(dir_foci, f))
+        and f.lower().endswith(".csv")   
+        ]
+    
+    print(f"Number of founded .csv files is {len(paths_foci_csv)}")
+    
+    # Create dictionaries
+    img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
+        
+    csv_by_key = {filename(csv_name)[:-5].replace(" ", "_"): csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+        
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
+    
+    n_images = len(combined)
+    print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
+    
+    # Iteration through combined dictioanry
+    for name, (img_path, csv_path) in combined.items():
+        try:
+            df_filtration(path_to_df = csv_path, hist = True, plot = True, path_to_img = img_path)
+            print(f"Sucessfully processed image {name}.")
+        
+        except Exception as e:
+            print(f"Error processing {name}: {e}")
+            continue
 
 if __name__ == "__main__":
     main()
