@@ -225,7 +225,11 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
     if showplot:
         plt.show(fig)
     
-def df_filtration(path_to_df, path_to_img = "", output_dir = "./", hist = True, plot = True, ):
+def df_filtration(path_to_df, path_to_img = "",
+                  output_dir = "./",
+                  hist = True,
+                  plot = True):
+    
     # Process the filename from .csv path
     df_path = Path(path_to_df)
     file_name = df_path.stem
@@ -340,28 +344,9 @@ def main():
     print(f"Number of founded .csv files is {len(paths_foci_csv)}")
     
     # Create dictionaries
-    #img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
-    #csv_by_key = {filename(csv_name)[:-12]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
-    #combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
-    
-    # {image name without extension: image path}
-    img_by_key = {
-        Path(image_path).stem.replace(" ", "_"): image_path
-        for image_path in paths_images
-    }
-    
-    # {image name: CSV path}
-    # Remove "_foci.csv" (or whatever the last 12 characters represent)
-    csv_by_key = {
-        Path(csv_path).stem[:-8]: csv_path
-        for csv_path in paths_foci_csv
-    }
-    
-    # {file name: (image path, CSV path)}
-    combined = {
-        key: (img_by_key[key], csv_by_key[key])
-        for key in img_by_key.keys() & csv_by_key.keys()
-    }
+    img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
+    csv_by_key = {filename(csv_name)[:-12]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
     
     n_images = len(combined)
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
@@ -369,7 +354,12 @@ def main():
     # Iteration through combined dictioanry
     for name, (img_path, csv_path) in combined.items():
         try:
-            df_filtration(path_to_df = csv_path, hist = True, plot = True, path_to_img = img_path)
+            df_filtration(path_to_df = csv_path,
+                        path_to_img = img_path,
+                        output_dir = output_dir,
+                        hist = True,
+                        plot = True)
+            
             print(f"Sucessfully processed image {name}.")
         
         except Exception as e:
