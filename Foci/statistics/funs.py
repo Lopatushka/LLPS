@@ -5,8 +5,14 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.stats import ttest_ind
 from scipy.stats import mannwhitneyu
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+
+from itertools import combinations
+
+from sklearn.preprocessing import StandardScaler
+from scipy.spatial.distance import pdist, squareform
+from skbio.stats.distance import DistanceMatrix, permanova
+from statsmodels.stats.multitest import multipletests
 
 def pca_from_dataframes(
     df_list,
@@ -457,120 +463,7 @@ def plot_pca_centroid_distances(
 
     return fig, ax
 
-def beautiful_pca_plot(
-    pca_df,
-    centroids,
-    explained_variance=None,
-    figsize=(8, 6),
-    dpi=300,
-):
-    
-    #colors = {
-        #"WT": "#4C72B0",
-        #"MGS1": "#55A868",
-        #"MGS2": "#C44E52",
-        #"MGS3": "#8172B2",
-        #"MGS4": "#CCB974",
-        #"MGS5": "#64B5CD",
-    #}
-
-    fig, ax = plt.subplots(
-        figsize=figsize,
-        dpi=dpi
-    )
-
-    # -------------------------
-    # Cells
-    # -------------------------
-
-    for sample in pca_df["sample"].unique():
-
-        subset = pca_df[
-            pca_df["sample"] == sample
-        ]
-
-        ax.scatter(
-            subset["PC1"],
-            subset["PC2"],
-            s=30,
-            alpha=0.35,
-            #color=colors.get(sample),
-            label=sample,
-            edgecolors="none"
-        )
-
-    # -------------------------
-    # Centroids
-    # -------------------------
-
-    for sample in centroids.index:
-
-        x = centroids.loc[sample, "PC1"]
-        y = centroids.loc[sample, "PC2"]
-
-        ax.scatter(
-            x,
-            y,
-            marker="X",
-            s=100,
-            #color=colors.get(sample),
-            edgecolor="black",
-            linewidth=0.5,
-            zorder=10,
-        )
-
-        ax.annotate(
-            sample,
-            (x, y),
-            xytext=(-10, 5),
-            textcoords="offset points",
-            fontsize=6,
-            weight="bold"
-        )
-
-    # -------------------------
-    # Labels
-    # -------------------------
-
-    if explained_variance is not None:
-
-        ax.set_xlabel(
-            f"PC1 ({explained_variance[0]*100:.1f}%)",
-            fontsize=12
-        )
-
-        ax.set_ylabel(
-            f"PC2 ({explained_variance[1]*100:.1f}%)",
-            fontsize=12
-        )
-
-    else:
-        ax.set_xlabel("PC1")
-        ax.set_ylabel("PC2")
-
-    # -------------------------
-    # Style
-    # -------------------------
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    ax.grid(
-        alpha=0.2,
-        linestyle="--"
-    )
-
-    ax.legend(
-        frameon=False,
-        bbox_to_anchor=(1.02, 1),
-        loc="upper left"
-    )
-
-    plt.tight_layout()
-
-    return fig, ax
-
-def compare_pca_to_wt(
+def _compare_pca_to_wt(
     pca_df,
     wt_label="WT",
     test="mannwhitney"
@@ -631,4 +524,320 @@ def compare_pca_to_wt(
     results = pd.DataFrame(results)
     #results = results[['sample', 'PC1_p', 'PC2_p']]
     
+    return results
+
+def beautiful_pca_plot(
+    pca_df,
+    centroids,
+    explained_variance=None,
+    figsize=(5, 4.5),
+    dpi=300,
+    point_size=30,
+    centroid_size=90,
+    alpha=0.6,
+    show=True,
+):
+    """
+    Publication-quality PCA scatter plot with group centroids.
+
+    Parameters
+    ----------
+    pca_df : pd.DataFrame
+        DataFrame containing:
+        'PC1', 'PC2', and 'sample'.
+
+    centroids : pd.DataFrame
+        DataFrame indexed by sample containing:
+        'PC1' and 'PC2'.
+
+    explained_variance : array-like, optional
+        Explained variance ratios from PCA.
+
+    figsize : tuple
+        Figure size.
+
+    dpi : int
+        Figure resolution.
+
+    point_size : float
+        Size of individual observations.
+
+    centroid_size : float
+        Size of centroid markers.
+
+    alpha : float
+        Transparency of individual observations.
+
+    show : bool
+        Whether to display the plot.
+
+    Returns
+    -------
+    fig, ax
+    """
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    samples = pca_df["sample"].unique()
+
+    # Use matplotlib's default color cycle
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    color_map = {
+        sample: colors[i % len(colors)]
+        for i, sample in enumerate(samples)
+    }
+
+    # --------------------------------------------------
+    # Individual observations
+    # --------------------------------------------------
+
+    for sample in samples:
+
+        subset = pca_df[
+            pca_df["sample"] == sample
+        ]
+
+        ax.scatter(
+            subset["PC1"],
+            subset["PC2"],
+            s=point_size,
+            alpha=alpha,
+            color=color_map[sample],
+            edgecolor="white",
+            linewidth=0.3,
+            label=sample,
+            zorder=2
+        )
+
+    # --------------------------------------------------
+    # Centroids
+    # --------------------------------------------------
+
+    for sample in centroids.index:
+
+        x = centroids.loc[sample, "PC1"]
+        y = centroids.loc[sample, "PC2"]
+
+        ax.scatter(
+            x,
+            y,
+            marker="X",
+            s=centroid_size,
+            color=color_map.get(sample),
+            edgecolor="black",
+            linewidth=0.7,
+            zorder=5
+        )
+
+    # --------------------------------------------------
+    # Zero reference lines
+    # --------------------------------------------------
+
+    ax.axhline(
+        0,
+        linewidth=0.7,
+        linestyle="--",
+        alpha=0.3,
+        zorder=0
+    )
+
+    ax.axvline(
+        0,
+        linewidth=0.7,
+        linestyle="--",
+        alpha=0.3,
+        zorder=0
+    )
+
+    # --------------------------------------------------
+    # Axis labels
+    # --------------------------------------------------
+
+    if explained_variance is not None:
+
+        ax.set_xlabel(
+            f"PC1 ({explained_variance[0] * 100:.1f}%)",
+            fontsize=11
+        )
+
+        ax.set_ylabel(
+            f"PC2 ({explained_variance[1] * 100:.1f}%)",
+            fontsize=11
+        )
+
+    else:
+
+        ax.set_xlabel(
+            "PC1",
+            fontsize=11
+        )
+
+        ax.set_ylabel(
+            "PC2",
+            fontsize=11
+        )
+
+    # --------------------------------------------------
+    # Ticks
+    # --------------------------------------------------
+
+    ax.tick_params(
+        axis="both",
+        labelsize=9,
+        direction="out",
+        length=4,
+        width=0.8
+    )
+
+    # --------------------------------------------------
+    # Spines
+    # --------------------------------------------------
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    ax.spines["left"].set_linewidth(0.8)
+    ax.spines["bottom"].set_linewidth(0.8)
+
+    # --------------------------------------------------
+    # Legend
+    # --------------------------------------------------
+
+    ax.legend(
+        frameon=False,
+        fontsize=9,
+        markerscale=1.1,
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left"
+    )
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+
+    return fig, ax
+
+def pairwise_permanova(
+    dfs,
+    data,
+    columns,
+    permutations=9999,
+    correction="fdr_bh"
+):
+    """
+    Pairwise PERMANOVA between all samples.
+
+    Parameters
+    ----------
+    dfs : list[pd.DataFrame]
+        DataFrames in the same order as `data`.
+
+    data : list[dict]
+        Sample information containing at least:
+        {"name": sample_name, "path": path}
+
+    columns : list[str]
+        Variables used for the analysis.
+
+    permutations : int
+        Number of permutations.
+
+    correction : str
+        Multiple-testing correction method.
+        Examples: "fdr_bh", "holm", "bonferroni".
+
+    Returns
+    -------
+    results : pd.DataFrame
+        Pairwise PERMANOVA results.
+    """
+
+    # --------------------------------
+    # Combine all samples
+    # --------------------------------
+
+    combined = []
+
+    for df, sample in zip(dfs, data):
+
+        tmp = df[columns].copy()
+        tmp["sample"] = sample["name"]
+
+        combined.append(tmp)
+
+    df_all = pd.concat(
+        combined,
+        ignore_index=True
+    )
+
+    df_all = (
+        df_all
+        .dropna(subset=columns)
+        .reset_index(drop=True)
+    )
+
+    sample_names = [
+        sample["name"]
+        for sample in data
+    ]
+
+    results = []
+
+    # --------------------------------
+    # All pairwise comparisons
+    # --------------------------------
+
+    for group1, group2 in combinations(sample_names, 2):
+
+        subset = df_all[
+            df_all["sample"].isin([group1, group2])
+        ].copy()
+
+        # Standardize variables
+        X = StandardScaler().fit_transform(
+            subset[columns]
+        )
+
+        # Euclidean distance matrix
+        distance_matrix = squareform(
+            pdist(X, metric="euclidean")
+        )
+
+        dm = DistanceMatrix(distance_matrix)
+
+        # PERMANOVA
+        result = permanova(
+            dm,
+            grouping=subset["sample"].to_numpy(),
+            permutations=permutations
+        )
+
+        results.append({
+            "group1": group1,
+            "group2": group2,
+            "n1": (subset["sample"] == group1).sum(),
+            "n2": (subset["sample"] == group2).sum(),
+            "pseudo_F": result["test statistic"],
+            "p_value": result["p-value"]
+        })
+
+    results = pd.DataFrame(results)
+
+    # --------------------------------
+    # Multiple-testing correction
+    # --------------------------------
+
+    reject, p_adj, _, _ = multipletests(
+        results["p_value"],
+        method=correction
+    )
+
+    results["p_adj"] = p_adj
+    results["significant"] = reject
+
     return results
