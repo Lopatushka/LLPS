@@ -258,6 +258,55 @@ def plot_pca_loadings(
 
     return loadings, fig, ax
 
+def pca_centroid_distances(
+    pca_df,
+    reference="WT"
+):
+    """
+    Calculate Euclidean distances between PCA group centroids
+    and a reference group.
+
+    Parameters
+    ----------
+    pca_df : pd.DataFrame
+        Must contain PC1, PC2, and sample columns.
+
+    reference : str
+        Reference sample. Default is "WT".
+
+    Returns
+    -------
+    distances : pd.Series
+        Distance of each group centroid from the reference centroid.
+
+    centroids : pd.DataFrame
+        PC1 and PC2 coordinates of each group centroid.
+    """
+
+    # Calculate centroids
+    centroids = (
+        pca_df
+        .groupby("sample")[["PC1", "PC2"]]
+        .mean()
+    )
+
+    if reference not in centroids.index:
+        raise ValueError(
+            f"Reference '{reference}' not found in samples."
+        )
+
+    ref = centroids.loc[reference]
+
+    # Euclidean distance from reference
+    distances = np.sqrt(
+        (centroids["PC1"] - ref["PC1"])**2 +
+        (centroids["PC2"] - ref["PC2"])**2
+    )
+
+    distances.name = f"distance_from_{reference}"
+
+    return distances, centroids
+
 def beautiful_pca_plot(
     pca_df,
     centroids,
