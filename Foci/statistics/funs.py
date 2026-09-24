@@ -307,6 +307,156 @@ def pca_centroid_distances(
 
     return distances, centroids
 
+def plot_pca_centroid_distances(
+    distances,
+    reference="WT",
+    figsize=(6, 3.5),
+    dpi=300,
+    exclude_reference=True,
+    show_values=True,
+    show=True
+):
+    """
+    Plot distances of PCA centroids from a reference group.
+
+    Parameters
+    ----------
+    distances : pd.Series or dict
+        Distance of each sample centroid from the reference centroid.
+
+    reference : str
+        Name of the reference group.
+
+    figsize : tuple
+        Figure size.
+
+    dpi : int
+        Figure resolution.
+
+    exclude_reference : bool
+        If True, remove the reference group (distance = 0).
+
+    show_values : bool
+        Display numerical distance next to each point.
+
+    show : bool
+        Whether to display the figure.
+
+    Returns
+    -------
+    fig, ax
+        Matplotlib figure and axes.
+    """
+
+    # Convert to Series
+    distances = pd.Series(distances, dtype=float)
+
+    # Remove reference
+    if exclude_reference:
+        distances = distances.drop(reference, errors="ignore")
+
+    # Sort by distance
+    distances = distances.sort_values()
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    y_positions = np.arange(len(distances))
+
+    # Vertical reference line
+    ax.axvline(
+        0,
+        linewidth=1.2,
+        zorder=1
+    )
+
+    # Horizontal branches
+    ax.hlines(
+        y=y_positions,
+        xmin=0,
+        xmax=distances.values,
+        linewidth=1.5,
+        zorder=1
+    )
+
+    # Points
+    ax.scatter(
+        distances.values,
+        y_positions,
+        s=55,
+        edgecolor="black",
+        linewidth=0.6,
+        zorder=3
+    )
+
+    # Sample names on y-axis
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(
+        distances.index,
+        fontsize=10
+    )
+
+    # Numerical values
+    if show_values:
+
+        offset = distances.max() * 0.025
+
+        for y, value in zip(
+            y_positions,
+            distances.values
+        ):
+            ax.text(
+                value + offset,
+                y,
+                f"{value:.2f}",
+                va="center",
+                ha="left",
+                fontsize=9
+            )
+
+    # Axis label
+    ax.set_xlabel(
+        f"Centroid distance from {reference}",
+        fontsize=11
+    )
+
+    ax.tick_params(
+        axis="x",
+        labelsize=9,
+        direction="out"
+    )
+
+    ax.tick_params(
+        axis="y",
+        length=0
+    )
+
+    # Clean publication style
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+
+    ax.grid(
+        axis="x",
+        linewidth=0.5,
+        alpha=0.2
+    )
+
+    # Space for labels
+    ax.set_xlim(
+        0,
+        distances.max() * 1.15
+    )
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+
+    return fig, ax
+
 def beautiful_pca_plot(
     pca_df,
     centroids,
