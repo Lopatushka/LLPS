@@ -78,7 +78,6 @@ results/
 temp/
 tmp/
 test/
-statistics/
 
 # Large/raw data
 data/
