@@ -149,6 +149,115 @@ def pca_from_dataframes(
 
     return pca_df, pca, fig, ax
 
+def plot_pca_loadings(
+    pca,
+    feature_names,
+    figsize=(4.5, 4),
+    dpi=300,
+    decimals=2,
+    rotation=0,
+    show=True
+):
+    """
+    Plot PCA loadings.
+
+    feature_names : dict
+        Mapping:
+        {
+            "Display name": "dataframe_column_name"
+        }
+    """
+
+    # Original columns used for PCA
+    columns = list(feature_names.values())
+
+    # Names displayed on the figure
+    display_names = list(feature_names.keys())
+
+    n_components = pca.components_.shape[0]
+
+    if len(columns) != pca.components_.shape[1]:
+        raise ValueError(
+            "Number of features in feature_names must match "
+            "the number of features used for PCA."
+        )
+
+    loadings = pd.DataFrame(
+        pca.components_.T,
+        index=display_names,
+        columns=[f"PC{i + 1}" for i in range(n_components)]
+    )
+
+    fig, ax = plt.subplots(
+        figsize=figsize,
+        dpi=dpi
+    )
+
+    im = ax.imshow(
+        loadings.values,
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
+        aspect="auto"
+    )
+
+    # PC labels
+    ax.set_xticks(range(n_components))
+    ax.set_xticklabels(
+        loadings.columns,
+        fontsize=10
+    )
+
+    # Feature labels
+    ax.set_yticks(range(len(display_names)))
+    ax.set_yticklabels(
+        display_names,
+        fontsize=10,
+        rotation=rotation,
+        va="center"
+    )
+
+    # Loading values
+    for i in range(len(display_names)):
+        for j in range(n_components):
+
+            value = loadings.iloc[i, j]
+
+            ax.text(
+                j,
+                i,
+                f"{value:.{decimals}f}",
+                ha="center",
+                va="center",
+                fontsize=9
+            )
+
+    # Colorbar
+    cbar = fig.colorbar(
+        im,
+        ax=ax,
+        fraction=0.05,
+        pad=0.04
+    )
+
+    cbar.set_label("Loading", fontsize=10)
+    cbar.ax.tick_params(labelsize=9)
+
+    ax.tick_params(
+        axis="both",
+        length=0
+    )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    plt.tight_layout()
+
+    if show:
+        plt.show()
+
+    return loadings, fig, ax
+
 def beautiful_pca_plot(
     pca_df,
     centroids,
