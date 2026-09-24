@@ -10,9 +10,13 @@ from sklearn.decomposition import PCA
 from itertools import combinations
 
 from sklearn.preprocessing import StandardScaler
+from skbio.stats.distance import permdisp
 from scipy.spatial.distance import pdist, squareform
 from skbio.stats.distance import DistanceMatrix, permanova
 from statsmodels.stats.multitest import multipletests
+
+from matplotlib.patches import Ellipse
+from scipy.stats import chi2
 
 def pca_from_dataframes(
     df_list,
@@ -526,7 +530,7 @@ def _compare_pca_to_wt(
     
     return results
 
-def beautiful_pca_plot(
+def _beautiful_pca_plot(
     pca_df,
     centroids,
     explained_variance=None,
@@ -841,3 +845,240 @@ def pairwise_permanova(
     results["significant"] = reject
 
     return results
+
+def run_permdisp(
+    df,
+    features=("PC1", "PC2"),
+    group_col="sample",
+    permutations=9999,
+    test="centroid",
+    seed=42
+):
+    """
+    Run PERMDISP to test homogeneity of multivariate dispersion.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing features and group labels.
+
+    features : tuple or list
+        Columns used to calculate distances.
+
+    group_col : str
+        Column containing group labels.
+
+    permutations : int
+        Number of permutations.
+
+    test : {"centroid", "median"}
+        Group center used for calculating dispersion.
+
+    seed : int
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    result
+        scikit-bio PERMDISP result.
+    """
+
+    # Extract features
+    X = df[list(features)].to_numpy()
+
+    # Extract group labels
+    groups = df[group_col].to_numpy()
+
+    # Calculate Euclidean distance matrix
+    distances = squareform(
+        pdist(X, metric="euclidean")
+    )
+
+    dm = DistanceMatrix(distances)
+
+    # Run PERMDISP
+    result = permdisp(
+        dm,
+        grouping=groups,
+        permutations=permutations,
+        test=test,
+        seed=seed
+    )
+
+    return result
+
+def pca_plot_with_ellipse(
+    pca_df,
+    x="PC1",
+    y="PC2",
+    group="sample",
+    explained_variance=None,
+    confidence=0.95,
+    figsize=(8, 6),
+    dpi=300,
+    point_size=35,
+    alpha_points=0.5,
+    alpha_ellipse=0.15,
+):
+    """
+    Plot PCA scores with a confidence ellipse for each group.
+
+    Parameters
+    ----------
+    pca_df : pandas.DataFrame
+        DataFrame containing PCA coordinates and group labels.
+
+    x, y : str
+        Columns containing PCA coordinates.
+
+    group : str
+        Column containing group labels.
+
+    explained_variance : array-like, optional
+        Explained variance ratios, e.g. pca.explained_variance_ratio_.
+        Used to add percentages to axis labels.
+
+    confidence : float
+        Confidence level for the ellipse. Default = 0.95.
+
+    figsize : tuple
+        Figure size.
+
+    dpi : int
+        Figure resolution.
+
+    point_size : float
+        Size of individual points.
+
+    alpha_points : float
+        Transparency of individual points.
+
+    alpha_ellipse : float
+        Transparency of ellipse fill.
+    """
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    # Critical value of chi-square distribution for 2 dimensions
+    chi2_val = chi2.ppf(confidence, df=2)
+
+    for sample in pca_df[group].dropna().unique():
+
+        subset = pca_df[pca_df[group] == sample]
+
+        # Need at least 3 observations to estimate covariance
+        if len(subset) < 3:
+            print(f"Skipping ellipse for {sample}: fewer than 3 observations.")
+
+        # Plot points
+        scatter = ax.scatter(
+            subset[x],
+            subset[y],
+            s=point_size,
+            alpha=alpha_points,
+            label=sample,
+        )
+
+        color = scatter.get_facecolor()[0]
+
+        # --------------------------------------------------
+        # Confidence ellipse
+        # --------------------------------------------------
+
+        if len(subset) >= 3:
+
+            X = subset[[x, y]].dropna().to_numpy()
+
+            if len(X) >= 3:
+
+                # Group centroid
+                center = X.mean(axis=0)
+
+                # Covariance matrix
+                cov = np.cov(X, rowvar=False)
+
+                # Eigenvalues and eigenvectors
+                eigenvalues, eigenvectors = np.linalg.eigh(cov)
+
+                # Sort from largest to smallest
+                order = eigenvalues.argsort()[::-1]
+                eigenvalues = eigenvalues[order]
+                eigenvectors = eigenvectors[:, order]
+
+                # Angle of major axis
+                angle = np.degrees(
+                    np.arctan2(
+                        eigenvectors[1, 0],
+                        eigenvectors[0, 0],
+                    )
+                )
+
+                # Ellipse diameter
+                width = 2 * np.sqrt(
+                    eigenvalues[0] * chi2_val
+                )
+
+                height = 2 * np.sqrt(
+                    eigenvalues[1] * chi2_val
+                )
+
+                ellipse = Ellipse(
+                    xy=center,
+                    width=width,
+                    height=height,
+                    angle=angle,
+                    facecolor=color,
+                    edgecolor=color,
+                    alpha=alpha_ellipse,
+                    linewidth=2,
+                )
+
+                ax.add_patch(ellipse)
+
+                # Plot centroid
+                ax.scatter(
+                    center[0],
+                    center[1],
+                    marker="X",
+                    s=100,
+                    color=color,
+                    edgecolor="black",
+                    linewidth=0.7,
+                    zorder=5,
+                )
+
+    # --------------------------------------------------
+    # Axis labels
+    # --------------------------------------------------
+
+    if explained_variance is not None:
+
+        ax.set_xlabel(
+            f"{x} ({explained_variance[0] * 100:.1f}%)"
+        )
+
+        ax.set_ylabel(
+            f"{y} ({explained_variance[1] * 100:.1f}%)"
+        )
+
+    else:
+
+        ax.set_xlabel(x)
+        ax.set_ylabel(y)
+
+    ax.axhline(0, linewidth=0.7, alpha=0.3)
+    ax.axvline(0, linewidth=0.7, alpha=0.3)
+
+    ax.legend(
+        title=group,
+        frameon=False,
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+    )
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    plt.tight_layout()
+
+    return fig, ax
