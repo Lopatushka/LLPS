@@ -200,7 +200,7 @@ def main():
         f for f in os.listdir(input_dir)
         if os.path.isfile(os.path.join(input_dir, f))
         and f.lower().endswith(exts)
-        and "roi" in f
+        and "ROI" in f
     ]
     images.sort()
 
