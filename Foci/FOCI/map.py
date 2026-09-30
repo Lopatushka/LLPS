@@ -213,8 +213,8 @@ def main():
             result = foci_one_image(image = image,
                                     df = df,
                                     px_size_nm = px,
-                                    plot = False,
-                                    save_path = "")
+                                    plot = True,
+                                    save_path = os.path.join(output_dir, f"{name}_foci.png"))
             
             # Save the result to a new .csv file
             result_csv_path = os.path.join(output_dir, f"{name}_foci_mapped.csv")
