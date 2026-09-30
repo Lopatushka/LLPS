@@ -153,7 +153,7 @@ def main():
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
     
-    px = float(input("Enter the pixel size in nm [default value is 35.3]: ") or 35.3)
+    px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
     
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
@@ -175,7 +175,7 @@ def main():
     os.path.join(dir_images, f)
     for f in os.listdir(dir_images)
     if os.path.isfile(os.path.join(dir_images, f))
-    and f.lower().endswith(".tif") and "_ROI_" in f.lower()
+    and f.lower().endswith(".tif") and "_roi_" in f.lower()
     ]
     
     print(f"Number of founded images is {len(paths_images)}")
