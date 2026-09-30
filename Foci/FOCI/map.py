@@ -57,7 +57,7 @@ def draw_foci(image, df, showplot = True, save_image = True, save_path = ""):
             r,
             fill=False,
             edgecolor="red",
-            linewidth=1
+            linewidth=0.25
         )
 
         ax.add_patch(circle)
