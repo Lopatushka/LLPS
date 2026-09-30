@@ -248,10 +248,10 @@ def df_filtration(path_to_df, path_to_img = "",
     df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 1000)]
     
     # MFI filtration
-    #df = df[df['foci_MFI'] > 100]
+    df = df[df['foci_MFI'] > 10]
     
     # S.d. filtration
-    #df[df['foci_MFI'] / df['foci_SD'] > 3]
+    df[df['foci_MFI'] / df['foci_SD'] > 3]
     
     # Overlapping
     df = remove_overlapping_circles(
