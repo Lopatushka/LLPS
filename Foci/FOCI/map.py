@@ -175,7 +175,7 @@ def main():
     os.path.join(dir_images, f)
     for f in os.listdir(dir_images)
     if os.path.isfile(os.path.join(dir_images, f))
-    and f.lower().endswith(".tif") and "_roi_".lower() in f.lower()
+    and f.lower().endswith(".tif") and "_ROI_" in f.lower()
     ]
     
     print(f"Number of founded images is {len(paths_images)}")
