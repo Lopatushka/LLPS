@@ -47,8 +47,8 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
 
     # Draw red dots at foci centers
     ax.scatter(
-        df["x_pixel"],
-        df["y_pixel"],
+        df["x_pixel"] - 5,
+        df["y_pixel"] - 3,
         s=6,               # Marker size
         c="red",
         marker="+",
