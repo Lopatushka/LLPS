@@ -182,15 +182,29 @@ def plot_histogram(df, column, bins=50,
 
     plt.close(fig)
     
-def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""):
-    # Load image
-    image = Image.open(image_path)
-    arr = np.array(image) # convert image to numpy matrix
+def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
+    # Convert image to numpy array
+    arr = np.array(image)
 
     # Plot image
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(arr, cmap="gray")
+    ax.imshow(
+    arr,
+    cmap="gray",
+    origin="upper",
+    interpolation="nearest"
+    )
 
+    # Draw red dots at foci centers
+    ax.scatter(
+        df["x_pixel"],
+        df["y_pixel"],
+        s=4,               # Marker size
+        c="red",
+        marker="+",
+        linewidths=0.25
+    )
+    
     # Draw red circles
     for _, row in df.iterrows():
         x = row["x_pixel"]
@@ -202,28 +216,29 @@ def draw_foci(image_path, df, showplot = True, save_image = True, save_path = ""
             r,
             fill=False,
             edgecolor="red",
-            linewidth=0.25
+            linewidth=0.45
         )
 
         ax.add_patch(circle)
 
     # Match image coordinates
-    ax.set_xlim(0, arr.shape[1])
-    ax.set_ylim(arr.shape[0], 0)
+    ax.set_xlim(-0.5, arr.shape[1] - 0.5)
+    ax.set_ylim(arr.shape[0] - 0.5, -0.5)
+    ax.set_aspect("equal")
 
-    # Save image
-    if save_image: 
-        plt.savefig(save_path,
+    # Save image before displaying
+    if save_image:
+        fig.savefig(
+            save_path,
             dpi=300,
             bbox_inches="tight"
         )
-        
-        # Do not display image
-        #plt.close(fig)
 
     # Show image
     if showplot:
-        plt.show(fig)
+        plt.show()
+
+    plt.close(fig)
     
 def df_filtration(path_to_df, path_to_img = "",
                   output_dir = "./",
@@ -297,7 +312,8 @@ def df_filtration(path_to_df, path_to_img = "",
                     save_path = output_dir / f"{file_name}_foci_sd_hist.png",
                     )
         if plot:
-            draw_foci(image_path = img_path,
+            image = Image.open(img_path) # open image
+            draw_foci(image = image, # draw filtered foci on the omage and save it
             df = df,
             showplot = False,
             save_image = True,
