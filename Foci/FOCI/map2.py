@@ -37,6 +37,49 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
+def offset_foci(image, df, px_size_nm, window=10):
+    arr = np.asarray(image, dtype=float)
+    offsets_x = []
+    offsets_y = []
+
+    H, W = arr.shape
+
+    for _, row in df.iterrows():
+        x = row["x_nm"] / px_size_nm
+        y = row["y_nm"] / px_size_nm
+
+        # Search around each predicted position
+        x0 = int(round(x))
+        y0 = int(round(y))
+
+        x_min = max(0, x0 - window)
+        x_max = min(W, x0 + window + 1)
+
+        y_min = max(0, y0 - window)
+        y_max = min(H, y0 + window + 1)
+
+        region = arr[y_min:y_max, x_min:x_max]
+
+        if region.size == 0:
+            continue
+
+        # Find brightest pixel
+        dy, dx = np.unravel_index(
+            np.argmax(region),
+            region.shape
+        )
+
+        x_peak = x_min + dx
+        y_peak = y_min + dy
+
+        offsets_x.append(x_peak - x)
+        offsets_y.append(y_peak - y)
+
+    return {
+        "x_offset": np.median(offsets_x),
+        "y_offset": np.median(offsets_y)
+    }
+
 def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
     # Convert image to numpy array
     arr = np.array(image)
@@ -110,8 +153,10 @@ def foci_one_image(image, df, plot=True, save_path=""):
 
     # Iterate through ThunderSTORM dataframe
     for _, row in df.iterrows():
-        x_px = row["x_nm"] / x_px_size # move pixels to the left - 5 -1.5 
-        y_px = row["y_nm"] / y_px_size # move pixels up -1.5 -0.5
+        offsets = offset_foci(image, df, px_size_nm = x_px_size, window=10)
+        
+        x_px = row["x_nm"] / x_px_size - offsets["x_offset"]
+        y_px = row["y_nm"] / y_px_size - offsets["y_offset"]
         r_px = row["sigma_nm"] / r_px_size
 
         # Circular mask for intensity measurements
