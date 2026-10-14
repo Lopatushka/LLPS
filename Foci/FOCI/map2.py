@@ -37,7 +37,7 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def offset_foci(image, df, px_size_nm, window=10):
+def _offset_foci(image, df, px_size_nm, window=10):
     arr = np.asarray(image, dtype=float)
     offsets_x = []
     offsets_y = []
@@ -153,10 +153,10 @@ def foci_one_image(image, df, plot=True, save_path=""):
 
     # Iterate through ThunderSTORM dataframe
     for _, row in df.iterrows():
-        offsets = offset_foci(image, df, px_size_nm = x_px_size, window=10)
+        #offsets = offset_foci(image, df, px_size_nm = x_px_size, window=4)
         
-        x_px = row["x_nm"] / x_px_size - offsets["x_offset"]
-        y_px = row["y_nm"] / y_px_size - offsets["y_offset"]
+        x_px = row["x_nm"] / x_px_size
+        y_px = row["y_nm"] / y_px_size
         r_px = row["sigma_nm"] / r_px_size
 
         # Circular mask for intensity measurements
