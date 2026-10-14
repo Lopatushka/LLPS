@@ -74,7 +74,15 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
 
     plt.close(fig)
     
-def foci_one_image(image, df, px_size_nm, plot=True, save_path=""):
+def foci_one_image(image, df, plot=True, save_path=""):
+    # Get pixel size in nm and image dimensions    
+    x_res = image.tag_v2.get(282)  # XResolution
+    y_res = image.tag_v2.get(283)  # YResolution
+    
+    x_px_size = 1000/x_res
+    y_px_size = 1000/y_res
+    r_px_size = (x_px_size + y_px_size) / 2  # Average pixel size
+    
     arr = np.array(image)
     H, W = arr.shape
 
@@ -97,9 +105,9 @@ def foci_one_image(image, df, px_size_nm, plot=True, save_path=""):
 
     # Iterate through ThunderSTORM dataframe
     for _, row in df.iterrows():
-        x_px = row["x_nm"] / px_size_nm # move pixels to the left - 5 -1.5 
-        y_px = row["y_nm"] / px_size_nm # move pixels up -1.5 -0.5
-        r_px = row["sigma_nm"] / px_size_nm
+        x_px = row["x_nm"] / x_px_size # move pixels to the left - 5 -1.5 
+        y_px = row["y_nm"] / y_px_size # move pixels up -1.5 -0.5
+        r_px = row["sigma_nm"] / r_px_size
 
         # Circular mask for intensity measurements
         rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
@@ -144,8 +152,7 @@ def main():
     # Ask user about the path to the directory with images and foci.csv files
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
-    
-    px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
+    #px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
     
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
@@ -204,7 +211,6 @@ def main():
             #plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
             result = foci_one_image(image = image,
                                     df = df,
-                                    px_size_nm = px,
                                     plot = True,
                                     save_path = os.path.join(output_dir, f"{name}_foci.png"))
             
