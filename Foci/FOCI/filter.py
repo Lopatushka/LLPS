@@ -260,10 +260,10 @@ def df_filtration(path_to_df, path_to_img = "",
         
     # --- Perform filrations ---
     # Sigma filtation
-    df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 1000)]
+    df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 250)]
     
     # MFI filtration
-    #df = df[df['foci_MFI'] > 10]
+    df = df[df['foci_MFI'] > 5]
     
     # S.d. filtration
     #df = df[df['foci_MFI'] / df['foci_SD'] > 3]
