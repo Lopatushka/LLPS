@@ -43,7 +43,12 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
 
     # Plot image
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(arr, cmap="gray")
+    ax.imshow(
+    arr,
+    cmap="gray",
+    origin="upper",
+    interpolation="nearest"
+    )
 
     # Draw red dots at foci centers
     ax.scatter(
@@ -56,8 +61,8 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
     )
 
     # Match image coordinates
-    ax.set_xlim(0, arr.shape[1])
-    ax.set_ylim(arr.shape[0], 0)
+    ax.set_xlim(-0.5, arr.shape[1] - 0.5)
+    ax.set_ylim(arr.shape[0] - 0.5, -0.5)
     ax.set_aspect("equal")
 
     # Save image before displaying
