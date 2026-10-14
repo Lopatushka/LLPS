@@ -49,10 +49,10 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
     ax.scatter(
         df["x_pixel"],
         df["y_pixel"],
-        s=8,               # Marker size
+        s=6,               # Marker size
         c="red",
         marker="+",
-        linewidths=0.25
+        linewidths=0.75
     )
 
     # Match image coordinates
