@@ -155,8 +155,8 @@ def foci_one_image(image, df, plot=True, save_path=""):
     for _, row in df.iterrows():
         #offsets = offset_foci(image, df, px_size_nm = x_px_size, window=4)
         
-        x_px = row["x_nm"] / x_px_size
-        y_px = row["y_nm"] / y_px_size
+        x_px = row["x_nm"] / x_px_size - 5
+        y_px = row["y_nm"] / y_px_size - 5
         r_px = row["sigma_nm"] / r_px_size
 
         # Circular mask for intensity measurements
