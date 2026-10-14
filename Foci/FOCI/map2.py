@@ -80,7 +80,7 @@ def _offset_foci(image, df, px_size_nm, window=10):
         "y_offset": np.median(offsets_y)
     }
 
-def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
+def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
     # Convert image to numpy array
     arr = np.array(image)
 
@@ -97,11 +97,27 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
     ax.scatter(
         df["x_pixel"],
         df["y_pixel"],
-        s=6,               # Marker size
+        s=4,               # Marker size
         c="red",
         marker="+",
-        linewidths=0.75
+        linewidths=0.25
     )
+    
+    # Draw red circles
+    for _, row in df.iterrows():
+        x = row["x_pixel"]
+        y = row["y_pixel"]
+        r = row["sigma_pixel"]
+
+        circle = Circle(
+            (x, y),
+            r,
+            fill=False,
+            edgecolor="red",
+            linewidth=0.45
+        )
+
+        ax.add_patch(circle)
 
     # Match image coordinates
     ax.set_xlim(-0.5, arr.shape[1] - 0.5)
@@ -139,6 +155,7 @@ def foci_one_image(image, df, plot=True, save_path=""):
     y_list = []
     mean_list = []
     sd_list = []
+    sigma_list = []
 
     # Prepare dataframe
     df = df.copy()
@@ -161,18 +178,22 @@ def foci_one_image(image, df, plot=True, save_path=""):
 
         # Circular mask for intensity measurements
         rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
+        mask = np.zeros((H, W), dtype=bool)
+        mask[rr, cc] = True
+        
+        n_pixels_mask = np.sum(mask)
 
-        # Compute mean intensity and SD
-        if len(rr) > 0:
-            pixels = arr[rr, cc]
-            mean_intensity = pixels.mean()
-            sd_intensity = pixels.std()
+        # Compute mean intensity
+        if n_pixels_mask > 0:
+            mean_intensity = arr[mask].mean()
+            sd_intensity = arr[mask].std()
         else:
             mean_intensity = np.nan
             sd_intensity = np.nan
 
         x_list.append(x_px)
         y_list.append(y_px)
+        sigma_list.append(r_px)
         mean_list.append(mean_intensity)
         sd_list.append(sd_intensity)
 
@@ -180,12 +201,13 @@ def foci_one_image(image, df, plot=True, save_path=""):
     df_out = df.copy()
     df_out["x_pixel"] = x_list
     df_out["y_pixel"] = y_list
+    df_out["sigma_pixel"] = sigma_list
     df_out["foci_MFI"] = mean_list
     df_out["foci_SD"] = sd_list
 
     # Plot only foci centers
     if plot:
-        draw_foci_center(
+        draw_foci(
             image=image,
             df=df_out,
             showplot=False,
