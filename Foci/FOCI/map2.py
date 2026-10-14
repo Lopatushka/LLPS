@@ -47,8 +47,8 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
 
     # Draw red dots at foci centers
     ax.scatter(
-        df["x_pixel"] - 5,
-        df["y_pixel"] - 3,
+        df["x_pixel"],
+        df["y_pixel"],
         s=6,               # Marker size
         c="red",
         marker="+",
@@ -97,9 +97,9 @@ def foci_one_image(image, df, px_size_nm, plot=True, save_path=""):
 
     # Iterate through ThunderSTORM dataframe
     for _, row in df.iterrows():
-        x_px = int(row["x_nm"] / px_size_nm)
-        y_px = int(row["y_nm"] / px_size_nm)
-        r_px = max(1, int(row["sigma_nm"] / px_size_nm))
+        x_px = row["x_nm"] / px_size_nm # move pixels to the left - 5 -1.5 
+        y_px = row["y_nm"] / px_size_nm # move pixels up -1.5 -0.5
+        r_px = row["sigma_nm"] / px_size_nm
 
         # Circular mask for intensity measurements
         rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
