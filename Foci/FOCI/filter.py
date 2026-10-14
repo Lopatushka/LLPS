@@ -248,10 +248,10 @@ def df_filtration(path_to_df, path_to_img = "",
     df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 1000)]
     
     # MFI filtration
-    df = df[df['foci_MFI'] > 10]
+    #df = df[df['foci_MFI'] > 10]
     
     # S.d. filtration
-    df[df['foci_MFI'] / df['foci_SD'] > 3]
+    #df = df[df['foci_MFI'] / df['foci_SD'] > 3]
     
     # Overlapping
     df = remove_overlapping_circles(
@@ -349,6 +349,9 @@ def main():
     # Create dictionaries
     img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
     csv_by_key = {filename(csv_name)[:-12]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    
+    #csv_by_key = {filename(csv_name)[:-5]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
+    
     combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
     
     n_images = len(combined)
