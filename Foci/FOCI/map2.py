@@ -76,8 +76,8 @@ def draw_foci_center(image, df, showplot=True, save_image=True, save_path=""):
     
 def foci_one_image(image, df, plot=True, save_path=""):
     # Get pixel size in nm and image dimensions    
-    x_res = image.tag_v2.get(282)  # XResolution
-    y_res = image.tag_v2.get(283)  # YResolution
+    x_res = float(image.tag_v2.get(282))  # XResolution
+    y_res = float(image.tag_v2.get(283))  # YResolution
     
     x_px_size = 1000/x_res
     y_px_size = 1000/y_res
