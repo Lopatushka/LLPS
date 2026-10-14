@@ -37,15 +37,72 @@ def filename(path):
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def draw_foci(image, df, showplot = True, save_image = True, save_path = ""):
-    # Load image
-    #image = Image.open(image_path)
-    arr = np.array(image) # convert image to numpy matrix
+def _offset_foci(image, df, px_size_nm, window=10):
+    arr = np.asarray(image, dtype=float)
+    offsets_x = []
+    offsets_y = []
+
+    H, W = arr.shape
+
+    for _, row in df.iterrows():
+        x = row["x_nm"] / px_size_nm
+        y = row["y_nm"] / px_size_nm
+
+        # Search around each predicted position
+        x0 = int(round(x))
+        y0 = int(round(y))
+
+        x_min = max(0, x0 - window)
+        x_max = min(W, x0 + window + 1)
+
+        y_min = max(0, y0 - window)
+        y_max = min(H, y0 + window + 1)
+
+        region = arr[y_min:y_max, x_min:x_max]
+
+        if region.size == 0:
+            continue
+
+        # Find brightest pixel
+        dy, dx = np.unravel_index(
+            np.argmax(region),
+            region.shape
+        )
+
+        x_peak = x_min + dx
+        y_peak = y_min + dy
+
+        offsets_x.append(x_peak - x)
+        offsets_y.append(y_peak - y)
+
+    return {
+        "x_offset": np.median(offsets_x),
+        "y_offset": np.median(offsets_y)
+    }
+
+def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
+    # Convert image to numpy array
+    arr = np.array(image)
 
     # Plot image
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.imshow(arr, cmap="gray")
+    ax.imshow(
+    arr,
+    cmap="gray",
+    origin="upper",
+    interpolation="nearest"
+    )
 
+    # Draw red dots at foci centers
+    ax.scatter(
+        df["x_pixel"],
+        df["y_pixel"],
+        s=4,               # Marker size
+        c="red",
+        marker="+",
+        linewidths=0.25
+    )
+    
     # Draw red circles
     for _, row in df.iterrows():
         x = row["x_pixel"]
@@ -57,59 +114,73 @@ def draw_foci(image, df, showplot = True, save_image = True, save_path = ""):
             r,
             fill=False,
             edgecolor="red",
-            linewidth=0.25
+            linewidth=0.45
         )
 
         ax.add_patch(circle)
 
     # Match image coordinates
-    ax.set_xlim(0, arr.shape[1])
-    ax.set_ylim(arr.shape[0], 0)
+    ax.set_xlim(-0.5, arr.shape[1] - 0.5)
+    ax.set_ylim(arr.shape[0] - 0.5, -0.5)
+    ax.set_aspect("equal")
 
-    # Show image
-    if showplot:
-        plt.show(fig)
-
-    # Save image
-    if save_image: 
-        plt.savefig(save_path,
+    # Save image before displaying
+    if save_image:
+        fig.savefig(
+            save_path,
             dpi=300,
             bbox_inches="tight"
         )
 
-        # Do not display image
-        plt.close(fig)
+    # Show image
+    if showplot:
+        plt.show()
 
-def foci_one_image(image, df, px_size_nm, plot = True, save_path = ""):
-    arr = np.array(image) # convert image to numpy matrix
-    H, W = arr.shape # get number of pixels (512*512 for 16-bit image)
+    plt.close(fig)
+    
+def foci_one_image(image, df, plot=True, save_path=""):
+    # Get pixel size in nm and image dimensions    
+    x_res = float(image.tag_v2.get(282))  # XResolution
+    y_res = float(image.tag_v2.get(283))  # YResolution
+    
+    x_px_size = 1000/x_res
+    y_px_size = 1000/y_res
+    r_px_size = (x_px_size + y_px_size) / 2  # Average pixel size
+    
+    arr = np.array(image)
+    H, W = arr.shape
 
     # Storage lists
     x_list = []
     y_list = []
-    sigma_list = []
     mean_list = []
     sd_list = []
-    
-    # Prepare dataframe
-    df.columns = df.columns.str.strip()  # remove hidden spaces in headers
-    # Rename columns
-    df = df.rename(columns={"x [nm]": "x_nm",
-                            "y [nm]": "y_nm",
-                            "sigma [nm]": "sigma_nm",
-                            "intensity [photon]": "intensity_photon"})
-    
-    # Iteration through the ThunderSTORM dataframe
-    for _, row in df.iterrows():
-        x_px = int(row["x_nm"] / px_size_nm)
-        y_px = int(row["y_nm"] / px_size_nm)
-        r_px = max(1, int(row["sigma_nm"] / px_size_nm)) # minimal possible value for radius is 1 pixel!
+    sigma_list = []
 
-        # Build circular mask (clipped automatically)
+    # Prepare dataframe
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
+    df = df.rename(columns={
+        "x [nm]": "x_nm",
+        "y [nm]": "y_nm",
+        "sigma [nm]": "sigma_nm",
+        "intensity [photon]": "intensity_photon"
+    })
+
+    # Iterate through ThunderSTORM dataframe
+    for _, row in df.iterrows():
+        #offsets = offset_foci(image, df, px_size_nm = x_px_size, window=4)
+        
+        x_px = row["x_nm"] / x_px_size - 5
+        y_px = row["y_nm"] / y_px_size - 5
+        r_px = row["sigma_nm"] / r_px_size
+
+        # Circular mask for intensity measurements
         rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
         mask = np.zeros((H, W), dtype=bool)
         mask[rr, cc] = True
-
+        
         n_pixels_mask = np.sum(mask)
 
         # Compute mean intensity
@@ -120,28 +191,29 @@ def foci_one_image(image, df, px_size_nm, plot = True, save_path = ""):
             mean_intensity = np.nan
             sd_intensity = np.nan
 
-        # Add values to the corresponding lists
         x_list.append(x_px)
         y_list.append(y_px)
         sigma_list.append(r_px)
         mean_list.append(mean_intensity)
         sd_list.append(sd_intensity)
-        
-    # Return modified copy
+
+    # Modified dataframe
     df_out = df.copy()
     df_out["x_pixel"] = x_list
     df_out["y_pixel"] = y_list
     df_out["sigma_pixel"] = sigma_list
     df_out["foci_MFI"] = mean_list
     df_out["foci_SD"] = sd_list
-    
-    # Make a plot
+
+    # Plot only foci centers
     if plot:
-        draw_foci(image = image,
-                  df = df_out,
-                  showplot = False,
-                  save_image = True,
-                  save_path = save_path)
+        draw_foci(
+            image=image,
+            df=df_out,
+            showplot=False,
+            save_image=True,
+            save_path=save_path
+        )
 
     return df_out
 
@@ -152,8 +224,7 @@ def main():
     # Ask user about the path to the directory with images and foci.csv files
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
-    
-    px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
+    #px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
     
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
@@ -212,7 +283,6 @@ def main():
             #plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
             result = foci_one_image(image = image,
                                     df = df,
-                                    px_size_nm = px,
                                     plot = True,
                                     save_path = os.path.join(output_dir, f"{name}_foci.png"))
             
