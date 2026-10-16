@@ -82,7 +82,7 @@ def one_pca(df_path, safe_path):
     plt.tight_layout()
     
     fig.savefig(
-        save_path,
+        safe_path,
         dpi=300,
         bbox_inches="tight"
     )
