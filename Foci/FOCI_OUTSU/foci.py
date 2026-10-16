@@ -145,7 +145,7 @@ def main():
             result = process_image(
                 image_path=path,
                 threshold_factor=3, 
-                min_area=10,
+                min_area=2,
                 min_distance=5,
                 plot=True,
                 save_path=save_path,
