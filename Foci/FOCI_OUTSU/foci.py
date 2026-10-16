@@ -145,7 +145,7 @@ def main():
             result = process_image(
                 image_path=path,
                 threshold_factor=3, 
-                min_area=2,
+                min_area=10,
                 min_distance=5,
                 plot=True,
                 save_path=save_path,
@@ -158,7 +158,7 @@ def main():
             )
 
             
-        except Exception:
+        except Exception as e:
             print(f"Error processing {path.name}: {e}")
             traceback.print_exc()
             continue
