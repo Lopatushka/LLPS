@@ -1,14 +1,21 @@
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Pat
 
 from skimage import io, filters, morphology, segmentation, segmentation, exposure
 from skimage.feature import peak_local_max
+from scipy import ndimage as ndi
+from skimage import io, filters, morphology, measure, segmentation, segmentation, exposure
 
 from pathlib import Path
 import traceback
 
-def process_image(image, threshold_factor=3,  min_area=2, min_distance=5, plot=True, save_path=None):
+def process_image(image_path, threshold_factor=3,  min_area=2, min_distance=5, plot=True, save_path=None):
+    # Download image
+    image = io.imread(image_path)
+    image_name = Path(image_path).stem
+    
     threshold = filters.threshold_otsu(image)
     
     binary_mask = image > threshold * threshold_factor
@@ -19,7 +26,6 @@ def process_image(image, threshold_factor=3,  min_area=2, min_distance=5, plot=T
     )
 
     image_float = image.astype(np.float32)
-
     distance = ndi.distance_transform_edt(clean_mask)
 
     # Detect candidate centers
@@ -39,6 +45,36 @@ def process_image(image, threshold_factor=3,  min_area=2, min_distance=5, plot=T
         markers,
         mask=clean_mask
     )
+    
+    properties = measure.regionprops_table(
+    labels,
+    intensity_image=image_float,
+    properties=[
+        "label",
+        "area",
+        "centroid",
+        "equivalent_diameter_area",
+        "eccentricity",
+        "solidity",
+        "perimeter",
+        "mean_intensity",
+        "max_intensity",
+        "min_intensity"
+    ]
+    )
+
+    df = pd.DataFrame(properties)
+
+    # Circularity: 1 means approximately circular
+    df["circularity"] = (
+        4 * np.pi * df["area"]
+        / (df["perimeter"] ** 2 + 1e-8)
+    )
+
+    df["image_id"] = image_name
+
+
+    print("Total detected objects:", len(df))
 
     # Plot or save figure
     if plot or save_path is not None:
@@ -78,6 +114,8 @@ def process_image(image, threshold_factor=3,  min_area=2, min_distance=5, plot=T
                 dpi=300,
                 bbox_inches="tight"
             )
+            
+    return df
 
 def main():
     input_dir = Path(input("Enter input folder path: ").strip().strip('"'))
@@ -99,20 +137,21 @@ def main():
     print(f"Found {len(paths)} images")
     
     for path in paths:
-        try:
-            image = io.imread(path)
-            
+        try:            
             # Output figure path
             save_path = output_dir / f"{path.stem}_segmentation.png"
+            csv_path = output_dir / f"{path.stem}_segmentation.csv"
             
-            process_image(
-                image=image,
+            result = process_image(
+                image_path=path,
                 threshold_factor=3, 
                 min_area=2,
                 min_distance=5,
                 plot=True,
                 save_path=save_path,
                 )
+            
+            result.to_csv(csv_path, index=False)
             
             print(
                 f"Processed: {path.name}"
