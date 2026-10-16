@@ -2,26 +2,27 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-
 from pathlib import Path
-from skimage import io, filters, morphology, measure, segmentation
+
+from skimage import io, filters, morphology, measure, segmentation, segmentation, exposure
 from skimage.feature import peak_local_max
 from skimage.segmentation import find_boundaries
+
 from scipy import ndimage as ndi
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.inspection import permutation_importance
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
-    ConfusionMatrixDisplay
-    
+    ConfusionMatrixDisplay   
 )
 
-from skimage import segmentation, exposure
+
 
 def plot_image(image, clean_mask, labels, df_subset,
                mode="image", figsize=(8, 8)):
