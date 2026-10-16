@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Pat
+from pathlib import Path
 
 from skimage import io, filters, morphology, segmentation, segmentation, exposure
 from skimage.feature import peak_local_max
