@@ -11,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 from scipy.stats import f, chi2
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist, squareform, mahalanobis
 
 from skbio import DistanceMatrix
 from skbio.stats.distance import permanova, permdisp
@@ -397,3 +397,46 @@ def pca_permanova(
     ])
 
     return results_df
+
+def detect_pca_outliers(
+    df,
+    group_col="sample",
+    features=("PC1", "PC2"),
+    confidence=0.99
+):
+    result = df.copy()
+
+    result["mahalanobis_distance"] = np.nan
+    result["outlier"] = False
+
+    threshold = chi2.ppf(confidence, df=len(features))
+
+    for group, group_df in result.groupby(group_col):
+
+        X = group_df[list(features)].dropna()
+
+        if len(X) <= len(features):
+            continue
+
+        # Group centroid
+        centroid = X.mean(axis=0).values
+
+        # Covariance matrix
+        cov = np.cov(X.values, rowvar=False)
+
+        # Inverse covariance
+        inv_cov = np.linalg.pinv(cov)
+
+        # Mahalanobis distances
+        distances = np.array([
+            mahalanobis(row, centroid, inv_cov)
+            for row in X.values
+        ])
+
+        result.loc[X.index, "mahalanobis_distance"] = distances
+
+        result.loc[X.index, "outlier"] = (
+            distances**2 > threshold
+        )
+
+    return result
