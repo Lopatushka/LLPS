@@ -8,14 +8,14 @@ def table_aggregation(path):
     image_id = df["image_id"][0]
     n_foci = df.shape[0]
     
-    area = df["area"].median()
-    equivalent_diameter_area = df["equivalent_diameter_area"].median()
-    eccentricity = df["eccentricity"].median()
-    solidity = df["solidity"].median()
-    perimeter = df["perimeter"].median()
-    mean_intensity = df["mean_intensity"].median()
-    max_intensity = df["max_intensity"].median()
-    min_intensity = df["min_intensity"].median()
+    area = df["area"].mean()
+    equivalent_diameter_area = df["equivalent_diameter_area"].mean()
+    eccentricity = df["eccentricity"].mean()
+    solidity = df["solidity"].mean()
+    perimeter = df["perimeter"].mean()
+    mean_intensity = df["mean_intensity"].mean()
+    max_intensity = df["max_intensity"].mean()
+    min_intensity = df["min_intensity"].mean()
     
     row = {
         "image_id": image_id,
