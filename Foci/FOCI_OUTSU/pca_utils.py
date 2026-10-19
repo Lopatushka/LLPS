@@ -1,0 +1,368 @@
+import pandas as pd
+import numpy as np
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+import seaborn as sns
+
+from pathlib import Path
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+from scipy.stats import f, chi2
+from scipy.spatial.distance import pdist, squareform
+
+from skbio import DistanceMatrix
+from skbio.stats.distance import permanova, permdisp
+
+
+def plot_pca_centroids_ci(
+    pca_df,
+    group_col="sample",
+    confidence=0.95,
+    figsize=(9, 7)
+):
+    fig, ax = plt.subplots(figsize=figsize)
+
+    groups = pca_df[group_col].dropna().unique()
+    colors = sns.color_palette("Set2", len(groups))
+
+    centroids = {}
+
+    for group, color in zip(groups, colors):
+
+        data = pca_df.loc[
+            pca_df[group_col] == group,
+            ["PC1", "PC2"]
+        ].dropna()
+
+        X = data.to_numpy()
+        n = len(X)
+
+        if n < 3:
+            continue
+
+        # Centroid
+        centroid = X.mean(axis=0)
+        centroids[group] = centroid
+
+        # Covariance matrix
+        cov = np.cov(X, rowvar=False)
+
+        # 95% confidence ellipse for the mean
+        p = 2
+
+        scale = (
+            p * (n - 1) / (n - p)
+            * f.ppf(confidence, p, n - p)
+        )
+
+        # Covariance of the sample mean
+        cov_mean = cov / n
+
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_mean)
+
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+
+        width, height = 2 * np.sqrt(
+            np.maximum(eigenvalues, 0) * scale
+        )
+
+        angle = np.degrees(
+            np.arctan2(
+                eigenvectors[1, 0],
+                eigenvectors[0, 0]
+            )
+        )
+
+        # Plot observations
+        ax.scatter(
+            X[:, 0],
+            X[:, 1],
+            color=color,
+            alpha=0.3,
+            s=35,
+            label=f"{group} (n={n})"
+        )
+
+        # Plot centroid
+        ax.scatter(
+            centroid[0],
+            centroid[1],
+            color=color,
+            marker="X",
+            s=250,
+            edgecolor="black",
+            linewidth=1.2,
+            zorder=5
+        )
+
+        # Plot confidence ellipse
+        ellipse = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor=color,
+            edgecolor=color,
+            alpha=0.2
+        )
+
+        ax.add_patch(ellipse)
+
+        border = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor="none",
+            edgecolor=color,
+            linewidth=2
+        )
+
+        ax.add_patch(border)
+
+    ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
+    ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
+
+    ax.set_xlabel("PC1")
+    ax.set_ylabel("PC2")
+    ax.set_title(f"PCA — Centroids with {confidence:.0%} Confidence Ellipses")
+
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.15)
+    ax.set_aspect("equal", adjustable="datalim")
+
+    plt.tight_layout()
+    plt.show()
+
+    return centroids
+
+
+def bootstrap_pca_centroids(
+    pca_df,
+    group_col="sample",
+    features=("PC1", "PC2"),
+    n_boot=5000,
+    confidence=0.95,
+    random_state=42,
+    figsize=(9, 7),
+    show_points=True
+):
+    rng = np.random.default_rng(random_state)
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    groups = pca_df[group_col].dropna().unique()
+    colors = sns.color_palette("Set2", len(groups))
+
+    results = {}
+    scale = chi2.ppf(confidence, df=2)
+
+    for group, color in zip(groups, colors):
+
+        data = pca_df.loc[
+            pca_df[group_col] == group,
+            list(features)
+        ].dropna()
+
+        X = data.to_numpy(dtype=float)
+        n = len(X)
+
+        if n < 3:
+            continue
+
+        # Original centroid
+        centroid = X.mean(axis=0)
+
+        # Bootstrap resampling
+        indices = rng.integers(
+            0, n,
+            size=(n_boot, n)
+        )
+
+        bootstrap_centroids = X[indices].mean(axis=1)
+
+        # Bootstrap covariance of centroid
+        cov = np.cov(bootstrap_centroids, rowvar=False)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(cov)
+
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = eigenvalues[order]
+        eigenvectors = eigenvectors[:, order]
+
+        # Ellipse dimensions
+        width, height = 2 * np.sqrt(
+            np.maximum(eigenvalues, 0) * scale
+        )
+
+        angle = np.degrees(
+            np.arctan2(
+                eigenvectors[1, 0],
+                eigenvectors[0, 0]
+            )
+        )
+
+        # Original observations
+        if show_points:
+            ax.scatter(
+                X[:, 0],
+                X[:, 1],
+                color=color,
+                alpha=0.25,
+                s=30,
+                label=f"{group} (n={n})"
+            )
+
+        # Bootstrap centroid distribution
+        ax.scatter(
+            bootstrap_centroids[:, 0],
+            bootstrap_centroids[:, 1],
+            color=color,
+            alpha=0.025,
+            s=8
+        )
+
+        # Original centroid
+        ax.scatter(
+            centroid[0],
+            centroid[1],
+            color=color,
+            marker="X",
+            s=250,
+            edgecolor="black",
+            linewidth=1.2,
+            zorder=5
+        )
+
+        # Confidence ellipse
+        ellipse = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor=color,
+            edgecolor=color,
+            alpha=0.15
+        )
+
+        ax.add_patch(ellipse)
+
+        border = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor="none",
+            edgecolor=color,
+            linewidth=2
+        )
+
+        ax.add_patch(border)
+
+        # Marginal bootstrap confidence intervals
+        ci_low = np.quantile(
+            bootstrap_centroids,
+            (1 - confidence) / 2,
+            axis=0
+        )
+
+        ci_high = np.quantile(
+            bootstrap_centroids,
+            1 - (1 - confidence) / 2,
+            axis=0
+        )
+
+        results[group] = {
+            "centroid": centroid,
+            "CI_low": ci_low,
+            "CI_high": ci_high,
+            "bootstrap_centroids": bootstrap_centroids
+        }
+
+    ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
+    ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
+
+    ax.set_xlabel(f"PC1: {pca.explained_variance_ratio_[0] * 100:.2f}%")
+    ax.set_ylabel(f"PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
+
+    ax.set_title(
+        f"PCA Centroids — {confidence:.0%} Bootstrap Confidence Ellipses"
+    )
+
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.15)
+    ax.set_aspect("equal", adjustable="datalim")
+
+    plt.tight_layout()
+    plt.show()
+
+    return results
+
+
+def pca_permanova(
+    pca_df,
+    group_col="sample",
+    features=("PC1", "PC2"),
+    permutations=9999
+):
+    # Prepare data
+    df = pca_df[
+        [*features, group_col]
+    ].dropna().copy()
+
+    X = df[list(features)].to_numpy()
+    groups = df[group_col].to_numpy()
+
+    # Euclidean distance matrix
+    dm = DistanceMatrix(
+        squareform(pdist(X, metric="euclidean"))
+    )
+
+    # Statistical tests
+    result_permanova = permanova(
+        dm,
+        grouping=groups,
+        permutations=permutations,
+        seed=42
+    )
+
+    result_permdisp = permdisp(
+        dm,
+        grouping=groups,
+        permutations=permutations,
+        seed=42
+    )
+
+    # Calculate PERMANOVA R²
+    F = result_permanova["test statistic"]
+    n = result_permanova["sample size"]
+    k = result_permanova["number of groups"]
+
+    r_squared = (F * (k - 1)) / (F * (k - 1) + (n - k))
+
+    # Create results DataFrame
+    results_df = pd.DataFrame([
+        {
+            "Test": "PERMANOVA",
+            "Statistic": F,
+            "p_value": result_permanova["p-value"],
+            "R2": r_squared,
+            "n": n,
+            "groups": k
+        },
+        {
+            "Test": "PERMDISP",
+            "Statistic": result_permdisp["test statistic"],
+            "p_value": result_permdisp["p-value"],
+            "R2": None,
+            "n": result_permdisp["sample size"],
+            "groups": result_permdisp["number of groups"]
+        }
+    ])
+
+    return results_df
