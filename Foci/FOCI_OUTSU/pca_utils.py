@@ -150,10 +150,28 @@ def bootstrap_pca_centroids(
     confidence=0.95,
     random_state=42,
     figsize=(9, 7),
-    show_points=True
+    show_points=True,
+    pca=None
 ):
     rng = np.random.default_rng(random_state)
+    
+    # Validate inputs
+    if len(features) != 2:
+        raise ValueError("Exactly two PCA features are required.")
 
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be between 0 and 1.")
+
+    if n_boot < 2:
+        raise ValueError("n_boot must be at least 2.")
+    
+    required = [group_col, *features]
+    missing = [col for col in required if col not in pca_df.columns]
+
+    if missing:
+        raise KeyError(f"Missing columns: {missing}")
+
+    # Make a figure
     fig, ax = plt.subplots(figsize=figsize)
 
     groups = pca_df[group_col].dropna().unique()
@@ -173,6 +191,7 @@ def bootstrap_pca_centroids(
         n = len(X)
 
         if n < 3:
+            print(f"Skipping {group}: only {n} observations.")
             continue
 
         # Original centroid
@@ -287,14 +306,26 @@ def bootstrap_pca_centroids(
     ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
     ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
 
-    ax.set_xlabel(f"PC1: {pca.explained_variance_ratio_[0] * 100:.2f}%")
-    ax.set_ylabel(f"PC2: {pca.explained_variance_ratio_[1] * 100:.2f}%")
+    # PCA axis labels
+    if pca is not None:
+        variance = pca.explained_variance_ratio_
+
+        if len(variance) < 2:
+            raise ValueError("PCA must contain at least two components.")
+
+        ax.set_xlabel(f"PC1 ({variance[0] * 100:.2f}%)")
+        ax.set_ylabel(f"PC2 ({variance[1] * 100:.2f}%)")
+    else:
+        ax.set_xlabel(features[0])
+        ax.set_ylabel(features[1])
 
     ax.set_title(
         f"PCA Centroids — {confidence:.0%} Bootstrap Confidence Ellipses"
     )
 
-    ax.legend(frameon=False)
+    if results:
+        ax.legend(frameon=False)
+        
     ax.grid(alpha=0.15)
     ax.set_aspect("equal", adjustable="datalim")
 
