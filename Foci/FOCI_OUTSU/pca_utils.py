@@ -142,7 +142,7 @@ def plot_pca_centroids_ci(
     return centroids
 
 
-def bootstrap_pca_centroids(
+def _bootstrap_pca_centroids(
     pca_df,
     group_col="sample",
     features=("PC1", "PC2"),
@@ -327,6 +327,250 @@ def bootstrap_pca_centroids(
         ax.legend(frameon=False)
         
     ax.grid(alpha=0.15)
+    ax.set_aspect("equal", adjustable="datalim")
+
+    plt.tight_layout()
+    plt.show()
+
+    return results
+
+
+def bootstrap_pca_centroids(
+    pca_df,
+    group_col="sample",
+    features=("PC1", "PC2"),
+    n_boot=5000,
+    confidence=0.95,
+    random_state=42,
+    figsize=(9, 7),
+    show_points=True,
+    show_bootstrap=False,
+    pca=None,
+    palette="Set2",
+    centroid_size=85
+):
+    rng = np.random.default_rng(random_state)
+
+    # Validate inputs
+    if len(features) != 2:
+        raise ValueError("Exactly two PCA features are required.")
+
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be between 0 and 1.")
+
+    if n_boot < 2:
+        raise ValueError("n_boot must be at least 2.")
+
+    required = [group_col, *features]
+    missing = [c for c in required if c not in pca_df.columns]
+
+    if missing:
+        raise KeyError(f"Missing columns: {missing}")
+
+    # Plot style
+    sns.set_theme(style="white", context="paper", font_scale=1.3)
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=150)
+
+    groups = pca_df[group_col].dropna().unique()
+    colors = sns.color_palette(palette, len(groups))
+    color_map = dict(zip(groups, colors))
+
+    results = {}
+    scale = chi2.ppf(confidence, df=2)
+
+    for group in groups:
+
+        color = color_map[group]
+
+        data = pca_df.loc[
+            pca_df[group_col] == group,
+            list(features)
+        ].dropna()
+
+        X = data.to_numpy(dtype=float)
+        n = len(X)
+
+        if n < 3:
+            print(f"Skipping {group}: only {n} observations.")
+            continue
+
+        # Original centroid
+        centroid = X.mean(axis=0)
+
+        # Bootstrap resampling
+        indices = rng.integers(
+            0, n, size=(n_boot, n)
+        )
+
+        bootstrap_centroids = X[indices].mean(axis=1)
+
+        # Covariance of bootstrap centroids
+        cov = np.cov(bootstrap_centroids, rowvar=False)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(cov)
+
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = np.maximum(eigenvalues[order], 0)
+        eigenvectors = eigenvectors[:, order]
+
+        # Confidence ellipse dimensions
+        width, height = 2 * np.sqrt(eigenvalues * scale)
+
+        angle = np.degrees(
+            np.arctan2(
+                eigenvectors[1, 0],
+                eigenvectors[0, 0]
+            )
+        )
+
+        # Original observations
+        if show_points:
+            ax.scatter(
+                X[:, 0],
+                X[:, 1],
+                color=color,
+                s=32,
+                alpha=0.40,
+                edgecolors="none",
+                label=f"{group} (n={n})",
+                zorder=2
+            )
+
+        # Optional bootstrap centroid cloud
+        if show_bootstrap:
+            ax.scatter(
+                bootstrap_centroids[:, 0],
+                bootstrap_centroids[:, 1],
+                color=color,
+                alpha=0.035,
+                s=7,
+                edgecolors="none",
+                zorder=3
+            )
+
+        # Confidence ellipse
+        ellipse = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor=color,
+            edgecolor=color,
+            linewidth=1.7,
+            alpha=0.20,
+            zorder=3
+        )
+        ax.add_patch(ellipse)
+
+        # Clear ellipse border
+        border = Ellipse(
+            xy=centroid,
+            width=width,
+            height=height,
+            angle=angle,
+            facecolor="none",
+            edgecolor=color,
+            linewidth=1.6,
+            zorder=4
+        )
+        ax.add_patch(border)
+
+        # Smaller centroid, same color as observations
+        ax.scatter(
+            centroid[0],
+            centroid[1],
+            color=color,
+            marker="o",
+            s=centroid_size,
+            edgecolor="white",
+            linewidth=0.8,
+            zorder=6
+        )
+
+        # Marginal confidence intervals
+        ci_low = np.quantile(
+            bootstrap_centroids,
+            (1 - confidence) / 2,
+            axis=0
+        )
+
+        ci_high = np.quantile(
+            bootstrap_centroids,
+            1 - (1 - confidence) / 2,
+            axis=0
+        )
+
+        results[group] = {
+            "centroid": centroid,
+            "CI_low": ci_low,
+            "CI_high": ci_high,
+            "bootstrap_centroids": bootstrap_centroids
+        }
+
+    # Reference axes
+    ax.axhline(
+        0, color="gray", linestyle="--",
+        linewidth=0.8, alpha=0.35, zorder=1
+    )
+    ax.axvline(
+        0, color="gray", linestyle="--",
+        linewidth=0.8, alpha=0.35, zorder=1
+    )
+
+    # PCA axis labels
+    if pca is not None:
+        variance = pca.explained_variance_ratio_
+
+        if len(variance) < 2:
+            raise ValueError(
+                "PCA must contain at least two components."
+            )
+
+        ax.set_xlabel(
+            f"PC1 ({variance[0] * 100:.1f}%)",
+            fontsize=12, fontweight="normal"
+        )
+        ax.set_ylabel(
+            f"PC2 ({variance[1] * 100:.1f}%)",
+            fontsize=12, fontweight="normal"
+        )
+    else:
+        ax.set_xlabel(features[0], fontsize=12)
+        ax.set_ylabel(features[1], fontsize=12)
+
+    ax.set_title(
+        f"PCA — {confidence:.0%} Confidence Ellipses",
+        fontsize=14,
+        fontweight="bold",
+        pad=18
+    )
+
+    # Legend
+    if results and show_points:
+        ax.legend(
+            frameon=False,
+            fontsize=10,
+            loc="best",
+            markerscale=1.3
+        )
+
+    # Minimal grid
+    ax.grid(
+        True,
+        linestyle=":",
+        linewidth=0.7,
+        alpha=0.18
+    )
+
+    sns.despine(ax=ax)
+
+    ax.tick_params(
+        axis="both",
+        labelsize=10,
+        length=0
+    )
+
     ax.set_aspect("equal", adjustable="datalim")
 
     plt.tight_layout()
