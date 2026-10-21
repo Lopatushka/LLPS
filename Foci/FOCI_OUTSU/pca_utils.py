@@ -141,200 +141,6 @@ def plot_pca_centroids_ci(
 
     return centroids
 
-
-def _bootstrap_pca_centroids(
-    pca_df,
-    group_col="sample",
-    features=("PC1", "PC2"),
-    n_boot=5000,
-    confidence=0.95,
-    random_state=42,
-    figsize=(9, 7),
-    show_points=True,
-    pca=None
-):
-    rng = np.random.default_rng(random_state)
-    
-    # Validate inputs
-    if len(features) != 2:
-        raise ValueError("Exactly two PCA features are required.")
-
-    if not 0 < confidence < 1:
-        raise ValueError("confidence must be between 0 and 1.")
-
-    if n_boot < 2:
-        raise ValueError("n_boot must be at least 2.")
-    
-    required = [group_col, *features]
-    missing = [col for col in required if col not in pca_df.columns]
-
-    if missing:
-        raise KeyError(f"Missing columns: {missing}")
-
-    # Make a figure
-    fig, ax = plt.subplots(figsize=figsize)
-
-    groups = pca_df[group_col].dropna().unique()
-    colors = sns.color_palette("Set2", len(groups))
-
-    results = {}
-    scale = chi2.ppf(confidence, df=2)
-
-    for group, color in zip(groups, colors):
-
-        data = pca_df.loc[
-            pca_df[group_col] == group,
-            list(features)
-        ].dropna()
-
-        X = data.to_numpy(dtype=float)
-        n = len(X)
-
-        if n < 3:
-            print(f"Skipping {group}: only {n} observations.")
-            continue
-
-        # Original centroid
-        centroid = X.mean(axis=0)
-
-        # Bootstrap resampling
-        indices = rng.integers(
-            0, n,
-            size=(n_boot, n)
-        )
-
-        bootstrap_centroids = X[indices].mean(axis=1)
-
-        # Bootstrap covariance of centroid
-        cov = np.cov(bootstrap_centroids, rowvar=False)
-
-        eigenvalues, eigenvectors = np.linalg.eigh(cov)
-
-        order = np.argsort(eigenvalues)[::-1]
-        eigenvalues = eigenvalues[order]
-        eigenvectors = eigenvectors[:, order]
-
-        # Ellipse dimensions
-        width, height = 2 * np.sqrt(
-            np.maximum(eigenvalues, 0) * scale
-        )
-
-        angle = np.degrees(
-            np.arctan2(
-                eigenvectors[1, 0],
-                eigenvectors[0, 0]
-            )
-        )
-
-        # Original observations
-        if show_points:
-            ax.scatter(
-                X[:, 0],
-                X[:, 1],
-                color=color,
-                alpha=0.25,
-                s=30,
-                label=f"{group} (n={n})"
-            )
-
-        # Bootstrap centroid distribution
-        ax.scatter(
-            bootstrap_centroids[:, 0],
-            bootstrap_centroids[:, 1],
-            color=color,
-            alpha=0.025,
-            s=8
-        )
-
-        # Original centroid
-        ax.scatter(
-            centroid[0],
-            centroid[1],
-            color=color,
-            marker="X",
-            s=250,
-            edgecolor="black",
-            linewidth=1.2,
-            zorder=5
-        )
-
-        # Confidence ellipse
-        ellipse = Ellipse(
-            xy=centroid,
-            width=width,
-            height=height,
-            angle=angle,
-            facecolor=color,
-            edgecolor=color,
-            alpha=0.15
-        )
-
-        ax.add_patch(ellipse)
-
-        border = Ellipse(
-            xy=centroid,
-            width=width,
-            height=height,
-            angle=angle,
-            facecolor="none",
-            edgecolor=color,
-            linewidth=2
-        )
-
-        ax.add_patch(border)
-
-        # Marginal bootstrap confidence intervals
-        ci_low = np.quantile(
-            bootstrap_centroids,
-            (1 - confidence) / 2,
-            axis=0
-        )
-
-        ci_high = np.quantile(
-            bootstrap_centroids,
-            1 - (1 - confidence) / 2,
-            axis=0
-        )
-
-        results[group] = {
-            "centroid": centroid,
-            "CI_low": ci_low,
-            "CI_high": ci_high,
-            "bootstrap_centroids": bootstrap_centroids
-        }
-
-    ax.axhline(0, color="gray", linestyle="--", alpha=0.3)
-    ax.axvline(0, color="gray", linestyle="--", alpha=0.3)
-
-    # PCA axis labels
-    if pca is not None:
-        variance = pca.explained_variance_ratio_
-
-        if len(variance) < 2:
-            raise ValueError("PCA must contain at least two components.")
-
-        ax.set_xlabel(f"PC1 ({variance[0] * 100:.2f}%)")
-        ax.set_ylabel(f"PC2 ({variance[1] * 100:.2f}%)")
-    else:
-        ax.set_xlabel(features[0])
-        ax.set_ylabel(features[1])
-
-    ax.set_title(
-        f"PCA Centroids — {confidence:.0%} Bootstrap Confidence Ellipses"
-    )
-
-    if results:
-        ax.legend(frameon=False)
-        
-    ax.grid(alpha=0.15)
-    ax.set_aspect("equal", adjustable="datalim")
-
-    plt.tight_layout()
-    plt.show()
-
-    return results
-
-
 def bootstrap_pca_centroids(
     pca_df,
     group_col="sample",
@@ -684,3 +490,144 @@ def detect_pca_outliers(
         )
 
     return result
+
+
+def plot_centroid_distance_tree(
+    results,
+    reference="WT",
+    figsize=(9, 5),
+    palette="Set2",
+    show_distances=True,
+    sort=True
+):
+    """
+    Tree-like visualization of Euclidean distances
+    between PCA centroids and the reference centroid.
+
+    Colors match bootstrap_pca_centroids().
+    """
+
+    if reference not in results:
+        raise ValueError(
+            f"Reference '{reference}' not found."
+        )
+
+    # Same colors and group order as PCA plot
+    all_groups = list(results.keys())
+    colors = sns.color_palette(palette, len(all_groups))
+    color_map = dict(zip(all_groups, colors))
+
+    ref_centroid = np.asarray(
+        results[reference]["centroid"]
+    )
+
+    # Calculate distances from WT
+    distances = {
+        group: np.linalg.norm(
+            np.asarray(values["centroid"]) - ref_centroid
+        )
+        for group, values in results.items()
+        if group != reference
+    }
+
+    if not distances:
+        raise ValueError("No groups to compare with reference.")
+
+    if sort:
+        distances = dict(
+            sorted(distances.items(), key=lambda x: x[1])
+        )
+
+    groups = list(distances.keys())
+    values = np.array(list(distances.values()))
+
+    sns.set_theme(style="white", context="paper", font_scale=1.3)
+
+    fig, ax = plt.subplots(figsize=figsize, dpi=150)
+
+    y_positions = np.arange(len(groups))[::-1]
+
+    # Reference trunk
+    ax.plot(
+        [0, 0],
+        [y_positions.min() - 0.35, y_positions.max() + 0.35],
+        color="0.45",
+        linewidth=1.5
+    )
+
+    for i, (group, distance) in enumerate(distances.items()):
+
+        y = y_positions[i]
+
+        # Use original PCA color
+        color = color_map[group]
+
+        # Horizontal branch
+        ax.plot(
+            [0, distance],
+            [y, y],
+            color=color,
+            linewidth=2,
+            solid_capstyle="round"
+        )
+
+        # Endpoint
+        ax.scatter(
+            distance,
+            y,
+            s=75,
+            color=color,
+            edgecolor="white",
+            linewidth=1.2,
+            zorder=5
+        )
+
+        # Group label
+        ax.annotate(
+            group,
+            (distance, y),
+            xytext=(9, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=11
+        )
+
+        if show_distances:
+            ax.annotate(
+                f"{distance:.2f}",
+                (distance / 2, y),
+                xytext=(0, 7),
+                textcoords="offset points",
+                ha="center",
+                fontsize=9,
+                color="0.4"
+            )
+
+    ax.set_xlabel(
+        f"Euclidean distance from {reference} centroid",
+        fontsize=12
+    )
+
+    ax.set_title(
+        "PCA Centroid Distance",
+        fontsize=14,
+        fontweight="bold",
+        pad=18
+    )
+
+    ax.set_yticks([])
+
+    ax.set_xlim(
+        -max(values.max() * 0.12, 0.1),
+        max(values.max() * 1.35, 1)
+    )
+
+    ax.set_ylim(-0.8, len(groups) - 0.2)
+
+    ax.grid(axis="x", linestyle=":", alpha=0.2)
+    sns.despine(ax=ax, left=True, bottom=False)
+
+    plt.tight_layout()
+    plt.show()
+
+    return distances
