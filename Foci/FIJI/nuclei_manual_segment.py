@@ -1,38 +1,39 @@
 from ij import IJ, WindowManager
-from ij.gui import GenericDialog
+from ij.gui import GenericDialog, NonBlockingGenericDialog, WaitForUserDialog
 from ij.plugin.frame import RoiManager
-from ij.gui import ShapeRoi
-from ij.plugin.filter import BackgroundSubtracter
-from ij.measure import Measurements, ResultsTable
-from ij.process import ImageStatistics
-from ij.gui import NonBlockingGenericDialog
-from ij.gui import WaitForUserDialog
-from ij.plugin.filter import Analyzer
+from ij.plugin import ChannelSplitter
 import os
-import csv
+import re
 import traceback
+from ij.io import RoiEncoder
+from java.io import FileOutputStream, ByteArrayOutputStream
+from java.util.zip import ZipOutputStream, ZipEntry
 
 def ask_params_for_image():
-    gd = GenericDialog("Nuclei segmentation params")
+    gd = GenericDialog("Manual nuclei segmentation params")
     gd.addMessage("Set parameters for nuclei segmentation.")
 
     # Fields
     gd.addNumericField("DAPI channel (1-based):", 2, 0)
     gd.addNumericField("Measurement channel (1-based):", 1, 0)
-    gd.addCheckbox("One nucleus per image", False)
-
+    gd.addCheckbox('Exactly one ROI per image', False)
+    
     gd.showDialog()
     if gd.wasCanceled():
         return None
+    
+    dapi = int(gd.getNextNumber())
+    measure = int(gd.getNextNumber())
+    one_roi = gd.getNextBoolean()
+    
+    if dapi < 1 or measure < 1:
+        IJ.error('Channel numbers must be at least 1.')
+        return None
+    
+    return {'DAPI_CHANNEL': dapi, 'MEASURE_CHANNEL': measure, 'one_roi': one_roi}
 
-    params = {}
-    params["DAPI_CHANNEL"] = int(gd.getNextNumber())
-    params["MEASURE_CHANNEL"] = int(gd.getNextNumber())
-    params["one_roi"] = bool(gd.getNextBoolean())
 
-    return params
-
-def img_name_processing(name):
+def _img_name_processing(name):
     try:
         if "MP" in name and " - " in name:
             if "Deconvolved" in name:
@@ -42,13 +43,30 @@ def img_name_processing(name):
                 name = name.split("-")[1] # split string
                 name = name.replace(" ", "", 1) # delete fist blank in the string
                 name = name.replace(" ", "_") # repalce other blanks to underscore
-        else:
-            name = os.path.splitext(name)[0] # delete extention
+        name = os.path.splitext(name)[0] # delete extention
         name = name.replace(" ", "_")
         return name
+    
     except Exception as e:
          raise Exception("ERROR in parsing image name")
+     
+def img_name_processing(name):
+    if 'MP' in name:
+        parts = name.split('-')
+        if 'Deconvolved' in name and len(parts) >= 3:
+            name = parts[0] + '_' + parts[2]
+        elif len(parts) >= 2:
+            name = parts[1]
+            
+        else:
+            name = os.path.splitext(name)[0]
+            
+    name = name.strip().replace(' ', '_').replace(',', '')
+    return re.sub(r'[\\/:*?"<>|]', '_', name)
 
+def safe_filename(name):
+    return re.sub(r'[\\/:*?"<>|]', '_', str(name)).strip().rstrip('. ') or 'ROI'
+     
 def ensure_roi_manager(reset=True):
 	"""
     Gets the ROI Manager instance.
@@ -58,8 +76,25 @@ def ensure_roi_manager(reset=True):
 	if rm is None:
 		rm = RoiManager()
 	if reset:
-		rm.reset()
+		rm.reset()    
 	return rm
+
+def save_rois_zip(rois, zip_path):
+    """Write every selected ROI to a ZIP, independent of ROI Manager selection."""
+    if not rois:
+        raise ValueError('Cannot save an empty ROI collection')
+    stream = ZipOutputStream(FileOutputStream(zip_path))
+    try:
+        for i, roi in enumerate(rois):
+            name = safe_filename(roi.getName() or 'ROI')
+            entry_name = '%03d_%s.roi' % (i + 1, name)
+            data = ByteArrayOutputStream()
+            RoiEncoder(data).write(roi)
+            stream.putNextEntry(ZipEntry(entry_name))
+            stream.write(data.toByteArray())
+            stream.closeEntry()
+    finally:
+        stream.close()
 
 def split_channels(imp):
     """
@@ -134,155 +169,105 @@ def cleanup_iteration():
         rm.close()
     
 def semi_manual_img_process(imp, output_dir, p):
-    '''
-    This function process semi-manually a single image
-    imp - image
-    p - parameters
-    imp, output_dir, params
-    '''
-    # Parameteres
-    DAPI_CHANNEL = p["DAPI_CHANNEL"] # integer
-    MEASURE_CHANNEL = p["MEASURE_CHANNEL"] # integer
-    one_roi = p["one_roi"] # bool
-
-    # Processing image title
-    img_title = imp.getTitle()
-    img_title = img_name_processing(img_title)
-
-    # Split channels into separate images (C1, C2, ...)
-    split_imps = split_channels(imp)
+    # Parameters:
+    DAPI_CHANNEL =  p['DAPI_CHANNEL'] - 1
+    MEASURE_CHANNEL =  p['MEASURE_CHANNEL'] - 1
     
-    # Select DAPI channel image (used for nuclei segmentation)
-    dapi_imp = pick_channel_by_index(split_imps, DAPI_CHANNEL)
-
-    # Select the measurement channel image (used for mean intensity measurement)
-    meas_imp = pick_channel_by_index(split_imps, MEASURE_CHANNEL)
-
-    # Check splitting
-    if dapi_imp is None or meas_imp is None:
-        IJ.error("Missing channels for: " + img_title)
-        close_images(split_imps)
-        return
+    if max(DAPI_CHANNEL, MEASURE_CHANNEL) >= imp.getNChannels():
+        raise ValueError('Image has %d channel(s); requested DAPI=%d, measurement=%d' %
+                         (imp.getNChannels(), p['DAPI_CHANNEL'], p['MEASURE_CHANNEL']))
     
-    # Automatically adjust brightness/contrast for each splitted image (display only)
-    for split_img in split_imps:
-        split_img.getProcessor().resetMinAndMax()   # reset first
-        IJ.run(split_img, "Enhance Contrast", "saturated=0.35")
-        split_img.updateAndDraw()
+    img_title = img_name_processing(imp.getTitle())
     
-    # Run ROI manager
-    rm = ensure_roi_manager(reset=True) # clean roi manager before launch
-    rois = rm.getRoisAsArray() # list of ROIs in roi manager
-
-    # Bring this image above all others
-    dapi_imp.getWindow().toFront()
-
-    # WHILE Loop to fill Roi manager.haha
-    while len(rois) == 0:
-        gd = NonBlockingGenericDialog("ROI Manager is empty")
-        gd.addMessage(
-        "Draw ROI(s) on the image, then click 'Add' in ROI Manager.\n"
-        "When finished, click OK here to continue."
-        )
-        gd.showDialog()   # non-blocking UI still works
-
-        # If user press Cancel
-        if gd.wasCanceled():
-            IJ.error("Cancelled. Stopping.")
-            return
-
-        # re-fetch after user interaction in while loop
-        rois = rm.getRoisAsArray()
-
-        # Check how many ROIs we have if the user wants 1 ROI per image
-        if one_roi:
-            if len(rois) != 1:
-                WaitForUserDialog(
-                "ROI Warning",
-                "Choose exactly one ROI!").show()
-                # Clean ROI manager
-                rm.reset()
-                # re-fetch after user interaction in while loop
-                rois = rm.getRoisAsArray()  
+    split_imps = []
+    rm = None
+    
+    try:
+        # ChannelSplitter returns channels in C1, C2, ... order.
+        split_imps = list(ChannelSplitter.split(imp))
+        dapi_imp = split_imps[DAPI_CHANNEL]
+        meas_imp = split_imps[MEASURE_CHANNEL]
+        for channel in split_imps:
+             channel.show()
+             channel.getProcessor().resetMinAndMax()
+             IJ.run(channel, 'Enhance Contrast', 'saturated=0.35')
+             channel.updateAndDraw()
+        
+        rm = ensure_roi_manager(reset=True) # clean roi manager before launch
+        
+        while True:
+            gd = NonBlockingGenericDialog('Select ROIs: ' + img_title)
+            gd.addMessage('Draw ROI(s) on the DAPI image and click Add in ROI Manager.\n'
+                          'Click OK to continue, or Cancel to stop processing.')
+            gd.showDialog()
+            if gd.wasCanceled():
+                return False
+            rois = list(rm.getRoisAsArray()) # list of ROIs in roi manager
+            if not rois:
+                WaitForUserDialog('ROI Warning', 'Add at least one ROI to ROI Manager.').show()
                 continue
-
-    # If ROI manager is empty, stop the program.
-    if len(rois) == 0:
-        return
-
-    # Itearation through the ROIs
-    for i, roi in enumerate(rois):
-        roi_name = roi.getName()
-        if roi_name is None or roi_name.strip() == "":
-            roi_name = "ROI_%02d" % (i + 1)
-
-        # Duplicate the MEASUREMENT channel and show it
-        meas_imp_work = meas_imp.duplicate()
-        
-        meas_imp_work.setTitle("MEAS_work")
-        meas_imp_work.show()
-        
-        # Make independent copy of ROI
-        roi_copy = roi.clone()
-        meas_imp_work.setRoi(roi_copy)
-        
-        # Clear everything else outside desired ROI in the copied image
-        #meas_imp_work.setRoi(roi)
-        IJ.run(meas_imp_work, "Clear Outside", "")
-
-        # Remove ROI selection from WORK image
-        meas_imp_work.killRoi()
-        meas_imp_work.updateAndDraw()
-        
-        # Save MEASUREMENT WORK channel and close it
-        MEASURE_CHANNEL_work_name = "C{}_{}_ROI_{}.tif".format(MEASURE_CHANNEL, img_title, roi_name)
-        MEASURE_CHANNEL_work_path = os.path.join(output_dir, MEASURE_CHANNEL_work_name)
-        IJ.save(meas_imp_work, MEASURE_CHANNEL_work_path)
-        meas_imp_work.close()
-
-
-    # --- SAVE DATA ---
-    # Save MEASUREMENT channel in the .tif format
-    MEASURE_CHANNEL_name = "C{}_{}.tif".format(MEASURE_CHANNEL, img_title)
-    MEASURE_CHANNEL_path = os.path.join(output_dir, MEASURE_CHANNEL_name)
-    IJ.save(meas_imp, MEASURE_CHANNEL_path)
-
-    # Save ROI file in .zip
-    roi_path = os.path.join(output_dir, "C{}_{}_rois.zip".format(DAPI_CHANNEL, img_title))
-    rm.runCommand("Save", roi_path)
+            if p['one_roi'] and len(rois) != 1:
+                WaitForUserDialog('ROI Warning', 'Exactly one ROI is required. Please adjust ROI Manager.').show()
+                continue
+            break
+            
+        # Export each ROI without changing the original measurement image.
+        for i, roi in enumerate(rois):
+            roi_name = roi.getName()
+            if not roi_name or not roi_name.strip():
+                roi_name = "ROI_%02d" % (i + 1)
+            roi_name = safe_filename(roi_name)
+            work = None
+            try:
+                work = meas_imp.duplicate()
+                work.setTitle('MEAS_work')
+                work.show()
+                work.setRoi(roi.clone())
+                IJ.run(work, 'Clear Outside', '')
+                work.killRoi()
+                outname = 'C%d_%s_ROI_%02d_%s.tif' % (
+                        p['MEASURE_CHANNEL'], img_title, i + 1, roi_name)
+                IJ.saveAs(work, 'Tiff', os.path.join(output_dir, outname))
+                
+            finally:
+                if work is not None:
+                    work.changes = False
+                    work.close()
+                imp.changes = False
+                imp.close()
+            
+        roi_path = os.path.join(output_dir, 'C%d_%s_rois.zip' % (p['DAPI_CHANNEL'], img_title))
+        save_rois_zip(rois, roi_path)
+        IJ.log('Saved %d ROIs to %s' % (len(rois), roi_path))
+        return True
     
-    # Close splitted images
-    close_images(split_imps)
-    
-    # Cleanup ROI manager
-    rm.reset()
+    finally:
+        close_images(split_imps)
+        if rm is not None:
+            rm.reset()
+                 
 
 #----------------------------
 # MAIN
 #----------------------------
 def main():
     # Check if at least one image is opened
-    ids = WindowManager.getIDList()
-    if not ids:
-        IJ.error("No images open.")
-        return
-    
-    # Opened images checking and filtration
-    images = [] # store images in the list
+    ids = WindowManager.getIDList() or []
+    images = []
     for wid in ids:
         imp = WindowManager.getImage(wid)
         if imp is None:
             continue
+        
         title = imp.getTitle()
-
         # Skip typical derived images (adjust if needed)
         if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
-            continue         
-        images.append(imp)
+            continue
+        
+        images.append(imp)        
     
-    # Check if there are some suitable images after filtration
     if not images:
-        IJ.error("No suitable images found (only derived windows are open)!")
+        IJ.error('No suitable images are open.')
         return
     
     # Keep only unique images
@@ -302,22 +287,18 @@ def main():
         return
 
     # ---- Loop: show GUI per image, then process ----
-    for call_id, imp in enumerate(unique_images, start=1):
-        # Make Log message
-        msg = "Processing {}/{}: {}".format(call_id, n, imp.getTitle())
-        IJ.log(msg)
-
+    for i, imp in enumerate(images):
+        IJ.log('Processing %d/%d: %s' % (i + 1, len(images), imp.getTitle()))
         try:
-            semi_manual_img_process(imp, output_dir, params)
-            msg = "Sucessfully saving image: {}".format(imp.getTitle())
-            IJ.log(msg)
+            if not semi_manual_img_process(imp, output_dir, params):
+                IJ.log('Cancelled by user; stopping batch.')
+                
+            IJ.log('Successfully saved: ' + imp.getTitle())
 
         except Exception as e:
             # log immediately
             IJ.log("ERROR in {}: {}".format(imp.getTitle(), e))
             IJ.log(traceback.format_exc())  # comment out if too verbose
-            continue
-
 
 # Run program
 if __name__ == "__main__":
