@@ -33,25 +33,16 @@ def ask_params_for_image():
     return {'DAPI_CHANNEL': dapi, 'MEASURE_CHANNEL': measure, 'one_roi': one_roi}
 
 
-def _img_name_processing(name):
+def NSpark_name_processing(name):
     try:
-        if "MP" in name and " - " in name:
-            if "Deconvolved" in name:
-                name = name.split("-")[0] + "_" + name.split("-")[2]
-                name = name.replace(" ", "", 1).replace(",", "").replace(" ", "_")
-            else:
-                name = name.split("-")[1] # split string
-                name = name.replace(" ", "", 1) # delete fist blank in the string
-                name = name.replace(" ", "_") # repalce other blanks to underscore
-        name = os.path.splitext(name)[0] # delete extention
         name = name.replace(" ", "_")
+        name = name.split(".nd2")[0] + name.split(".nd2")[2]
         return name
-    
     except Exception as e:
          raise Exception("ERROR in parsing image name")
      
-def img_name_processing(name):
-    if 'MP' in name:
+def _img_name_processing(name):
+    if "MP" in name and " - " in name:
         parts = name.split('-')
         if 'Deconvolved' in name and len(parts) >= 3:
             name = parts[0] + '_' + parts[2]
@@ -177,7 +168,8 @@ def semi_manual_img_process(imp, output_dir, p):
         raise ValueError('Image has %d channel(s); requested DAPI=%d, measurement=%d' %
                          (imp.getNChannels(), p['DAPI_CHANNEL'], p['MEASURE_CHANNEL']))
     
-    img_title = img_name_processing(imp.getTitle())
+    img_title = imp.getTitle()
+    img_title = NSpark_name_processing(img_title)
     
     split_imps = []
     rm = None
@@ -236,7 +228,7 @@ def semi_manual_img_process(imp, output_dir, p):
                 imp.changes = False
                 imp.close()
             
-        roi_path = os.path.join(output_dir, 'C%d_%s_rois.zip' % (p['DAPI_CHANNEL'], img_title))
+        roi_path = os.path.join(output_dir, '%s_rois.zip' % (img_title))
         save_rois_zip(rois, roi_path)
         IJ.log('Saved %d ROIs to %s' % (len(rois), roi_path))
         return True
@@ -260,6 +252,7 @@ def main():
             continue
         
         title = imp.getTitle()
+        print(title)
         # Skip typical derived images (adjust if needed)
         if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
             continue
