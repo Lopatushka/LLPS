@@ -82,63 +82,12 @@ def save_rois_zip(rois, zip_path):
     finally:
         stream.close()
 
-def split_channels(imp):
-    """
-    Runs ImageJ command 'Split Channels' on the input image.
-    Returns a list of split channel ImagePlus objects that belong to the original image.
-    The list is sorted as [C1, C2, C3, ...].
-    """
-    orig_title = imp.getTitle()
-
-    # IDs before splitting
-    before = set(WindowManager.getIDList() or [])
-    
-    # Split channels: creates new windows like "C1-<orig_title>", "C2-<orig_title>", ...
-    IJ.run(imp, "Split Channels", "")
-
-    # IDs after splitting
-    after = set(WindowManager.getIDList() or [])
-    new_ids = list(after - before)
-    
-    # Get all currently opened image window IDs
-    ids = WindowManager.getIDList()
-    if not ids:
-        IJ.error("No windows after Split Channels.")
-        raise SystemExit
-
-    split_imps = []
-    for wid in new_ids:
-        wimp = WindowManager.getImage(wid)
-        if wimp is None:
-            continue
-        title = wimp.getTitle()
-        # Keep only windows that look like split channels of THIS image
-        if title.startswith("C") and "-" in title and (orig_title in title):
-            split_imps.append(wimp)
-
-    if len(split_imps) == 0:
-        IJ.error("Could not find split channel images. Make sure your image is multichannel/composite.")
-        raise SystemExit
-    
-    return split_imps
-
-def pick_channel_by_index(split_imps, one_based_index):
-	"""
-    Picks a channel ImagePlus from split_imps using 1-based indexing.
-    Example: one_based_index=1 -> C1
-    """
-	idx = int(one_based_index) - 1
-	if idx < 0 or idx >= len(split_imps):
-		return None
-	return split_imps[idx]
-
 def close_images(imps):
     for im in imps:
         if im is None:
             continue
         im.changes = False
         im.close()
-
 
 def close_all_csv_tables():
     windows = WindowManager.getAllNonImageWindows()
@@ -187,6 +136,8 @@ def semi_manual_img_process(imp, output_dir, p):
              channel.updateAndDraw()
         
         rm = ensure_roi_manager(reset=True) # clean roi manager before launch
+        
+        meas_imp.getWindow().toFront()
         
         while True:
             gd = NonBlockingGenericDialog('Select ROIs: ' + img_title)
