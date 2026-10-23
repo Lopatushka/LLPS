@@ -14,14 +14,18 @@ def ask_params_for_image():
     gd.addMessage("Set parameters for nuclei segmentation.")
 
     # Fields
-    gd.addNumericField("DAPI channel (1-based):", 2, 0)
-    gd.addNumericField("Measurement channel (1-based):", 1, 0)
+    microscope_type = ["Airyscan", "NSpark"]
+    gd.addChoice("Microscope type:", microscope_type, "NSpark")
+    
+    gd.addNumericField("DAPI channel (1-based):", 1, 0)
+    gd.addNumericField("Measurement channel (1-based):", 2, 0)
     gd.addCheckbox('Exactly one ROI per image', False)
     
     gd.showDialog()
     if gd.wasCanceled():
         return None
     
+    microscope = gd.getNextChoice()
     dapi = int(gd.getNextNumber())
     measure = int(gd.getNextNumber())
     one_roi = gd.getNextBoolean()
@@ -30,7 +34,7 @@ def ask_params_for_image():
         IJ.error('Channel numbers must be at least 1.')
         return None
     
-    return {'DAPI_CHANNEL': dapi, 'MEASURE_CHANNEL': measure, 'one_roi': one_roi}
+    return {'microscope_type': microscope, 'DAPI_CHANNEL': dapi, 'MEASURE_CHANNEL': measure, 'one_roi': one_roi}
 
 
 def NSpark_name_processing(name):
@@ -41,17 +45,8 @@ def NSpark_name_processing(name):
     except Exception as e:
          raise Exception("ERROR in parsing image name")
      
-def _img_name_processing(name):
-    if "MP" in name and " - " in name:
-        parts = name.split('-')
-        if 'Deconvolved' in name and len(parts) >= 3:
-            name = parts[0] + '_' + parts[2]
-        elif len(parts) >= 2:
-            name = parts[1]
-            
-        else:
-            name = os.path.splitext(name)[0]
-            
+def Ayriscan_name_processing(name):
+    name = os.path.splitext(name)[0]        
     name = name.strip().replace(' ', '_').replace(',', '')
     return re.sub(r'[\\/:*?"<>|]', '_', name)
 
@@ -163,13 +158,19 @@ def semi_manual_img_process(imp, output_dir, p):
     # Parameters:
     DAPI_CHANNEL =  p['DAPI_CHANNEL'] - 1
     MEASURE_CHANNEL =  p['MEASURE_CHANNEL'] - 1
+    microscope_type = p['microscope_type']
     
     if max(DAPI_CHANNEL, MEASURE_CHANNEL) >= imp.getNChannels():
         raise ValueError('Image has %d channel(s); requested DAPI=%d, measurement=%d' %
                          (imp.getNChannels(), p['DAPI_CHANNEL'], p['MEASURE_CHANNEL']))
     
     img_title = imp.getTitle()
-    img_title = NSpark_name_processing(img_title)
+    
+    if microscope_type == "NSpark":
+        img_title = NSpark_name_processing(img_title)
+            
+    elif microscope_type == "Airyscan":
+        img_title = Ayriscan_name_processing(img_title)
     
     split_imps = []
     rm = None
