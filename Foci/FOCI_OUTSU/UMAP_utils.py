@@ -20,92 +20,51 @@ from skbio.stats.distance import permanova, permdisp, DistanceMatrix
 
 from statsmodels.stats.multitest import multipletests
 
-def confidence_ellipse(umap_df, x, y, ax, confidence=0.95, **kwargs):
-    x = np.asarray(x)
-    y = np.asarray(y)
+def confidence_ellipse(x, y, ax, confidence=0.95, **kwargs):
 
-    # Calculate covariance matrix
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+
+    # Remove NaN and infinite values
+    valid = np.isfinite(x) & np.isfinite(y)
+    x = x[valid]
+    y = y[valid]
+
+    # At least 3 points required
+    if len(x) < 3:
+        return
+
+    # Covariance matrix
     cov = np.cov(x, y)
 
     # Eigenvalues and eigenvectors
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
 
     # Sort in descending order
-    order = eigenvalues.argsort()[::-1]
-    eigenvalues = eigenvalues[order]
+    order = np.argsort(eigenvalues)[::-1]
+    eigenvalues = np.maximum(eigenvalues[order], 0)
     eigenvectors = eigenvectors[:, order]
 
-    # Ellipse rotation
+    # Rotation angle
     angle = np.degrees(
         np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
     )
 
-    # 95% confidence scaling
+    # Confidence scaling
     scale = np.sqrt(chi2.ppf(confidence, df=2))
 
     width, height = 2 * scale * np.sqrt(eigenvalues)
+
+    # Default ellipse appearance
+    kwargs.setdefault("fill", False)
+    kwargs.setdefault("linewidth", 2)
 
     ellipse = Ellipse(
         xy=(np.mean(x), np.mean(y)),
         width=width,
         height=height,
         angle=angle,
-        fill=False,
-        linewidth=2,
         **kwargs
     )
 
     ax.add_patch(ellipse)
-
-
-# Plot
-fig, ax = plt.subplots(figsize=(9, 7))
-
-palette = dict(zip(
-    umap_df["sample"].unique(),
-    sns.color_palette("Set2", umap_df["sample"].nunique())
-))
-
-sns.scatterplot(
-    data=umap_df,
-    x="UMAP1",
-    y="UMAP2",
-    hue="sample",
-    palette=palette,
-    s=80,
-    alpha=0.7,
-    edgecolor="white",
-    ax=ax
-)
-
-# Add 95% ellipses
-for group, data in umap_df.groupby("sample"):
-
-    confidence_ellipse(
-        data["UMAP1"],
-        data["UMAP2"],
-        ax,
-        confidence=0.95,
-        edgecolor=palette[group]
-    )
-
-    # Mark centroid
-    ax.scatter(
-        data["UMAP1"].mean(),
-        data["UMAP2"].mean(),
-        marker="X",
-        s=180,
-        color=palette[group],
-        edgecolor="black",
-        linewidth=1.2,
-        zorder=5
-    )
-
-ax.set_xlabel("UMAP 1", fontsize=13)
-ax.set_ylabel("UMAP 2", fontsize=13)
-ax.set_title("UMAP — WT vs Mutant (95% Ellipses)", fontsize=15)
-
-ax.legend(title="Sample", frameon=False)
-sns.despine()
-plt.tight_layout()
-plt.show()
