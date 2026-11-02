@@ -45,7 +45,6 @@ def table_aggregation(path):
         "mean_intensity",
         "max_intensity",
         "min_intensity",
-        "circularity"
     ]
 
     row = {

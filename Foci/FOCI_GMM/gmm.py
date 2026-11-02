@@ -771,16 +771,7 @@ def main():
             ]
         )
 
-        roi_df = pd.DataFrame(properties)
-        
-        # Calculate circularity for every ROI
-        roi_df["circularity"] = np.where(
-            roi_df["perimeter"] > 0,
-            4 * np.pi * roi_df["area"] /
-            roi_df["perimeter"] ** 2,
-            np.nan
-        )
-        
+        roi_df = pd.DataFrame(properties)       
         
         # Draw numbered ROIs using IDs from the results table
         fig, ax = draw_numbered_rois(
