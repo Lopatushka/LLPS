@@ -374,9 +374,9 @@ def main():
     min_area = 3
     connectivity = 2
 
-    alpha = 0.35
-    background_percentile = 10
-    refined_min_area = 1
+    alpha = 0.1
+    background_percentile = 5
+    refined_min_area = 20
     grid_size = 10000
 
     hist_bins = 150
