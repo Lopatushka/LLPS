@@ -797,8 +797,8 @@ def main():
     print(f"Summary rows: {len(summary_df)}")
     print(f"Total refined ROIs: {len(all_rois_df)}")
 
-    print("\nSegmentation summary:")
-    print(summary_df.to_string(index=False))
+    #print("\nSegmentation summary:")
+    #print(summary_df.to_string(index=False))
 
     print("\nAll results saved to:")
     print(output_dir.resolve())
