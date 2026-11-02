@@ -528,11 +528,6 @@ def main():
     if hist_high <= hist_low:
         hist_low, hist_high = 0.0, 1.0
 
-    print(
-        f"\nCommon histogram X-axis: "
-        f"{hist_low:.4f} – {hist_high:.4f}"
-    )
-
     # =====================================================
     # 6. SEGMENT AND SAVE ALL IMAGES
     # =====================================================
@@ -766,15 +761,25 @@ def main():
                 "label",
                 "area",
                 "centroid",
+                "eccentricity",
                 "equivalent_diameter_area",
                 "perimeter",
                 "solidity",
                 "mean_intensity",
-                "max_intensity"
+                "max_intensity",
+                "min_intensity",
             ]
         )
 
         roi_df = pd.DataFrame(properties)
+        
+        # Calculate circularity for every ROI
+        roi_df["circularity"] = np.where(
+            roi_df["perimeter"] > 0,
+            4 * np.pi * roi_df["area"] /
+            roi_df["perimeter"] ** 2,
+            np.nan
+        )
         
         
         # Draw numbered ROIs using IDs from the results table
@@ -789,7 +794,7 @@ def main():
 
         # Save numbered image
         fig.savefig(
-            labels_dir / f"{image_name}_numbered_ROIs.png",
+            labels_dir / f"{image_name}_ROIs.png",
             dpi=300,
             bbox_inches="tight"
         )
@@ -865,15 +870,15 @@ def main():
         index=False
     )
 
-    all_rois_df = pd.concat(
-        all_measurements,
-        ignore_index=True
-    )
+    #all_rois_df = pd.concat(
+    #    all_measurements,
+    #    ignore_index=True
+    #)
 
-    all_rois_df.to_csv(
-        output_dir / "GMM_all_ROIs.csv",
-        index=False
-    )
+    #all_rois_df.to_csv(
+    #    output_dir / "GMM_all_ROIs.csv",
+    #    index=False
+    #)
 
     # =====================================================
     # 12. FINAL REPORT
@@ -883,10 +888,10 @@ def main():
     print("SEGMENTATION COMPLETED")
     print("=" * 50)
 
-    print(f"Images found: {len(image_paths)}")
-    print(f"Images processed: {len(results)}")
-    print(f"Summary rows: {len(summary_df)}")
-    print(f"Total refined ROIs: {len(all_rois_df)}")
+    #print(f"Images found: {len(image_paths)}")
+    #print(f"Images processed: {len(results)}")
+    #print(f"Summary rows: {len(summary_df)}")
+    #print(f"Total refined ROIs: {len(all_rois_df)}")
 
     #print("\nSegmentation summary:")
     #print(summary_df.to_string(index=False))
@@ -894,10 +899,10 @@ def main():
     print("\nAll results saved to:")
     print(output_dir.resolve())
 
-    return results, summary_df, all_rois_df
+    #return results, summary_df, all_rois_df
 
 
 if __name__ == "__main__":
-    results, summary_df, all_rois_df = main()
+    main()
 
     
