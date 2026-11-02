@@ -12,10 +12,6 @@ from skimage.color import rgb2gray
 # =====================================================
 # 1. LOAD IMAGE
 # =====================================================
-# =====================================================
-# 2. LOAD IMAGE
-# =====================================================
-
 def load_image(image_path):
 
     image = io.imread(image_path)
@@ -43,10 +39,14 @@ def load_image(image_path):
 
 
 # =====================================================
-# 3. FIT GMM
+# 2. FIT GMM
 # =====================================================
-
-def fit_gmm(image):
+def fit_gmm(image,
+            max_fit_pixels,
+            random_state,
+            n_components,
+            n_init,
+            max_iter):
 
     pixels = image.reshape(-1, 1)
 
@@ -82,7 +82,7 @@ def fit_gmm(image):
 
 
 # =====================================================
-# 4. GMM PARAMETERS AND THRESHOLD
+# 3. GMM PARAMETERS AND THRESHOLD
 # =====================================================
 
 def get_gmm_parameters(gmm):
@@ -131,10 +131,12 @@ def find_gmm_threshold(gmm, means, grid_size=10000):
 
 
 # =====================================================
-# 5. INITIAL SEGMENTATION
+# 4. INITIAL SEGMENTATION
 # =====================================================
-
-def segment_image(smooth, threshold):
+def segment_image(smooth,
+                  threshold,
+                  min_area,
+                  connectivity):
 
     mask = smooth > threshold
 
@@ -155,14 +157,14 @@ def segment_image(smooth, threshold):
 
 
 # =====================================================
-# 6. LOCAL ROI REFINEMENT
+# 5. LOCAL ROI REFINEMENT
 # =====================================================
-
 def refine_gmm_rois(
     smooth,
     labels,
     alpha=0.35,
     min_area=1,
+    connectivity=2,
     background_percentile=10
 ):
 
@@ -247,7 +249,7 @@ def refine_gmm_rois(
 
 
 # =====================================================
-# 7. DRAW CONTOURS
+# 6. DRAW CONTOURS
 # =====================================================
 
 def draw_contours(ax, image, labels):
