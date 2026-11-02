@@ -286,10 +286,13 @@ def draw_contours(ax, image, labels):
 
 
 
+
 def main():
+
     # =====================================================
     # 1. SEGMENTATION PARAMETERS
     # =====================================================
+
     sigma = 1.2
 
     n_components = 3
@@ -307,12 +310,11 @@ def main():
     grid_size = 10000
 
     hist_bins = 150
-    
+
     # =====================================================
     # 2. FOLDERS
     # =====================================================
 
-    # Ask user for directories
     input_path = input(
         "Enter input image directory [images]: "
     ).strip()
@@ -320,55 +322,72 @@ def main():
     output_path = input(
         "Enter output results directory [GMM_refined_segmentation]: "
     ).strip()
-    
-    # Use defaults if the user presses Enter
-    input_dir = Path(input_path or "images").expanduser()
+
+    input_dir = Path(
+        input_path or "images"
+    ).expanduser()
+
     output_dir = Path(
         output_path or "GMM_refined_segmentation"
     ).expanduser()
-    
-    # Create directories if they do not exist
-    input_dir.mkdir(parents=True, exist_ok=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create output subfolders
+    # Create directories if they do not exist
+    input_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    # Output subfolders
     figures_dir = output_dir / "figures"
     masks_dir = output_dir / "masks"
     labels_dir = output_dir / "labels"
     measurements_dir = output_dir / "measurements"
-    
+
     for folder in [
-    output_dir,
-    figures_dir,
-    masks_dir,
-    labels_dir,
-    measurements_dir
+        figures_dir,
+        masks_dir,
+        labels_dir,
+        measurements_dir
     ]:
-        folder.mkdir(parents=True, exist_ok=True)
+        folder.mkdir(
+            parents=True,
+            exist_ok=True
+        )
 
     print(f"\nInput directory: {input_dir.resolve()}")
     print(f"Output directory: {output_dir.resolve()}")
-    
+
     # =====================================================
     # 3. IMAGE PATHS
     # =====================================================
+
     image_paths = sorted([
         p for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in (".tif", ".tiff")
-    ]) if input_dir.exists() else []
+        if p.is_file()
+        and p.suffix.lower() in (".tif", ".tiff")
+    ])
 
     if not image_paths:
         raise FileNotFoundError(
             f"No TIFF images found in {input_dir.resolve()}"
         )
 
-    print(f"Found {len(image_paths)} images")
-    
+    print(f"\nFound {len(image_paths)} images")
+
     # =====================================================
-    # 4. LOAD IMAGES AND FIT GMM FROM SCRATCH
+    # 4. LOAD IMAGES AND FIT GMM
     # =====================================================
+
     prepared = []
+
     for image_path in image_paths:
+
+        print(f"Loading: {image_path.name}")
 
         image = load_image(image_path)
 
@@ -377,14 +396,18 @@ def main():
             sigma=sigma
         )
 
-        gmm = fit_gmm(image=smooth,
-                max_fit_pixels=max_fit_pixels,
-                random_state=random_state,
-                n_components=n_components,
-                n_init=n_init,
-                max_iter=max_iter)
+        gmm = fit_gmm(
+            image=smooth,
+            max_fit_pixels=max_fit_pixels,
+            random_state=random_state,
+            n_components=n_components,
+            n_init=n_init,
+            max_iter=max_iter
+        )
 
-        means, stds, weights = get_gmm_parameters(gmm)
+        means, stds, weights = get_gmm_parameters(
+            gmm
+        )
 
         threshold = find_gmm_threshold(
             gmm,
@@ -402,16 +425,16 @@ def main():
             "threshold": threshold
         })
 
-
     # =====================================================
     # 5. COMMON HISTOGRAM X-AXIS
     # =====================================================
+
     all_pixels = np.concatenate([
         item["smooth"].ravel()
         for item in prepared
     ])
 
-    all_thresholds =    [
+    all_thresholds = [
         item["threshold"]
         for item in prepared
     ]
@@ -435,18 +458,35 @@ def main():
     if hist_high <= hist_low:
         hist_low, hist_high = 0.0, 1.0
 
+    print(
+        f"\nCommon histogram X-axis: "
+        f"{hist_low:.4f} – {hist_high:.4f}"
+    )
+
     # =====================================================
-    # 6. SEGMENT AND SAVE
+    # 6. SEGMENT AND SAVE ALL IMAGES
     # =====================================================
-    
+
     results = {}
     summary = []
     all_measurements = []
 
-    for item in prepared:
+    for image_index, item in enumerate(
+        prepared,
+        start=1
+    ):
 
         image_path = item["path"]
-        image_name = image_path.stem
+
+        # Unique output name prevents filename collisions
+        image_name = (
+            f"{image_index:03d}_{image_path.stem}"
+        )
+
+        print(
+            f"\nProcessing {image_index}/{len(prepared)}: "
+            f"{image_path.name}"
+        )
 
         image = item["image"]
         smooth = item["smooth"]
@@ -457,12 +497,20 @@ def main():
 
         T_gmm = item["threshold"]
 
+        # ----------------------------------------------
+        # INITIAL SEGMENTATION
+        # ----------------------------------------------
+
         initial_mask, initial_labels = segment_image(
             smooth,
             T_gmm,
-            min_area = min_area,
-            connectivity = connectivity
+            min_area=min_area,
+            connectivity=connectivity
         )
+
+        # ----------------------------------------------
+        # LOCAL ROI REFINEMENT
+        # ----------------------------------------------
 
         refined_mask, refined_labels = refine_gmm_rois(
             smooth,
@@ -470,212 +518,254 @@ def main():
             alpha=alpha,
             min_area=refined_min_area,
             background_percentile=background_percentile,
-            connectivity = connectivity
+            connectivity=connectivity
         )
 
         n_initial = int(initial_labels.max())
         n_refined = int(refined_labels.max())
 
-    # ----------------------------------------------
-    # 7. FIGURE
-    # ----------------------------------------------
-    fig, axes = plt.subplots(
-        1, 3,
-        figsize=(19, 5.5),
-        gridspec_kw={
-            "width_ratios": [1, 1, 1.5]
+        # ==============================================
+        # 7. FIGURE
+        # ==============================================
+
+        fig, axes = plt.subplots(
+            1, 3,
+            figsize=(19, 5.5),
+            gridspec_kw={
+                "width_ratios": [1, 1, 1.5]
+            }
+        )
+
+        # ----------------------------------------------
+        # PANEL 1: FINAL BINARY MASK
+        # ----------------------------------------------
+
+        axes[0].imshow(
+            refined_mask,
+            cmap="gray",
+            interpolation="nearest"
+        )
+
+        axes[0].set_title(
+            f"Final binary mask\nROIs = {n_refined}",
+            fontsize=13,
+            fontweight="bold"
+        )
+
+        axes[0].axis("off")
+
+        # ----------------------------------------------
+        # PANEL 2: FINAL SEGMENTATION
+        # ----------------------------------------------
+
+        draw_contours(
+            axes[1],
+            image,
+            refined_labels
+        )
+
+        axes[1].set_title(
+            f"Final segmentation\nalpha = {alpha}",
+            fontsize=13,
+            fontweight="bold"
+        )
+
+        # ----------------------------------------------
+        # PANEL 3: HISTOGRAM + GMM THRESHOLD
+        # ----------------------------------------------
+
+        ax = axes[2]
+
+        pixels = smooth.ravel()
+
+        counts, edges = np.histogram(
+            pixels,
+            bins=hist_bins,
+            range=(hist_low, hist_high)
+        )
+
+        centers = (
+            edges[:-1] + edges[1:]
+        ) / 2
+
+        bin_widths = np.diff(edges)
+
+        ax.bar(
+            centers,
+            counts,
+            width=bin_widths,
+            color="lightgray",
+            alpha=0.85,
+            edgecolor="none",
+            label="Pixel intensity"
+        )
+
+        ax.axvline(
+            T_gmm,
+            color="red",
+            linestyle="--",
+            linewidth=2.5,
+            label=f"GMM threshold = {T_gmm:.4f}"
+        )
+
+        ax.set_yscale("log")
+
+        ax.set_xlim(
+            hist_low,
+            hist_high
+        )
+
+        ax.set_xlabel(
+            "Normalized pixel intensity"
+        )
+
+        ax.set_ylabel(
+            "Pixel count (log scale)"
+        )
+
+        ax.set_title(
+            "Pixel intensity distribution",
+            fontsize=13,
+            fontweight="bold"
+        )
+
+        ax.grid(
+            axis="y",
+            which="both",
+            alpha=0.2
+        )
+
+        ax.set_axisbelow(True)
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        ax.legend(
+            fontsize=9,
+            frameon=False
+        )
+
+        # ----------------------------------------------
+        # FIGURE SETTINGS
+        # ----------------------------------------------
+
+        fig.suptitle(
+            image_path.stem,
+            fontsize=15,
+            fontweight="bold",
+            y=1.03
+        )
+
+        fig.tight_layout(
+            rect=[0, 0, 1, 0.92]
+        )
+
+        # Save figure for CURRENT image
+        fig.savefig(
+            figures_dir / f"{image_name}_GMM.png",
+            dpi=250,
+            bbox_inches="tight"
+        )
+
+        plt.close(fig)
+
+        # ==============================================
+        # 8. SAVE MASKS AND LABELS
+        # ==============================================
+
+        io.imsave(
+            masks_dir / f"{image_name}_mask.tif",
+            (refined_mask * 255).astype(np.uint8),
+            check_contrast=False
+        )
+
+        io.imsave(
+            labels_dir / f"{image_name}_labels.tif",
+            refined_labels.astype(np.int32),
+            check_contrast=False
+        )
+
+        # ==============================================
+        # 9. ROI MEASUREMENTS
+        # ==============================================
+
+        properties = measure.regionprops_table(
+            refined_labels,
+            intensity_image=image,
+            properties=[
+                "label",
+                "area",
+                "centroid",
+                "equivalent_diameter_area",
+                "perimeter",
+                "solidity",
+                "mean_intensity",
+                "max_intensity"
+            ]
+        )
+
+        roi_df = pd.DataFrame(properties)
+
+        roi_df.insert(
+            0,
+            "image",
+            image_name
+        )
+
+        roi_df.insert(
+            1,
+            "source_file",
+            image_path.name
+        )
+
+        roi_df.to_csv(
+            measurements_dir / f"{image_name}_ROIs.csv",
+            index=False
+        )
+
+        # IMPORTANT: inside the loop
+        all_measurements.append(roi_df)
+
+        # ==============================================
+        # 10. SUMMARY
+        # ==============================================
+
+        # IMPORTANT: inside the loop
+        summary.append({
+            "image": image_name,
+            "source_file": image_path.name,
+            "GMM_threshold": T_gmm,
+            "initial_ROIs": n_initial,
+            "refined_ROIs": n_refined,
+            "initial_area_px": int(initial_mask.sum()),
+            "refined_area_px": int(refined_mask.sum()),
+            "alpha": alpha
+        })
+
+        # IMPORTANT: inside the loop
+        results[image_name] = {
+            "source_path": str(image_path),
+            "threshold": T_gmm,
+            "means": means,
+            "stds": stds,
+            "weights": weights,
+            "initial_mask": initial_mask,
+            "initial_labels": initial_labels,
+            "refined_mask": refined_mask,
+            "refined_labels": refined_labels,
+            "roi_df": roi_df
         }
-    )
 
-    # PANEL 1: FINAL BINARY MASK
-
-    axes[0].imshow(
-        refined_mask,
-        cmap="gray",
-        interpolation="nearest"
-    )
-
-    axes[0].set_title(
-        f"Final binary mask\nROIs = {n_refined}",
-        fontsize=13,
-        fontweight="bold"
-    )
-
-    axes[0].axis("off")
-
-    # PANEL 2: FINAL SEGMENTATION
-
-    draw_contours(
-        axes[1],
-        image,
-        refined_labels
-    )
-
-    axes[1].set_title(
-        f"Final segmentation\nalpha = {alpha}",
-        fontsize=13,
-        fontweight="bold"
-    )
-
-    # PANEL 3: HISTOGRAM + GMM THRESHOLD
-
-    ax = axes[2]
-
-    pixels = smooth.ravel()
-
-    counts, edges = np.histogram(
-        pixels,
-        bins=hist_bins,
-        range=(hist_low, hist_high)
-    )
-
-    centers = (edges[:-1] + edges[1:]) / 2
-    bin_widths = np.diff(edges)
-
-    ax.bar(
-        centers,
-        counts,
-        width=bin_widths,
-        color="lightgray",
-        alpha=0.85,
-        edgecolor="none",
-        label="Pixel intensity"
-    )
-
-    ax.axvline(
-        T_gmm,
-        color="red",
-        linestyle="--",
-        linewidth=2.5,
-        label=f"GMM threshold = {T_gmm:.4f}"
-    )
-
-    ax.set_yscale("log")
-    ax.set_xlim(hist_low, hist_high)
-
-    ax.set_xlabel("Normalized pixel intensity")
-    ax.set_ylabel("Pixel count (log scale)")
-
-    ax.set_title(
-        "Pixel intensity distribution",
-        fontsize=13,
-        fontweight="bold"
-    )
-
-    ax.grid(
-        axis="y",
-        which="both",
-        alpha=0.2
-    )
-
-    ax.set_axisbelow(True)
-
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-
-    ax.legend(
-        fontsize=9,
-        frameon=False
-    )
-
-    # ----------------------------------------------
-    # 8. FIGURE SETTINGS
-    # ----------------------------------------------
-
-    fig.suptitle(
-        image_name,
-        fontsize=15,
-        fontweight="bold",
-        y=1.03
-    )
-
-    fig.tight_layout(
-        rect=[0, 0, 1, 0.92]
-    )
-
-    fig.savefig(
-        figures_dir / f"{image_name}_GMM_refined.png",
-        dpi=250,
-        bbox_inches="tight"
-    )
-
-    plt.close(fig)
-
-    # ----------------------------------------------
-    # 9. SAVE MASKS AND LABELS
-    # ----------------------------------------------
-
-    io.imsave(
-        masks_dir / f"{image_name}_refined_mask.tif",
-        (refined_mask * 255).astype(np.uint8),
-        check_contrast=False
-    )
-
-    io.imsave(
-        labels_dir / f"{image_name}_refined_labels.tif",
-        refined_labels.astype(np.int32),
-        check_contrast=False
-    )
-
-    # ----------------------------------------------
-    # 10. ROI MEASUREMENTS
-    # ----------------------------------------------
-
-    properties = measure.regionprops_table(
-        refined_labels,
-        intensity_image=image,
-        properties=[
-            "label",
-            "area",
-            "centroid",
-            "equivalent_diameter_area",
-            "perimeter",
-            "solidity",
-            "mean_intensity",
-            "max_intensity"
-        ]
-    )
-
-    roi_df = pd.DataFrame(properties)
-    roi_df.insert(0, "image", image_name)
-
-    roi_df.to_csv(
-        measurements_dir / f"{image_name}_ROIs.csv",
-        index=False
-    )
-
-    all_measurements.append(roi_df)
-
-    # ----------------------------------------------
-    # 11. SUMMARY
-    # ----------------------------------------------
-
-    summary.append({
-        "image": image_name,
-        "GMM_threshold": T_gmm,
-        "initial_ROIs": n_initial,
-        "refined_ROIs": n_refined,
-        "initial_area_px": int(initial_mask.sum()),
-        "refined_area_px": int(refined_mask.sum()),
-        "alpha": alpha
-    })
-
-    results[image_name] = {
-        "threshold": T_gmm,
-        "means": means,
-        "stds": stds,
-        "weights": weights,
-        "initial_mask": initial_mask,
-        "initial_labels": initial_labels,
-        "refined_mask": refined_mask,
-        "refined_labels": refined_labels,
-        "roi_df": roi_df
-    }
-
+        print(
+            f"Saved {image_name}: "
+            f"{n_initial} initial ROIs, "
+            f"{n_refined} refined ROIs"
+        )
 
     # =====================================================
-    # 12. SAVE COMBINED RESULTS
+    # 11. SAVE COMBINED RESULTS
     # =====================================================
+    # This section is OUTSIDE the image-processing loop.
 
     summary_df = pd.DataFrame(summary)
 
@@ -694,10 +784,29 @@ def main():
         index=False
     )
 
+    # =====================================================
+    # 12. FINAL REPORT
+    # =====================================================
+
+    print("\n" + "=" * 50)
+    print("SEGMENTATION COMPLETED")
+    print("=" * 50)
+
+    print(f"Images found: {len(image_paths)}")
+    print(f"Images processed: {len(results)}")
+    print(f"Summary rows: {len(summary_df)}")
+    print(f"Total refined ROIs: {len(all_rois_df)}")
+
+    print("\nSegmentation summary:")
+    print(summary_df.to_string(index=False))
+
     print("\nAll results saved to:")
     print(output_dir.resolve())
-    
+
+    return results, summary_df, all_rois_df
+
+
 if __name__ == "__main__":
-    main()
+    results, summary_df, all_rois_df = main()
 
     
