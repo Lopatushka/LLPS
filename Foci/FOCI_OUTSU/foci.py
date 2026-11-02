@@ -2,30 +2,50 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
-
+import traceback
 from skimage import io, filters, morphology, segmentation, segmentation, exposure
 from skimage.feature import peak_local_max
+from skimage.restoration import rolling_ball, estimate_sigma
 from scipy import ndimage as ndi
-from skimage import io, filters, morphology, measure, segmentation, segmentation, exposure
+from skimage import io, filters, morphology, measure, segmentation, segmentation
 
-from pathlib import Path
-import traceback
+from skimage.morphology import white_tophat, disk
+    
 
-def process_image(image_path, threshold_factor=3,  min_area=2, min_distance=5, plot=True, save_path=None):
+def process_image(image_path,
+                  threshold_factor=1,
+                  sigma = 0.6,
+                  min_area=2,
+                  min_distance=3,
+                  plot=True,
+                  save_path=None):   
+    
     # Download image
     image = io.imread(image_path)
     image_name = Path(image_path).stem
     
-    threshold = filters.threshold_otsu(image)
+    # 1. Convert to float
+    img = image.astype(np.float32)
+
+    # 2. Background subtraction
+    #background = rolling_ball(img, radius=20)
+    #corrected = np.clip(img - background, 0, None)
     
-    binary_mask = image > threshold * threshold_factor
+    smoothed = filters.gaussian(
+    img,
+    sigma=sigma,
+    preserve_range=True
+    )
+    
+    threshold = filters.threshold_otsu(smoothed)
+    
+    binary_mask = smoothed > threshold * threshold_factor
 
     clean_mask = morphology.remove_small_objects(
         binary_mask,
         min_size=min_area
     )
 
-    image_float = image.astype(np.float32)
     distance = ndi.distance_transform_edt(clean_mask)
 
     # Detect candidate centers
@@ -48,7 +68,7 @@ def process_image(image_path, threshold_factor=3,  min_area=2, min_distance=5, p
     
     properties = measure.regionprops_table(
     labels,
-    intensity_image=image_float,
+    intensity_image=img,
     properties=[
         "label",
         "area",
@@ -89,7 +109,7 @@ def process_image(image_path, threshold_factor=3,  min_area=2, min_distance=5, p
 
         axes[2].imshow(
             segmentation.mark_boundaries(
-                image_float / (image_float.max() + 1e-8),
+                img / (img.max() + 1e-8),
                 labels
             )
         )
@@ -144,9 +164,10 @@ def main():
             
             result = process_image(
                 image_path=path,
-                threshold_factor=3, 
+                threshold_factor=3,
+                sigma = 0.6, 
                 min_area=2,
-                min_distance=5,
+                min_distance=3,
                 plot=True,
                 save_path=save_path,
                 )
