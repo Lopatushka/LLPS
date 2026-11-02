@@ -693,5 +693,8 @@ def main():
 
     print("\nAll results saved to:")
     print(output_dir.resolve())
+    
+if __name__ == "__main__":
+    main()
 
     
