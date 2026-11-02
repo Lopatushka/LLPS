@@ -459,7 +459,9 @@ def main():
 
         initial_mask, initial_labels = segment_image(
             smooth,
-            T_gmm
+            T_gmm,
+            min_area = min_area,
+            connectivity = connectivity
         )
 
         refined_mask, refined_labels = refine_gmm_rois(
@@ -467,7 +469,8 @@ def main():
             initial_labels,
             alpha=alpha,
             min_area=refined_min_area,
-            background_percentile=background_percentile
+            background_percentile=background_percentile,
+            connectivity = connectivity
         )
 
         n_initial = int(initial_labels.max())
