@@ -286,43 +286,10 @@ def draw_contours(ax, image, labels):
 
 
 
-
 def main():
     # =====================================================
-    # PARAMETERS AND FOLDERS
+    # 1. SEGMENTATION PARAMETERS
     # =====================================================
-
-    input_dir = Path("images")
-    output_dir = Path("GMM_refined_segmentation")
-
-    figures_dir = output_dir / "figures"
-    masks_dir = output_dir / "masks"
-    labels_dir = output_dir / "labels"
-    measurements_dir = output_dir / "measurements"
-    
-    for folder in [
-    output_dir,
-    figures_dir,
-    masks_dir,
-    labels_dir,
-    measurements_dir
-    ]:
-        folder.mkdir(parents=True, exist_ok=True)
-
-    # Load all TIFF files
-    image_paths = sorted([
-        p for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in (".tif", ".tiff")
-    ]) if input_dir.exists() else []
-
-    if not image_paths:
-        raise FileNotFoundError(
-            f"No TIFF images found in {input_dir.resolve()}"
-        )
-
-    print(f"Found {len(image_paths)} images")
-    
-    # Segmentation parameters
     sigma = 1.2
 
     n_components = 3
@@ -339,3 +306,60 @@ def main():
     refined_min_area = 1
 
     hist_bins = 150
+    
+    # =====================================================
+    # 2. FOLDERS
+    # =====================================================
+
+    # Ask user for directories
+    input_path = input(
+        "Enter input image directory [images]: "
+    ).strip()
+
+    output_path = input(
+        "Enter output results directory [GMM_refined_segmentation]: "
+    ).strip()
+    
+    # Use defaults if the user presses Enter
+    input_dir = Path(input_path or "images").expanduser()
+    output_dir = Path(
+        output_path or "GMM_refined_segmentation"
+    ).expanduser()
+    
+    # Create directories if they do not exist
+    input_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create output subfolders
+    figures_dir = output_dir / "figures"
+    masks_dir = output_dir / "masks"
+    labels_dir = output_dir / "labels"
+    measurements_dir = output_dir / "measurements"
+    
+    for folder in [
+    output_dir,
+    figures_dir,
+    masks_dir,
+    labels_dir,
+    measurements_dir
+    ]:
+        folder.mkdir(parents=True, exist_ok=True)
+
+    print(f"\nInput directory: {input_dir.resolve()}")
+    print(f"Output directory: {output_dir.resolve()}")
+    
+    # =====================================================
+    # 3. IMAGES LOADING
+    # =====================================================
+    image_paths = sorted([
+        p for p in input_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in (".tif", ".tiff")
+    ]) if input_dir.exists() else []
+
+    if not image_paths:
+        raise FileNotFoundError(
+            f"No TIFF images found in {input_dir.resolve()}"
+        )
+
+    print(f"Found {len(image_paths)} images")
+    
