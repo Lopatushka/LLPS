@@ -251,6 +251,78 @@ def refine_gmm_rois(
 # =====================================================
 # 6. DRAW CONTOURS
 # =====================================================
+def draw_numbered_rois(
+    image,
+    labels,
+    roi_df,
+    figsize=(12, 12),
+    fontsize=7,
+    show_contours=True
+):
+    fig, ax = plt.subplots(figsize=figsize)
+
+    ax.imshow(image, cmap="gray")
+
+    for _, row in roi_df.iterrows():
+
+        # Exact ROI ID from the results table
+        roi_id = int(row["label"])
+
+        # Centroid coordinates from the table
+        y = row["centroid-0"]
+        x = row["centroid-1"]
+
+        # Draw contour for this ROI
+        if show_contours:
+
+            roi_mask = labels == roi_id
+
+            contours = measure.find_contours(
+                np.pad(
+                    roi_mask.astype(float),
+                    1,
+                    mode="constant"
+                ),
+                level=0.5
+            )
+
+            for contour in contours:
+                ax.plot(
+                    contour[:, 1] - 1,
+                    contour[:, 0] - 1,
+                    color="red",
+                    linewidth=0.6
+                )
+
+        # Display the SAME ROI ID as in the table
+        ax.text(
+            x,
+            y,
+            str(roi_id),
+            color="yellow",
+            fontsize=fontsize,
+            fontweight="bold",
+            ha="center",
+            va="center",
+            bbox=dict(
+                facecolor="black",
+                alpha=0.5,
+                edgecolor="none",
+                pad=0.5
+            )
+        )
+
+    ax.set_title(
+        "Numbered ROIs (matching results table)",
+        fontsize=14
+    )
+
+    ax.axis("off")
+
+    plt.tight_layout()
+
+    return fig, ax
+
 
 def draw_contours(ax, image, labels):
 
@@ -283,8 +355,6 @@ def draw_contours(ax, image, labels):
             )
 
     ax.axis("off")
-
-
 
 
 def main():
@@ -705,6 +775,27 @@ def main():
         )
 
         roi_df = pd.DataFrame(properties)
+        
+        
+        # Draw numbered ROIs using IDs from the results table
+        fig, ax = draw_numbered_rois(
+            image=image,
+            labels=refined_labels,
+            roi_df=roi_df,
+            figsize=(12, 12),
+            fontsize=7,
+            show_contours=True
+        )
+
+        # Save numbered image
+        fig.savefig(
+            labels_dir / f"{image_name}_numbered_ROIs.png",
+            dpi=300,
+            bbox_inches="tight"
+        )
+
+        plt.close(fig)
+
 
         roi_df.insert(
             0,
