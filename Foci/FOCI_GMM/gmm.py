@@ -250,51 +250,101 @@ def draw_histogram(
     finally:
         plt.close(fig)
 
-def plot_results(result, name, output):
-    original, background, corrected = (result[k] for k in ('original','background','corrected'))
-    smoothed, mask, labels = (result[k] for k in ('smoothed','mask','labels'))
-    hist = histogram_data(smoothed, result['gmm'])
+def plot_results(result, name, output=None):
+    """
+    Create a six-panel visualization of GMM segmentation.
+
+    If output is provided, save the figure.
+    The figure is automatically closed after saving/displaying.
+    """
+
+    original = result["original"]
+    background = result["background"]
+    corrected = result["corrected"]
+    smoothed = result["smoothed"]
+    mask = result["mask"]
+    labels = result["labels"]
+
+    hist = histogram_data(smoothed, result["gmm"])
+
     fig, axes = plt.subplots(2, 3, figsize=(18, 11))
-    
-    for ax, img, title in zip(axes.flat[:4],
-                              (original, background, corrected, mask),
-                              ('Original image', f'Rolling-ball background (r={ROLLING_BALL_RADIUS})',
-                               'Background corrected (before smoothing)', 'Binary mask (filled holes)')):
-        ax.imshow(img, cmap='gray')
+
+    # First four panels
+    images = [
+        original,
+        background,
+        corrected,
+        mask
+    ]
+
+    titles = [
+        "Original image",
+        f"Rolling-ball background (r={ROLLING_BALL_RADIUS})",
+        "Background corrected (before smoothing)",
+        "Binary mask (filled holes)"
+    ]
+
+    for ax, img, title in zip(axes.flat[:4], images, titles):
+        ax.imshow(img, cmap="gray")
         ax.set_title(title)
-        ax.axis('off')
-        
+        ax.axis("off")
+
+    # Fifth panel: Numbered ROIs
     ax = axes[1, 1]
-    ax.imshow(original, cmap='gray')
-    
+    ax.imshow(original, cmap="gray")
+
     if mask.any() and (~mask).any():
-        ax.contour(mask.astype(float), levels=[0.5], colors='lime', linewidths=0.7)
-        
+        ax.contour(
+            mask.astype(float),
+            levels=[0.5],
+            colors="lime",
+            linewidths=0.7
+        )
+
     for region in measure.regionprops(labels):
         y, x = region.centroid
-        ax.text(x, y, str(region.label), color='yellow', fontsize=6,
-                ha='center', va='center')
-    ax.set_title(f'Numbered ROIs (N={labels.max()})')
-    ax.axis('off')
-    
+
+        ax.text(
+            x, y,
+            str(region.label),
+            color="yellow",
+            fontsize=6,
+            ha="center",
+            va="center"
+        )
+
+    ax.set_title(f"Numbered ROIs (N={labels.max()})")
+    ax.axis("off")
+
+    # Sixth panel: GMM histogram
     _draw_histogram_ax(
         axes[1, 2],
         hist,
         result["signal_indices"],
         log=True
     )
-    
-    fig.suptitle(f'{name} | K={N_COMPONENTS}, signal K={SIGNAL_COMPONENTS}, σ={SMOOTH_SIGMA}', fontsize=15)
-    fig.tight_layout()
-    fig.savefig(output / f'{name}_six_panels.png', dpi=FIG_DPI, bbox_inches='tight')
-    plt.close(fig)
 
-    fig, axs = plt.subplots(1, 2, figsize=(16, 5))
-    draw_histogram(axs[0], hist, result['signal_indices'], log=False)
-    draw_histogram(axs[1], hist, result['signal_indices'], log=True)
-    fig.suptitle(f'{name}: GMM intensity distributions', fontsize=14)
+    # Figure title
+    fig.suptitle(
+        f"{name} | K={N_COMPONENTS}, "
+        f"signal K={SIGNAL_COMPONENTS}, "
+        f"σ={SMOOTH_SIGMA}",
+        fontsize=15
+    )
+
     fig.tight_layout()
-    fig.savefig(output / f'{name}_histograms.png', dpi=FIG_DPI, bbox_inches='tight')
+
+    # Optional saving
+    if output is not None:
+        output = Path(output)
+        output.mkdir(parents=True, exist_ok=True)
+
+        fig.savefig(
+            output / f"{name}_six_panels.png",
+            dpi=FIG_DPI,
+            bbox_inches="tight"
+        )
+
     plt.close(fig)
 
 
@@ -369,9 +419,9 @@ def main():
         # Separate GMM histogram
         # This assumes your histogram function accepts save_path.
         draw_histogram(
-        results,
-        name=name,
-        save_path=OUTPUT_DIRS["histograms"] / f"{name}_histograms.png"
+            results,
+            name=name,
+            save_path=OUTPUT_DIRS["histograms"] / f"{name}_histograms.png"
         )
 
         # Background image
