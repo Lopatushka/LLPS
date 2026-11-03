@@ -14,7 +14,7 @@ import time
 
 # ========== CONFIG ==========
 N_COMPONENTS = 4
-SIGNAL_COMPONENTS = 2
+SIGNAL_COMPONENTS = [4, 3] # Components selected for segmentation (ordered by mean intensity)
 
 PROBABILITY_THRESHOLD = 0.5
 ROLLING_BALL_RADIUS = 50
@@ -37,16 +37,25 @@ def _log_step(message, start):
 
 
 def validate_parameters():
-    if not (1 <= SIGNAL_COMPONENTS <= N_COMPONENTS):
-        raise ValueError('SIGNAL_COMPONENTS must be between 1 and N_COMPONENTS')
+    if (
+        not SIGNAL_COMPONENTS
+        or len(set(SIGNAL_COMPONENTS)) != len(SIGNAL_COMPONENTS)
+        or any(c < 1 or c > N_COMPONENTS for c in SIGNAL_COMPONENTS)
+        ):
+        raise ValueError(
+            "SIGNAL_COMPONENTS must contain unique component numbers "
+            "between 1 and N_COMPONENTS"
+        )
+    
     if not (0 < PROBABILITY_THRESHOLD <= 1):
         raise ValueError('PROBABILITY_THRESHOLD must be in (0, 1]')
+    
     if ROLLING_BALL_RADIUS <= 0 or SMOOTH_SIGMA < 0 or MIN_AREA < 1:
         raise ValueError('Check rolling ball radius, sigma, and minimum area')
 
 
 def process_image(path):
-    t = time.perf_counter()
+    #t = time.perf_counter()
      
     original = io.imread(path)
     if original.ndim != 2:
@@ -83,8 +92,14 @@ def process_image(path):
     
     #t = log_step("GMM fitting completed", t)
      
+    #order = np.argsort(gmm.means_.ravel())
+    #signal_indices = order[-SIGNAL_COMPONENTS:]
+    
     order = np.argsort(gmm.means_.ravel())
-    signal_indices = order[-SIGNAL_COMPONENTS:]
+    # Convert component numbers (1-based) to actual GMM indices
+    signal_indices = order[
+        np.array(SIGNAL_COMPONENTS) - 1
+    ]
     
     # Chunk posterior calculation to avoid large allocations for big images.
     signal_prob = np.empty(len(pixels), dtype=np.float32)
@@ -323,9 +338,10 @@ def plot_results(result, name, output=None):
     )
 
     # Figure title
+    selected = ", ".join(f"G{i}" for i in SIGNAL_COMPONENTS)
+    
     fig.suptitle(
-        f"{name} | K={N_COMPONENTS}, "
-        f"signal K={SIGNAL_COMPONENTS}, "
+        f"{name} | K={N_COMPONENTS} | Selected: {selected}, "
         f"σ={SMOOTH_SIGMA}",
         fontsize=15
     )
