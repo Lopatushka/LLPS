@@ -255,7 +255,7 @@ def main():
     if len(paths) == 0:
         raise ValueError(f'No TIFF images found in {IMAGE_FOLDER.resolve()}')
     
-    all_roi_tables = []
+    all_roi_tables, summary = [], []
     
     # Import images and process them
     for path in paths:
@@ -268,8 +268,8 @@ def main():
         # Six-panel visualization
         plot_results(
             results,
-            image_name=name,
-            save_path=OUTPUT_DIRS["panels"] / f"{name}_panels.png"
+            name=name,
+            output=OUTPUT_DIRS["panels"] / f"{name}_panels.png"
         )
         
         # Separate GMM histogram
