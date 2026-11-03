@@ -29,7 +29,7 @@ HIST_PERCENTILE = 99.99
 FIG_DPI = 180
 MAX_FIT_PIXELS = 30000 # For large images, set to e.g. 150000 to reduce GMM fit time.
 
-def log_step(message, start):
+def _log_step(message, start):
     print(
         f"{message}: {time.perf_counter() - start:.2f} s",
         flush=True
@@ -57,15 +57,15 @@ def process_image(path):
     if not np.isfinite(original).all():
         raise ValueError(f'{path.name}: image contains NaN or infinity')
     
-    t = log_step("Image loaded", t)
+    #t = log_step("Image loaded", t)
     
     background = restoration.rolling_ball(original, radius=ROLLING_BALL_RADIUS)
-    t = log_step("Rolling ball completed", t)
+    #t = log_step("Rolling ball completed", t)
      
     corrected = np.maximum(original - background, 0)
     smoothed = gaussian_filter(corrected, sigma=SMOOTH_SIGMA)
     
-    t = log_step("Smoothing completed", t)
+    #t = log_step("Smoothing completed", t)
     
     pixels = smoothed.reshape(-1, 1)
     
@@ -82,7 +82,7 @@ def process_image(path):
                           n_init=N_INIT, random_state=RANDOM_STATE, reg_covar=1e-6)
     gmm.fit(fit_pixels)
     
-    t = log_step("GMM fitting completed", t)
+    #t = log_step("GMM fitting completed", t)
      
     order = np.argsort(gmm.means_.ravel())
     signal_indices = order[-SIGNAL_COMPONENTS:]
@@ -92,8 +92,10 @@ def process_image(path):
     for start in range(0, len(pixels), 250000):
         stop = min(start + 250000, len(pixels))
         signal_prob[start:stop] = gmm.predict_proba(pixels[start:stop])[:, signal_indices].sum(axis=1)
+    
     signal_prob = signal_prob.reshape(original.shape)
-    t = log_step("Probabilities completed", t)
+    
+    #t = log_step("Probabilities completed", t)
     
     mask = signal_prob >= PROBABILITY_THRESHOLD
     mask = morphology.remove_small_objects(mask, min_size=MIN_AREA)
@@ -103,7 +105,7 @@ def process_image(path):
         
     labels = measure.label(mask, connectivity=2)
     
-    t = log_step("Segmentation completed", t)
+    #t = log_step("Segmentation completed", t)
     
     props = measure.regionprops_table(labels, intensity_image=original,
         properties=('label', 'area', 'centroid', 'equivalent_diameter_area',
@@ -112,7 +114,7 @@ def process_image(path):
     rois = pd.DataFrame(props)
     rois.insert(0, 'image', path.name)
     
-    t = log_step("ROI measurements completed", t)
+    #t = log_step("ROI measurements completed", t)
     
     return dict(original=original, background=background, corrected=corrected,
                 smoothed=smoothed, mask=mask, labels=labels, gmm=gmm,
@@ -230,7 +232,7 @@ def main():
     summary = pd.DataFrame(summaries)
     combined.to_csv(OUTPUT_FOLDER / 'all_ROIs.csv', index=False)
     summary.to_csv(OUTPUT_FOLDER / 'summary.csv', index=False)
-    print('\n', summary.to_string(index=False))
+    
     print(f'\nResults saved in: {OUTPUT_FOLDER.resolve()}')
     return summary, combined
 
