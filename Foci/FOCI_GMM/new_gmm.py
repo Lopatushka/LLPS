@@ -10,6 +10,7 @@ from scipy.ndimage import gaussian_filter, binary_fill_holes
 from scipy.stats import norm
 from skimage import io, measure, morphology, restoration
 from sklearn.mixture import GaussianMixture
+import time
 
 # ========== CONFIG ==========
 IMAGE_FOLDER = Path('images')
@@ -21,12 +22,19 @@ ROLLING_BALL_RADIUS = 50
 SMOOTH_SIGMA = 1.0
 MIN_AREA = 3
 FILL_HOLES = True
-N_INIT = 10
+N_INIT = 5
 RANDOM_STATE = 42
 HIST_BINS = 200
 HIST_PERCENTILE = 99.99
 FIG_DPI = 180
 MAX_FIT_PIXELS = 150000 # For large images, set to e.g. 150000 to reduce GMM fit time.
+
+def log_step(message, start):
+    print(
+        f"{message}: {time.perf_counter() - start:.2f} s",
+        flush=True
+    )
+    return time.perf_counter()
 
 
 def validate_parameters():
@@ -39,44 +47,73 @@ def validate_parameters():
 
 
 def process_image(path):
+    t = time.perf_counter()
+     
     original = io.imread(path)
     if original.ndim != 2:
         raise ValueError(f'{path.name}: expected 2D grayscale TIFF, got {original.shape}')
+    
     original = original.astype(np.float64)
     if not np.isfinite(original).all():
         raise ValueError(f'{path.name}: image contains NaN or infinity')
+    
+    t = log_step("Image loaded", t)
+    
     background = restoration.rolling_ball(original, radius=ROLLING_BALL_RADIUS)
+    t = log_step("Rolling ball completed", t)
+     
     corrected = np.maximum(original - background, 0)
     smoothed = gaussian_filter(corrected, sigma=SMOOTH_SIGMA)
+    
+    t = log_step("Smoothing completed", t)
+    
     pixels = smoothed.reshape(-1, 1)
+    
     if MAX_FIT_PIXELS is not None and len(pixels) > MAX_FIT_PIXELS:
         rng = np.random.default_rng(RANDOM_STATE)
         fit_pixels = pixels[rng.choice(len(pixels), MAX_FIT_PIXELS, replace=False)]
     else:
         fit_pixels = pixels
+        
     if len(fit_pixels) < N_COMPONENTS:
         raise ValueError('Not enough pixels for the requested GMM components')
+    
     gmm = GaussianMixture(n_components=N_COMPONENTS, covariance_type='full',
                           n_init=N_INIT, random_state=RANDOM_STATE, reg_covar=1e-6)
     gmm.fit(fit_pixels)
+    
+    t = log_step("GMM fitting completed", t)
+     
     order = np.argsort(gmm.means_.ravel())
     signal_indices = order[-SIGNAL_COMPONENTS:]
+    
     # Chunk posterior calculation to avoid large allocations for big images.
     signal_prob = np.empty(len(pixels), dtype=np.float32)
     for start in range(0, len(pixels), 250000):
         stop = min(start + 250000, len(pixels))
         signal_prob[start:stop] = gmm.predict_proba(pixels[start:stop])[:, signal_indices].sum(axis=1)
     signal_prob = signal_prob.reshape(original.shape)
+    t = log_step("Probabilities completed", t)
+    
     mask = signal_prob >= PROBABILITY_THRESHOLD
     mask = morphology.remove_small_objects(mask, min_size=MIN_AREA)
+    
     if FILL_HOLES:
         mask = binary_fill_holes(mask)
+        
     labels = measure.label(mask, connectivity=2)
+    
+    t = log_step("Segmentation completed", t)
+    
     props = measure.regionprops_table(labels, intensity_image=original,
         properties=('label', 'area', 'centroid', 'equivalent_diameter_area',
-                    'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity'))
+                    'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity', 'min_intensity'))
+    
     rois = pd.DataFrame(props)
     rois.insert(0, 'image', path.name)
+    
+    t = log_step("ROI measurements completed", t)
+    
     return dict(original=original, background=background, corrected=corrected,
                 smoothed=smoothed, mask=mask, labels=labels, gmm=gmm,
                 signal_indices=signal_indices, signal_prob=signal_prob, rois=rois)
