@@ -13,8 +13,9 @@ from sklearn.mixture import GaussianMixture
 import time
 
 # ========== CONFIG ==========
-IMAGE_FOLDER = Path('images')
-OUTPUT_FOLDER = Path('gmm_results')
+#IMAGE_FOLDER = Path('images')
+#OUTPUT_FOLDER = Path('gmm_results')
+
 N_COMPONENTS = 4
 SIGNAL_COMPONENTS = 1
 PROBABILITY_THRESHOLD = 0.5
@@ -206,14 +207,45 @@ def plot_results(result, name, output):
 def main():
     validate_parameters()
     
-    OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
-    paths = sorted(p for p in IMAGE_FOLDER.iterdir() if p.is_file() and p.suffix.lower() in ('.tif', '.tiff')) if IMAGE_FOLDER.exists() else []
+    # Ask user for directories
+    input_dir = input(
+        "Enter the input directory containing TIFF images: "
+    ).strip().strip('"').strip("'")
+    
+    output_dir = input(
+    "Enter the output directory for GMM results: "
+    ).strip().strip('"').strip("'")
+    
+    IMAGE_FOLDER = Path(input_dir).expanduser()
+    OUTPUT_FOLDER = Path(output_dir).expanduser()
+    
+    # Validate input directory
+    if not IMAGE_FOLDER.is_dir():
+        raise FileNotFoundError(
+            f"Input directory does not exist: {IMAGE_FOLDER}"
+        )
+        
+    # Create output directory if necessary
+    OUTPUT_FOLDER.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+    
+    print(f"\nInput directory: {IMAGE_FOLDER.resolve()}")
+    print(f"Output directory: {OUTPUT_FOLDER.resolve()}")
+    
+    # Check images in the input directory
+    paths = sorted(p for p in IMAGE_FOLDER.iterdir() if p.is_file() and p.suffix.lower() in ('.tif', '.tiff'))
     if len(paths) == 0:
         raise ValueError(f'No TIFF images found in {IMAGE_FOLDER.resolve()}')
     
     tables, summaries = [], []
+    
+    # Import images and process them
     for path in paths:
+        
         print(f'Processing {path.name} ...')
+        
         r = process_image(path)
         plot_results(r, path.stem, OUTPUT_FOLDER)
         io.imsave(OUTPUT_FOLDER / f'{path.stem}_mask.tif', r['mask'].astype(np.uint8)*255, check_contrast=False)
