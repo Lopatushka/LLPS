@@ -21,14 +21,14 @@ SIGNAL_COMPONENTS = 1
 PROBABILITY_THRESHOLD = 0.5
 ROLLING_BALL_RADIUS = 50
 SMOOTH_SIGMA = 1.0
-MIN_AREA = 3
+MIN_AREA = 20
 FILL_HOLES = True
-N_INIT = 5
+N_INIT = 10
 RANDOM_STATE = 42
 HIST_BINS = 200
 HIST_PERCENTILE = 99.99
 FIG_DPI = 180
-MAX_FIT_PIXELS = 30000 # For large images, set to e.g. 150000 to reduce GMM fit time.
+MAX_FIT_PIXELS = 150000 # For large images, set to e.g. 150000 to reduce GMM fit time.
 
 def _log_step(message, start):
     print(
