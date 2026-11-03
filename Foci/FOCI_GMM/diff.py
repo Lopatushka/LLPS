@@ -19,7 +19,7 @@ from sklearn.mixture import GaussianMixture
 
 N_COMPONENTS = 4
 PROBABILITY_THRESHOLD = 0.5
-MIN_AREA = 3
+MIN_AREA = 20
 FILL_HOLES = True
 N_INIT = 5
 RANDOM_STATE = 42
@@ -186,7 +186,9 @@ def count_roi_overlap(labels_a, labels_b):
 def main():
     previous_root = ask_directory('Previous results folder (containing smoothed_images/): ')
     output_root = ask_directory('New comparison output folder: ')
+    
     images = get_images(previous_root)
+    
     folders = make_folders(output_root)
     summary_rows = []
     roi_tables = {'G4': [], 'G3_G4': [], 'difference': []}
