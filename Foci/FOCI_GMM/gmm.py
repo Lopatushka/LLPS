@@ -13,11 +13,9 @@ from sklearn.mixture import GaussianMixture
 import time
 
 # ========== CONFIG ==========
-#IMAGE_FOLDER = Path('images')
-#OUTPUT_FOLDER = Path('gmm_results')
-
 N_COMPONENTS = 4
-SIGNAL_COMPONENTS = 1
+SIGNAL_COMPONENTS = 2
+
 PROBABILITY_THRESHOLD = 0.5
 ROLLING_BALL_RADIUS = 50
 SMOOTH_SIGMA = 1.0
