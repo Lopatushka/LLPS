@@ -27,7 +27,7 @@ RANDOM_STATE = 42
 HIST_BINS = 200
 HIST_PERCENTILE = 99.99
 FIG_DPI = 180
-MAX_FIT_PIXELS = 150000 # For large images, set to e.g. 150000 to reduce GMM fit time.
+MAX_FIT_PIXELS = 30000 # For large images, set to e.g. 150000 to reduce GMM fit time.
 
 def log_step(message, start):
     print(
@@ -190,7 +190,6 @@ def plot_results(result, name, output):
     fig.suptitle(f'{name} | K={N_COMPONENTS}, signal K={SIGNAL_COMPONENTS}, σ={SMOOTH_SIGMA}', fontsize=15)
     fig.tight_layout()
     fig.savefig(output / f'{name}_six_panels.png', dpi=FIG_DPI, bbox_inches='tight')
-    plt.show()
     plt.close(fig)
 
     fig, axs = plt.subplots(1, 2, figsize=(16, 5))
@@ -199,7 +198,6 @@ def plot_results(result, name, output):
     fig.suptitle(f'{name}: GMM intensity distributions', fontsize=14)
     fig.tight_layout()
     fig.savefig(output / f'{name}_histograms.png', dpi=FIG_DPI, bbox_inches='tight')
-    plt.show()
     plt.close(fig)
 
 
