@@ -460,7 +460,7 @@ def main():
         )
 
         # ROI measurements
-        roi_df = results["roi_df"].copy()
+        roi_df = results["rois"].copy()
 
         roi_df.to_csv(
             OUTPUT_DIRS["measurements"] / f"{name}_ROIs.csv",
