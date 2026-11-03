@@ -142,36 +142,120 @@ def histogram_data(image, gmm, bins=HIST_BINS, percentile=HIST_PERCENTILE):
     total = sum(pdfs.values())
     return edges, density, x, order, pdfs, total, means, stds, weights
 
-def draw_histogram(ax, hist, signal_indices, log=False, legend=True):
+def _draw_histogram_ax(ax, hist, signal_indices, log=False, legend=True):
     edges, density, x, order, pdfs, total, means, stds, weights = hist
-    ax.stairs(density, edges, fill=True, color='gray', alpha=0.32, label='Pixel intensities')
-    colors = plt.get_cmap('tab10')
+
+    ax.stairs(
+        density, edges,
+        fill=True,
+        color="gray",
+        alpha=0.32,
+        label="Pixel intensities"
+    )
+
+    colors = plt.get_cmap("tab10")
+    signal_set = set(map(int, signal_indices))
+
     for rank, k in enumerate(order):
-        selected = int(k) in set(map(int, signal_indices))
-        ax.plot(x, pdfs[int(k)], color=colors(rank % 10),
-                linewidth=2.2 if selected else 1.3,
-                linestyle='-' if selected else '--',
-                label=f'G{rank+1}: μ={means[k]:.2f}, σ={stds[k]:.2f}, w={weights[k]:.3f}'
-                      + (' [SIGNAL]' if selected else ''))
-    ax.plot(x, total, color='black', lw=2.3, label='Total GMM')
+        selected = int(k) in signal_set
+
+        ax.plot(
+            x,
+            pdfs[int(k)],
+            color=colors(rank % 10),
+            linewidth=2.2 if selected else 1.3,
+            linestyle="-" if selected else "--",
+            label=(
+                f"G{rank+1}: μ={means[k]:.2f}, "
+                f"σ={stds[k]:.2f}, w={weights[k]:.3f}"
+                + (" [SIGNAL]" if selected else "")
+            )
+        )
+
+    ax.plot(x, total, color="black", lw=2.3, label="Total GMM")
+
     if log:
-        ax.set_yscale('log')
+        ax.set_yscale("log")
         positives = np.r_[density[density > 0], total[total > 0]]
+
         if len(positives):
-            ax.set_ylim(bottom=max(float(np.min(positives)) * 0.5, 1e-12))
-    ax.set_title('Histogram + GMM (' + ('log Y' if log else 'linear Y') + ')')
-    ax.set_xlabel('Smoothed, background-corrected intensity')
-    ax.set_ylabel('Probability density')
+            ax.set_ylim(
+                bottom=max(float(np.min(positives)) * 0.5, 1e-12)
+            )
+
+    ax.set_title(
+        "Histogram + GMM (" + ("log Y" if log else "linear Y") + ")"
+    )
+    ax.set_xlabel("Smoothed, background-corrected intensity")
+    ax.set_ylabel("Probability density")
     ax.grid(alpha=0.2)
+
     if legend:
         ax.legend(fontsize=7)
 
+
+def draw_histogram(
+    result,
+    name=None,
+    save_path=None,
+    figsize=(16, 5),
+    show=False
+):
+    """
+    Create linear and logarithmic GMM histograms.
+
+    If save_path is provided, save the figure.
+    If show=True, display the figure.
+    Always close the figure afterward.
+    """
+    hist = histogram_data(
+        result["smoothed"],
+        result["gmm"]
+    )
+
+    fig, axs = plt.subplots(1, 2, figsize=figsize)
+
+    _draw_histogram_ax(
+        axs[0],
+        hist,
+        result["signal_indices"],
+        log=False
+    )
+
+    _draw_histogram_ax(
+        axs[1],
+        hist,
+        result["signal_indices"],
+        log=True
+    )
+
+    if name is not None:
+        fig.suptitle(f"{name}: GMM intensity distributions", fontsize=14)
+
+    fig.tight_layout()
+
+    try:
+        if save_path is not None:
+            save_path = Path(save_path)
+            save_path.parent.mkdir(parents=True, exist_ok=True)
+
+            fig.savefig(
+                save_path,
+                dpi=FIG_DPI,
+                bbox_inches="tight"
+            )
+
+        if show:
+            plt.show()
+    finally:
+        plt.close(fig)
 
 def plot_results(result, name, output):
     original, background, corrected = (result[k] for k in ('original','background','corrected'))
     smoothed, mask, labels = (result[k] for k in ('smoothed','mask','labels'))
     hist = histogram_data(smoothed, result['gmm'])
     fig, axes = plt.subplots(2, 3, figsize=(18, 11))
+    
     for ax, img, title in zip(axes.flat[:4],
                               (original, background, corrected, mask),
                               ('Original image', f'Rolling-ball background (r={ROLLING_BALL_RADIUS})',
@@ -179,17 +263,27 @@ def plot_results(result, name, output):
         ax.imshow(img, cmap='gray')
         ax.set_title(title)
         ax.axis('off')
+        
     ax = axes[1, 1]
     ax.imshow(original, cmap='gray')
+    
     if mask.any() and (~mask).any():
         ax.contour(mask.astype(float), levels=[0.5], colors='lime', linewidths=0.7)
+        
     for region in measure.regionprops(labels):
         y, x = region.centroid
         ax.text(x, y, str(region.label), color='yellow', fontsize=6,
                 ha='center', va='center')
     ax.set_title(f'Numbered ROIs (N={labels.max()})')
     ax.axis('off')
-    draw_histogram(axes[1, 2], hist, result['signal_indices'], log=True, legend=True)
+    
+    _draw_histogram_ax(
+        axes[1, 2],
+        hist,
+        result["signal_indices"],
+        log=True
+    )
+    
     fig.suptitle(f'{name} | K={N_COMPONENTS}, signal K={SIGNAL_COMPONENTS}, σ={SMOOTH_SIGMA}', fontsize=15)
     fig.tight_layout()
     fig.savefig(output / f'{name}_six_panels.png', dpi=FIG_DPI, bbox_inches='tight')
@@ -269,17 +363,15 @@ def main():
         plot_results(
             results,
             name=name,
-            output=OUTPUT_DIRS["panels"] / f"{name}_panels.png"
+            output=OUTPUT_DIRS["panels"]
         )
         
         # Separate GMM histogram
         # This assumes your histogram function accepts save_path.
         draw_histogram(
-            image=results["smoothed"],
-            gmm=results["gmm"],
-            signal_components=SIGNAL_COMPONENTS,
-            bins=HIST_BINS,
-            save_path=OUTPUT_DIRS["histograms"] / f"{name}_histogram.png"
+        results,
+        name=name,
+        save_path=OUTPUT_DIRS["histograms"] / f"{name}_histograms.png"
         )
 
         # Background image
