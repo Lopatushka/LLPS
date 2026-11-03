@@ -14,7 +14,7 @@ import time
 
 # ========== CONFIG ==========
 N_COMPONENTS = 4
-SIGNAL_COMPONENTS = [4, 3] # Components selected for segmentation (ordered by mean intensity)
+SIGNAL_COMPONENTS = [4] # Components selected for segmentation (ordered by mean intensity)
 
 PROBABILITY_THRESHOLD = 0.5
 ROLLING_BALL_RADIUS = 50
