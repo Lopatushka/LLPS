@@ -13,7 +13,7 @@ from sklearn.mixture import GaussianMixture
 import time
 
 # ========== CONFIG ==========
-N_COMPONENTS = 4
+N_COMPONENTS = 4 # Number of GMM components to fit
 SIGNAL_COMPONENTS = [4] # Components selected for segmentation (ordered by mean intensity)
 
 PROBABILITY_THRESHOLD = 0.5
