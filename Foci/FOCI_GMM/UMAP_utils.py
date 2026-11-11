@@ -6,6 +6,7 @@ import umap
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from matplotlib.lines import Line2D
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import trustworthiness
