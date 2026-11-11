@@ -6,10 +6,11 @@ import umap
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from matplotlib.lines import Line2D
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.manifold import trustworthiness
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 
 from scipy.stats import chi2, spearmanr
 from scipy.spatial.distance import pdist, squareform, cdist
@@ -19,6 +20,32 @@ from skbio.stats.distance import permanova, permdisp, DistanceMatrix
 
 from statsmodels.stats.multitest import multipletests
 
+from scipy.stats import chi2_contingency, fisher_exact
+from statsmodels.stats.multitest import multipletests
+
+def calculate_umap(df, features, n_neighbors=20):
+
+    X = df[features].copy()
+
+    X_scaled = StandardScaler().fit_transform(X)
+
+    reducer = umap.UMAP(
+        n_components=2,
+        n_neighbors=n_neighbors,
+        min_dist=0.1,
+        metric="euclidean",
+        random_state=42,
+        n_jobs=1
+    )
+
+    embedding = reducer.fit_transform(X_scaled)
+
+    result = df.copy()
+
+    result["UMAP1"] = embedding[:, 0]
+    result["UMAP2"] = embedding[:, 1]
+
+    return result
 
 def plot_cluster_centroids_ci(
     umap_df,
