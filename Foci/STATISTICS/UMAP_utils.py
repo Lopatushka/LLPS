@@ -47,6 +47,99 @@ def calculate_umap(df, features, n_neighbors=20):
 
     return result
 
+def run_permanova_permdisp(
+    df,
+    features,
+    variable="sample",
+    permutations=9999,
+    seed=42,
+    metric="euclidean",
+    print_results=True
+):
+    """
+    Run PERMANOVA and PERMDISP on standardized features.
+
+    Returns
+    -------
+    pd.DataFrame
+        Test statistics, p-values, R², sample size,
+        and number of groups.
+    """
+
+    # Remove missing values
+    data = df.dropna(
+        subset=list(features) + [variable]
+    ).copy()
+
+    n = len(data)
+    k = data[variable].nunique()
+
+    if k < 2:
+        raise ValueError("At least 2 groups are required.")
+
+    if k >= n:
+        raise ValueError("Number of groups must be smaller than n.")
+
+    # Standardize features
+    X = data[features].to_numpy()
+    X_scaled = StandardScaler().fit_transform(X)
+
+    # Calculate distance matrix
+    distances = squareform(
+        pdist(X_scaled, metric=metric)
+    )
+
+    dm = DistanceMatrix(
+        distances,
+        ids=[str(i) for i in range(n)]
+    )
+
+    grouping = data[variable].to_numpy()
+
+    # PERMANOVA
+    perm = permanova(
+        dm,
+        grouping=grouping,
+        permutations=permutations,
+        seed=seed
+    )
+
+    # PERMDISP
+    disp = permdisp(
+        dm,
+        grouping=grouping,
+        permutations=permutations,
+        seed=seed
+    )
+
+    # Calculate R²
+    F = perm["test statistic"]
+
+    R2 = (F * (k - 1)) / (
+        F * (k - 1) + (n - k)
+    )
+
+    # Results table
+    results = pd.DataFrame({
+        "Test": ["PERMANOVA", "PERMDISP"],
+        "F": [
+            perm["test statistic"],
+            disp["test statistic"]
+        ],
+        "p_value": [
+            perm["p-value"],
+            disp["p-value"]
+        ],
+        "R2": [R2, np.nan],
+        "n": [n, n],
+        "groups": [k, k]
+    })
+
+    if print_results:
+        print(results.to_string(index=False))
+
+    return results
+
 def plot_cluster_centroids_ci(
     umap_df,
     cluster_col="cluster",
