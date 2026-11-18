@@ -167,3 +167,31 @@ output file, e.g. `python outsu.py --help`.
 
 Then open `STATISTICS/PCA.ipynb` or `STATISTICS/UMAP.ipynb`, point the `data`
 list at the `aggregated_data.csv` files and run the cells.
+
+### Measured foci features
+
+`outsu.py` (`<image>_segmentation.csv`) and `gmm.py`
+(`roi_measurements/<image>_ROIs.csv`) write the same columns, in the same order,
+one row per focus. They are computed with `skimage.measure.regionprops_table`.
+
+| Column | Meaning | Units |
+|---|---|---|
+| `image_id` | Image (= nucleus) the focus belongs to: the file name without its extension (`img3.tif` → `img3`) | — |
+| `label` | Number of the focus within its image (1…N); its pixel value in the labelled image. Restarts at 1 in every image, so a focus is identified by (`image_id`, `label`) | — |
+| `area` | Number of pixels in the focus | px |
+| `centroid-0`, `centroid-1` | Row (y) and column (x) of the focus centre | px |
+| `equivalent_diameter_area` | Diameter of a circle with the same area, √(4·area/π) | px |
+| `eccentricity` | Elongation of the fitted ellipse: 0 = circle, → 1 = elongated | 0–1 |
+| `solidity` | Area / area of the convex hull: 1 = convex, lower = irregular or indented outline | 0–1 |
+| `perimeter` | Length of the focus boundary (approximate; unreliable for foci of a few pixels) | px |
+| `mean_intensity` | Mean pixel intensity of the focus (MFI) | grey values |
+| `max_intensity` | Brightest pixel of the focus | grey values |
+| `min_intensity` | Dimmest pixel of the focus | grey values |
+
+Intensities are measured on the background-subtracted image when
+`rolling_ball_radius > 0`, otherwise on the raw image (not on the smoothed one).
+
+`agg.py` (both methods) writes `aggregated_data.csv` with one row per cell:
+`image_id`, `n_foci` (number of foci in the cell) and the median of each feature
+above over all foci of that cell (the centroids are not aggregated). Cells
+without foci have `n_foci = 0` and empty feature values.
