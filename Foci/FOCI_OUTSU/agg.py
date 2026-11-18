@@ -4,8 +4,13 @@ import traceback
 
 def table_aggregation(path):
     df = pd.read_csv(path)
-    
-    image_id = df["image_id"][0]
+
+    # Cells with zero foci produce a header-only CSV: take the ID from the
+    # filename instead of dropping the cell (foci.py saves <stem>_segmentation.csv)
+    if len(df) and "image_id" in df.columns:
+        image_id = df["image_id"].iloc[0]
+    else:
+        image_id = path.stem.removesuffix("_segmentation")
     n_foci = df.shape[0]
     
     area = df["area"].median()
@@ -44,9 +49,11 @@ def main():
     # Create output folder if necessary
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find all TIFF images
-    paths = sorted(
-        list(input_dir.glob("*.csv")))
+    # Find per-image foci tables written by foci.py (excludes aggregated_data.csv)
+    paths = sorted(input_dir.glob("*_segmentation.csv"))
+
+    if not paths:
+        raise FileNotFoundError(f"No *_segmentation.csv files found in {input_dir}")
 
     print(f"Found {len(paths)} csv files")
     
