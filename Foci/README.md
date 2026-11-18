@@ -53,15 +53,18 @@ images currently open in Fiji and ask for an output folder.
   rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
   default) → Gaussian smoothing (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
   (`min_area`) → distance transform + watershed to split
-  touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
-  it writes:
-  - `<image>_segmentation.csv`: one row per focus (`image_id`, `label`, `area`,
-    `centroid`, `equivalent_diameter_area`, `eccentricity`, `solidity`,
-    `perimeter`, `mean/max/min_intensity`). With
-    `rolling_ball_radius > 0` the intensities are measured on the
-    background-subtracted image, otherwise on the raw image.
-  - `<image>_segmentation.png`: mask, distance transform and watershed overlay
-- **`agg.py`** — reads all `*_segmentation.csv` files and writes
+  touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. Outputs go
+  into the same subfolders as `gmm.py`: `roi_measurements/` (`<image>_ROIs.csv`,
+  one row per focus, see *Measured foci features* below), `summary/`
+  (`all_ROIs.csv`, and `summary.csv` with the Otsu threshold, the threshold used,
+  number of foci and foci area per image), `binary_masks/`, `labeled_rois/`
+  (after watershed), `backgrounds/`, `corrected_images/`, `smoothed_images/`,
+  and — if `save_figures = true` — `panels/` (`<image>_six_panels.png`: original,
+  background, corrected, mask, distance transform, numbered watershed ROIs) and
+  `histograms/` (`<image>_histograms.png`: intensity histogram with the threshold).
+  With `rolling_ball_radius > 0` the intensities are measured on the
+  background-subtracted image, otherwise on the raw image.
+- **`agg.py`** — reads all `*_ROIs.csv` files in `roi_measurements/` and writes
   `aggregated_data.csv` with one row per cell: `n_foci` plus the median of each
   foci feature. Cells with zero foci are kept (`n_foci = 0`).
 
@@ -151,7 +154,7 @@ misspelled or missing keys stop the run with an error.
 cd Foci/FOCI_OUTSU
 python outsu.py --input <tif_folder> --output <results>         # uses config.toml
 python outsu.py -i <tif_folder> -o <results> -c my_config.toml  # other parameters
-python agg.py -i <results> -o <results>                        # -> aggregated_data.csv
+python agg.py -i <results>/roi_measurements -o <results>       # -> aggregated_data.csv
 ```
 
 ```bash
@@ -170,8 +173,7 @@ list at the `aggregated_data.csv` files and run the cells.
 
 ### Measured foci features
 
-`outsu.py` (`<image>_segmentation.csv`) and `gmm.py`
-(`roi_measurements/<image>_ROIs.csv`) write the same columns, in the same order,
+`outsu.py` and `gmm.py` (`roi_measurements/<image>_ROIs.csv`) write the same columns, in the same order,
 one row per focus. They are computed with `skimage.measure.regionprops_table`.
 
 | Column | Meaning | Units |

@@ -19,7 +19,8 @@ min_distance = 3
 # (mean/max/min_intensity) are also measured on the background-subtracted image.
 rolling_ball_radius = 0
 
-# Save the segmentation figure (<image>_segmentation.png) for every image.
+# Save the figures for every image: panels/<image>_six_panels.png and
+# histograms/<image>_histograms.png.
 save_figures = true
 
 # Resolution of the saved figures.

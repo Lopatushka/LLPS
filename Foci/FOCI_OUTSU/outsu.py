@@ -6,64 +6,65 @@ import traceback
 import argparse
 import shutil
 import tomllib
-from skimage import io, filters, morphology, segmentation, segmentation, exposure
+from skimage import io, filters, morphology, measure, segmentation
 from skimage.feature import peak_local_max
-from skimage.restoration import rolling_ball, estimate_sigma
+from skimage.restoration import rolling_ball
 from scipy import ndimage as ndi
-from skimage import io, filters, morphology, measure, segmentation, segmentation
 
-from skimage.morphology import white_tophat, disk
-    
+# Histogram plots: number of bins and upper intensity percentile shown
+HIST_BINS = 200
+HIST_PERCENTILE = 99.99
+
 
 def process_image(image_path,
                   threshold_factor=1,
-                  sigma = 0.6,
+                  sigma=0.6,
                   min_area=2,
                   min_distance=3,
-                  rolling_ball_radius=0,
-                  plot=True,
-                  save_path=None,
-                  figure_dpi=300):   
-    
-    # Download image
-    image = io.imread(image_path)
-    image_name = Path(image_path).stem
-    
-    # 1. Convert to float
-    img = image.astype(np.float32)
+                  rolling_ball_radius=0):
+    """Segment the foci of one image; return the intermediate images and the ROI table."""
+
+    image_path = Path(image_path)
+
+    # 1. Load and convert to float
+    original = io.imread(image_path).astype(np.float32)
 
     # 2. Background subtraction (rolling ball); 0 disables it
     if rolling_ball_radius > 0:
-        background = rolling_ball(img, radius=rolling_ball_radius)
-        corrected = np.clip(img - background, 0, None)
+        background = rolling_ball(original, radius=rolling_ball_radius)
+        corrected = np.clip(original - background, 0, None)
     else:
-        corrected = img
+        background = np.zeros_like(original)
+        corrected = original.copy()
 
+    # 3. Smoothing
     smoothed = filters.gaussian(
-    corrected,
-    sigma=sigma,
-    preserve_range=True
+        corrected,
+        sigma=sigma,
+        preserve_range=True
     )
-    
-    threshold = filters.threshold_otsu(smoothed)
-    
-    binary_mask = smoothed > threshold * threshold_factor
 
-    clean_mask = morphology.remove_small_objects(
+    # 4. Otsu threshold
+    otsu_threshold = float(filters.threshold_otsu(smoothed))
+    threshold = otsu_threshold * threshold_factor
+
+    binary_mask = smoothed > threshold
+
+    mask = morphology.remove_small_objects(
         binary_mask,
         min_size=min_area
     )
 
-    distance = ndi.distance_transform_edt(clean_mask)
+    # 5. Distance transform + watershed to split touching foci
+    distance = ndi.distance_transform_edt(mask)
 
-    # Detect candidate centers
     coordinates = peak_local_max(
         distance,
         min_distance=min_distance,
-        labels=clean_mask
+        labels=mask
     )
 
-    markers = np.zeros_like(clean_mask, dtype=np.int32)
+    markers = np.zeros_like(mask, dtype=np.int32)
 
     for i, (y, x) in enumerate(coordinates, start=1):
         markers[y, x] = i
@@ -71,73 +72,115 @@ def process_image(image_path,
     labels = segmentation.watershed(
         -distance,
         markers,
-        mask=clean_mask
+        mask=mask
     )
-    
+
+    # 6. Measurements
     properties = measure.regionprops_table(
-    labels,
-    intensity_image=corrected,  # background-subtracted if rolling_ball_radius > 0
-    properties=[
-        "label",
-        "area",
-        "centroid",
-        "equivalent_diameter_area",
-        "eccentricity",
-        "solidity",
-        "perimeter",
-        "mean_intensity",
-        "max_intensity",
-        "min_intensity"
-    ]
+        labels,
+        intensity_image=corrected,  # background-subtracted if rolling_ball_radius > 0
+        properties=[
+            "label",
+            "area",
+            "centroid",
+            "equivalent_diameter_area",
+            "eccentricity",
+            "solidity",
+            "perimeter",
+            "mean_intensity",
+            "max_intensity",
+            "min_intensity"
+        ]
     )
 
-    df = pd.DataFrame(properties)
+    rois = pd.DataFrame(properties)
+    rois.insert(0, "image_id", image_path.stem)
 
-    df.insert(0, "image_id", image_name)
+    return dict(original=original, background=background, corrected=corrected,
+                smoothed=smoothed, mask=mask, distance=distance, labels=labels,
+                otsu_threshold=otsu_threshold, threshold=threshold, rois=rois)
 
 
-    #print("Total detected objects:", len(df))
+def _draw_histogram_ax(ax, result, threshold_factor, log=False):
+    values = result["smoothed"].ravel()
+    lo = float(values.min())
+    hi = float(np.percentile(values, HIST_PERCENTILE))
+    if hi <= lo:
+        hi = float(values.max())
+    if hi <= lo:
+        hi = lo + 1
 
-    # Plot or save figure
-    if plot or save_path is not None:
+    ax.hist(values, bins=np.linspace(lo, hi, HIST_BINS + 1), density=True,
+            color="gray", alpha=0.5, label="Pixel intensities")
+    ax.axvline(result["otsu_threshold"], color="tab:blue", linestyle="--", lw=1.5,
+               label=f"Otsu threshold = {result['otsu_threshold']:.2f}")
+    ax.axvline(result["threshold"], color="tab:red", lw=2,
+               label=f"Otsu × {threshold_factor} = {result['threshold']:.2f} [USED]")
 
-        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    if log:
+        ax.set_yscale("log")
 
-        axes[0].imshow(clean_mask, cmap="gray")
-        axes[0].set_title("Binary mask")
+    ax.set_title("Histogram + threshold (" + ("log Y" if log else "linear Y") + ")")
+    ax.set_xlabel("Smoothed, background-corrected intensity")
+    ax.set_ylabel("Probability density")
+    ax.grid(alpha=0.2)
+    ax.legend(fontsize=7)
 
-        axes[1].imshow(distance, cmap="magma")
-        axes[1].set_title("Distance transform")
 
-        axes[2].imshow(
-            segmentation.mark_boundaries(
-                img / (img.max() + 1e-8),
-                labels
-            )
-        )
-        axes[2].set_title(f"Watershed: {labels.max()} objects")
+def draw_histogram(result, name, threshold_factor, save_path, figure_dpi):
+    """Linear and logarithmic intensity histograms with the Otsu threshold."""
+    fig, axs = plt.subplots(1, 2, figsize=(16, 5))
+    _draw_histogram_ax(axs[0], result, threshold_factor, log=False)
+    _draw_histogram_ax(axs[1], result, threshold_factor, log=True)
+    fig.suptitle(f"{name}: intensity distributions", fontsize=14)
+    fig.tight_layout()
+    try:
+        fig.savefig(save_path, dpi=figure_dpi, bbox_inches="tight")
+    finally:
+        plt.close(fig)
 
-        for ax in axes:
-            ax.axis("off")
 
-        plt.tight_layout()
+def plot_results(result, name, config, save_path):
+    """Six-panel overview figure of the Otsu + watershed segmentation."""
+    original = result["original"]
+    labels = result["labels"]
 
-        # Save figure
-        if save_path is not None:
-            save_path = Path(save_path)
+    fig, axes = plt.subplots(2, 3, figsize=(18, 11))
 
-            save_path.parent.mkdir(
-                parents=True,
-                exist_ok=True
-            )
+    panels = [
+        (original, "gray", "Original image"),
+        (result["background"], "gray",
+         f"Rolling-ball background (r={config['rolling_ball_radius']})"),
+        (result["corrected"], "gray", "Background corrected (before smoothing)"),
+        (result["mask"], "gray", "Binary mask"),
+        (result["distance"], "magma", "Distance transform"),
+    ]
 
-            fig.savefig(
-                save_path,
-                dpi=figure_dpi,
-                bbox_inches="tight"
-            )
-            
-    return df
+    for ax, (img, cmap, title) in zip(axes.flat, panels):
+        ax.imshow(img, cmap=cmap)
+        ax.set_title(title)
+        ax.axis("off")
+
+    # Sixth panel: watershed boundaries and numbered ROIs
+    ax = axes[1, 2]
+    ax.imshow(segmentation.mark_boundaries(original / (original.max() + 1e-8), labels))
+    for region in measure.regionprops(labels):
+        y, x = region.centroid
+        ax.text(x, y, str(region.label), color="yellow", fontsize=6,
+                ha="center", va="center")
+    ax.set_title(f"Watershed ROIs (N={len(result['rois'])})")
+    ax.axis("off")
+
+    fig.suptitle(
+        f"{name} | Otsu × {config['threshold_factor']} | σ={config['sigma']}",
+        fontsize=15
+    )
+    fig.tight_layout()
+    try:
+        fig.savefig(save_path, dpi=config["figure_dpi"], bbox_inches="tight")
+    finally:
+        plt.close(fig)
+
 
 DEFAULT_CONFIG = Path(__file__).with_name("config.toml")
 
@@ -196,20 +239,31 @@ input:
   A folder with one 2D grayscale image per nucleus (*.tif / *.tiff),
   e.g. the single-nucleus images saved by FIJI/nuclei_manual_segment.py.
 
-output (written to the --output folder):
-  <image>_segmentation.csv   one row per focus: image_id, label, area,
-                             centroid-0/-1, equivalent_diameter_area,
-                             eccentricity, solidity, perimeter,
-                             mean/max/min_intensity. Sizes are in pixels. Intensities are
-                             measured on the background-subtracted image
-                             if rolling_ball_radius > 0, else on the raw image.
-                             Header only if no foci were found.
-  <image>_segmentation.png   binary mask, distance transform and watershed
-                             overlay (only if save_figures = true)
-  run_config.toml            copy of the parameter file used for this run
+output (subfolders of the --output folder, same layout as gmm.py):
+  roi_measurements/<image>_ROIs.csv   one row per focus: image_id, label,
+                                      area, centroid-0/-1,
+                                      equivalent_diameter_area, eccentricity,
+                                      solidity, perimeter,
+                                      mean/max/min_intensity. Sizes are in
+                                      pixels. Intensities are measured on the
+                                      background-subtracted image if
+                                      rolling_ball_radius > 0, else raw.
+                                      Header only if no foci were found.
+  summary/all_ROIs.csv                all ROI tables combined
+  summary/summary.csv                 per image (image_id): Otsu threshold,
+                                      threshold used, number of foci, total
+                                      foci area (px), foci area fraction
+  binary_masks/<image>_mask.tif       foci mask (0/255)
+  labeled_rois/<image>_labels.tif     labelled foci after watershed (1..N)
+  backgrounds/, corrected_images/,    intermediate images (float32)
+  smoothed_images/
+  panels/<image>_six_panels.png       overview figure     (if save_figures = true)
+  histograms/<image>_histograms.png   intensity histogram
+                                      with the threshold  (if save_figures = true)
+  run_config.toml                     copy of the parameter file used
 
 next step:
-  python agg.py   (input: this output folder) -> aggregated_data.csv
+  python agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
 
 examples:
   python outsu.py -i nuclei_tif/ -o results/
@@ -238,12 +292,28 @@ def main():
     if not input_dir.is_dir():
         raise FileNotFoundError(f"Input folder does not exist: {input_dir}")
 
-    # Create output folder if necessary
+    # Create output folder and subfolders (same layout as gmm.py)
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_dirs = {
+        "histograms": output_dir / "histograms",
+        "panels": output_dir / "panels",
+        "background": output_dir / "backgrounds",
+        "corrected": output_dir / "corrected_images",
+        "smoothed": output_dir / "smoothed_images",
+        "masks": output_dir / "binary_masks",
+        "labels": output_dir / "labeled_rois",
+        "measurements": output_dir / "roi_measurements",
+        "summary": output_dir / "summary",
+    }
+    if not config["save_figures"]:
+        del output_dirs["histograms"], output_dirs["panels"]
+
+    for folder in output_dirs.values():
+        folder.mkdir(parents=True, exist_ok=True)
 
     # Keep the exact parameters used for this run next to the results
     shutil.copyfile(args.config, output_dir / "run_config.toml")
-    #print(f"Parameters from {args.config}: {config}")
 
     # Find all TIFF images
     paths = sorted(
@@ -252,13 +322,13 @@ def main():
     )
 
     print(f"Found {len(paths)} images")
-    
+
+    all_roi_tables, summary = [], []
+
     for path in paths:
-        try:            
-            # Output figure path
-            save_path = output_dir / f"{path.stem}_segmentation.png"
-            csv_path = output_dir / f"{path.stem}_segmentation.csv"
-            
+        try:
+            name = path.stem
+
             result = process_image(
                 image_path=path,
                 threshold_factor=config["threshold_factor"],
@@ -266,25 +336,62 @@ def main():
                 min_area=config["min_area"],
                 min_distance=config["min_distance"],
                 rolling_ball_radius=config["rolling_ball_radius"],
-                plot=False,
-                save_path=save_path if config["save_figures"] else None,
-                figure_dpi=config["figure_dpi"],
-                )
-            plt.close("all")
-            
-            result.to_csv(csv_path, index=False)
-            
-            print(
-                f"Processed: {path.name}"
             )
 
-            
+            # Figures
+            if config["save_figures"]:
+                plot_results(result, name, config,
+                             output_dirs["panels"] / f"{name}_six_panels.png")
+                draw_histogram(result, name, config["threshold_factor"],
+                               output_dirs["histograms"] / f"{name}_histograms.png",
+                               config["figure_dpi"])
+
+            # Intermediate images (float32)
+            for key in ("background", "corrected", "smoothed"):
+                io.imsave(output_dirs[key] / f"{name}_{key}.tif",
+                          result[key].astype(np.float32), check_contrast=False)
+
+            # Binary mask and labelled ROIs
+            io.imsave(output_dirs["masks"] / f"{name}_mask.tif",
+                      result["mask"].astype(np.uint8) * 255, check_contrast=False)
+            io.imsave(output_dirs["labels"] / f"{name}_labels.tif",
+                      result["labels"].astype(np.int32), check_contrast=False)
+
+            # ROI measurements
+            rois = result["rois"]
+            rois.to_csv(output_dirs["measurements"] / f"{name}_ROIs.csv", index=False)
+            all_roi_tables.append(rois)
+
+            # Foci pixels = pixels assigned to a watershed ROI
+            foci_pixels = result["labels"] > 0
+            summary.append({
+                "image_id": name,
+                "otsu_threshold": result["otsu_threshold"],
+                "threshold_factor": config["threshold_factor"],
+                "threshold": result["threshold"],
+                "n_rois": len(rois),
+                "total_area_px": int(foci_pixels.sum()),
+                "area_fraction": float(foci_pixels.mean()),
+            })
+
+            print(f"Processed: {path.name} ({len(rois)} ROIs)")
+
         except Exception as e:
             print(f"Error processing {path.name}: {e}")
             traceback.print_exc()
             continue
-        
+        finally:
+            plt.close("all")
+
+    # Combined results
+    if all_roi_tables:
+        pd.concat(all_roi_tables, ignore_index=True).to_csv(
+            output_dirs["summary"] / "all_ROIs.csv", index=False
+        )
+    pd.DataFrame(summary).to_csv(output_dirs["summary"] / "summary.csv", index=False)
+
     print("Processing completed!")
-    
+
+
 if __name__ == "__main__":
     main()
