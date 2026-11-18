@@ -21,7 +21,7 @@ rolling_ball_radius = 0
 smooth_sigma = 1.0
 
 # Smallest foci kept, in pixels.
-min_area = 20
+min_area = 7
 
 # Fill holes inside foci masks.
 fill_holes = true
