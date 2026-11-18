@@ -52,6 +52,21 @@ def signal_metrics(original, nucleus, labels):
                 fraction_signal_in_foci=fraction_in_foci)
 
 
+def gini(values):
+    """Gini coefficient of the focus areas of one cell, rescaled by n/(n-1).
+
+    0 = all foci the same size, 1 = one focus holds all the area. The n/(n-1)
+    factor makes the maximum 1 for any number of foci, so cells with different
+    foci counts are comparable. NaN for fewer than 2 foci.
+    """
+    x = np.sort(np.asarray(values, dtype=float))
+    n = len(x)
+    if n < 2 or x.sum() == 0:
+        return np.nan
+    g = 2 * np.sum(np.arange(1, n + 1) * x) / (n * x.sum()) - (n + 1) / n
+    return float(g * n / (n - 1))
+
+
 def process_image(image_path,
                   threshold_factor=1,
                   sigma=0.6,
@@ -340,7 +355,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       nucleus area (non-zero px), total
                                       foci area (px), foci area / nucleus area,
                                       nucleus and nucleoplasm mean intensity,
-                                      fraction of nuclear signal in foci
+                                      fraction of nuclear signal in foci,
+                                      size_gini (Gini of foci areas)
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -469,6 +485,7 @@ def main():
                 "nucleus_mean_intensity": result["metrics"]["nucleus_mean_intensity"],
                 "nucleoplasm_mean_intensity": result["metrics"]["nucleoplasm_mean_intensity"],
                 "fraction_signal_in_foci": result["metrics"]["fraction_signal_in_foci"],
+                "size_gini": gini(rois["area"]),
             })
 
             print(f"Processed: {path.name} ({len(rois)} ROIs)")

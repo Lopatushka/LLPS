@@ -11,7 +11,7 @@ import argparse
 # =====================================================
 
 # Per-cell values copied from <output>/summary/summary.csv
-CELL_FEATURES = ["fraction_signal_in_foci"]
+CELL_FEATURES = ["fraction_signal_in_foci", "size_gini"]
 
 def table_aggregation(path):
 
@@ -110,7 +110,7 @@ output:
                                  solidity, perimeter, mean_intensity,
                                  max_intensity, min_intensity,
                                  partition_coefficient, plus the per-cell
-                                 fraction_signal_in_foci (read from
+                                 fraction_signal_in_foci and size_gini (read from
                                  summary/summary.csv next to the input folder).
                                  Sizes are in pixels.
 
@@ -212,14 +212,16 @@ def main():
     if summary_path.is_file():
         per_cell = pd.read_csv(summary_path)
         per_cell["image_id"] = per_cell["image_id"].astype(str)
-        if CELL_FEATURES[0] in per_cell.columns:
+        present = [c for c in CELL_FEATURES if c in per_cell.columns]
+        missing = [c for c in CELL_FEATURES if c not in per_cell.columns]
+        if present:
             final["image_id"] = final["image_id"].astype(str)
-            final = final.merge(per_cell[["image_id", *CELL_FEATURES]],
+            final = final.merge(per_cell[["image_id", *present]],
                                 on="image_id", how="left")
-            print(f"Added {', '.join(CELL_FEATURES)} from {summary_path}")
-        else:
-            print(f"Warning: {summary_path} has no {CELL_FEATURES[0]} column "
-                  "(older run?); per-cell features not added")
+            print(f"Added {', '.join(present)} from {summary_path}")
+        if missing:
+            print(f"Warning: {summary_path} has no {', '.join(missing)} column(s) "
+                  "(older run?); not added")
     else:
         print(f"Warning: {summary_path} not found; per-cell features not added")
 

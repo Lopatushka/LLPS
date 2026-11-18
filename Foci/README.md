@@ -97,7 +97,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
-`fraction_signal_in_foci` from `summary/summary.csv` of the same run. Cells with
+`fraction_signal_in_foci` and `size_gini` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
@@ -212,10 +212,13 @@ rolling ball would remove the nucleoplasm signal it is divided by.
 `area_fraction` (foci area / nucleus area), `nucleus_mean_intensity`,
 `nucleoplasm_mean_intensity` and `fraction_signal_in_foci` (summed raw intensity
 of all foci / summed raw intensity of the nucleus; 0–1, independent of
-expression level).
+expression level) and `size_gini`: the Gini coefficient of the foci areas of
+the cell, rescaled by n/(n−1) so that it ranges from 0 (all foci the same size)
+to 1 (one focus holds all the foci area) for any number of foci. Empty for cells
+with fewer than 2 foci; noisy with few foci, so filter on `n_rois` if needed.
 
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
-`fraction_signal_in_foci` from `summary/summary.csv`. Cells without foci have
+`fraction_signal_in_foci` and `size_gini` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
