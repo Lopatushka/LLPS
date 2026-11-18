@@ -146,7 +146,7 @@ def process_image(path):
     
     rois = pd.DataFrame(props)
     # Image name without extension, same column as in FOCI_OUTSU/outsu.py
-    rois['image_id'] = path.stem
+    rois.insert(0, 'image_id', path.stem)
     
     #t = log_step("ROI measurements completed", t)
     
@@ -456,11 +456,12 @@ input:
   Other files in the folder are ignored.
 
 output (subfolders of the --output folder):
-  roi_measurements/<image>_ROIs.csv   one row per focus: label, area,
-                                      centroid-0/-1, equivalent_diameter_area,
-                                      eccentricity, solidity, perimeter,
-                                      mean/max/min_intensity,
-                                      image_id. Sizes are in pixels.
+  roi_measurements/<image>_ROIs.csv   one row per focus: image_id, label,
+                                      area, centroid-0/-1,
+                                      equivalent_diameter_area, eccentricity,
+                                      solidity, perimeter,
+                                      mean/max/min_intensity. Sizes are in
+                                      pixels.
                                       Intensities are measured on the
                                       background-subtracted image if
                                       rolling_ball_radius > 0, else raw.

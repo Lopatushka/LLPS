@@ -55,9 +55,9 @@ images currently open in Fiji and ask for an output folder.
   (`min_area`) → distance transform + watershed to split
   touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
   it writes:
-  - `<image>_segmentation.csv`: one row per focus (`area`, `centroid`,
-    `equivalent_diameter_area`, `eccentricity`, `solidity`, `perimeter`,
-    `mean/max/min_intensity`, `image_id`). With
+  - `<image>_segmentation.csv`: one row per focus (`image_id`, `label`, `area`,
+    `centroid`, `equivalent_diameter_area`, `eccentricity`, `solidity`,
+    `perimeter`, `mean/max/min_intensity`). With
     `rolling_ball_radius > 0` the intensities are measured on the
     background-subtracted image, otherwise on the raw image.
   - `<image>_segmentation.png`: mask, distance transform and watershed overlay

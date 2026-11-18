@@ -93,7 +93,7 @@ def process_image(image_path,
 
     df = pd.DataFrame(properties)
 
-    df["image_id"] = image_name
+    df.insert(0, "image_id", image_name)
 
 
     #print("Total detected objects:", len(df))
@@ -197,10 +197,10 @@ input:
   e.g. the single-nucleus images saved by FIJI/nuclei_manual_segment.py.
 
 output (written to the --output folder):
-  <image>_segmentation.csv   one row per focus: label, area, centroid-0/-1,
-                             equivalent_diameter_area, eccentricity, solidity,
-                             perimeter, mean/max/min_intensity,
-                             image_id. Sizes are in pixels. Intensities are
+  <image>_segmentation.csv   one row per focus: image_id, label, area,
+                             centroid-0/-1, equivalent_diameter_area,
+                             eccentricity, solidity, perimeter,
+                             mean/max/min_intensity. Sizes are in pixels. Intensities are
                              measured on the background-subtracted image
                              if rolling_ball_radius > 0, else on the raw image.
                              Header only if no foci were found.
