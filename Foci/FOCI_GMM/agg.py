@@ -28,7 +28,7 @@ def table_aggregation(path):
         image_id = path.stem.removesuffix("_ROIs")
 
     # Older gmm.py runs stored the image name with its extension (cell0.tif):
-    # strip it so image_id is the same with and without foci, and as in foci.py
+    # strip it so image_id is the same with and without foci, and as in outsu.py
     image_id = str(image_id)
     for ext in (".tiff", ".tif", ".TIFF", ".TIF"):
         image_id = image_id.removesuffix(ext)
@@ -113,13 +113,11 @@ examples:
   python agg.py -i results_gmm/roi_measurements/ -o results_gmm/
   python agg.py -i WT/gmm4/roi_measurements/ -o WT/gmm4/""",
     )
-    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
-                        help="folder with the per-image foci tables "
-                             "(asked interactively if omitted)")
-    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
+                        help="folder with the per-image foci tables (required)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR", required=True,
                         help="folder for aggregated_data.csv; created if it does not exist, "
-                             "an existing aggregated_data.csv is overwritten "
-                             "(asked interactively if omitted)")
+                             "an existing aggregated_data.csv is overwritten (required)")
     return parser.parse_args()
 
 
@@ -127,23 +125,8 @@ def main():
 
     args = parse_args()
 
-    # Ask interactively for folders that were not given on the command line;
-    # an empty answer uses the default shown in brackets
-    input_path = args.input or input(
-        "Enter input folder path [GMM_refined_segmentation/measurements]: "
-    ).strip().strip('"')
-
-    output_path = args.output or input(
-        "Enter output folder path [GMM_refined_segmentation]: "
-    ).strip().strip('"')
-
-    input_dir = Path(
-        input_path or "GMM_refined_segmentation/measurements"
-    ).expanduser()
-
-    output_dir = Path(
-        output_path or "GMM_refined_segmentation"
-    ).expanduser()
+    input_dir = args.input
+    output_dir = args.output
 
     # Validate input folder
     if not input_dir.is_dir():

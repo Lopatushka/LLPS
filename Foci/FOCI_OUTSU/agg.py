@@ -7,7 +7,7 @@ def table_aggregation(path):
     df = pd.read_csv(path)
 
     # Cells with zero foci produce a header-only CSV: take the ID from the
-    # filename instead of dropping the cell (foci.py saves <stem>_segmentation.csv)
+    # filename instead of dropping the cell (outsu.py saves <stem>_segmentation.csv)
     if len(df) and "image_id" in df.columns:
         image_id = df["image_id"].iloc[0]
     else:
@@ -43,7 +43,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-Aggregate the per-image foci tables written by foci.py into one table
+Aggregate the per-image foci tables written by outsu.py into one table
 with one row per cell (image).
 
 For every <image>_segmentation.csv: n_foci = number of foci, plus the
@@ -51,7 +51,7 @@ median of each foci feature over all foci of that cell. Cells without
 foci are kept with n_foci = 0 and empty (NaN) feature values.""",
         epilog="""\
 input:
-  The output folder of foci.py, containing <image>_segmentation.csv files
+  The output folder of outsu.py, containing <image>_segmentation.csv files
   (other files, including an earlier aggregated_data.csv, are ignored).
 
 output:
@@ -70,20 +70,18 @@ examples:
   python agg.py -i results/ -o results/
   python agg.py -i WT/otsu/ -o WT/""",
     )
-    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
-                        help="folder with the per-image foci tables "
-                             "(asked interactively if omitted)")
-    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
+                        help="folder with the per-image foci tables (required)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR", required=True,
                         help="folder for aggregated_data.csv; created if it does not exist, "
-                             "an existing aggregated_data.csv is overwritten "
-                             "(asked interactively if omitted)")
+                             "an existing aggregated_data.csv is overwritten (required)")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    input_dir = args.input or Path(input("Enter input folder path: ").strip().strip('"'))
-    output_dir = args.output or Path(input("Enter output folder path: ").strip().strip('"'))
+    input_dir = args.input
+    output_dir = args.output
     
     # Validate input folder
     if not input_dir.is_dir():
@@ -92,7 +90,7 @@ def main():
     # Create output folder if necessary
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Find per-image foci tables written by foci.py (excludes aggregated_data.csv)
+    # Find per-image foci tables written by outsu.py (excludes aggregated_data.csv)
     paths = sorted(input_dir.glob("*_segmentation.csv"))
 
     if not paths:

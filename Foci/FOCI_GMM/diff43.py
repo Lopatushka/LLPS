@@ -1,12 +1,13 @@
 """Compare G4 versus G3+G4 from previously saved smoothed TIFF images.
 
-Install: pip install numpy pandas scipy scikit-image scikit-learn matplotlib tifffile
-Run: python compare_G4_vs_G3G4.py
+Install: pip install -r ../requirements.txt
+Run: python diff43.py --input <gmm.py output folder> --output <new folder>
 
 GMM is fitted ONCE per image, using the saved smoothed intensities.
 Component numbers are ordered by increasing fitted mean intensity.
 """
 from pathlib import Path
+import argparse
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -27,8 +28,38 @@ MAX_FIT_PIXELS = 30000
 FIG_DPI = 180
 CHUNK_SIZE = 250000
 
-def ask_directory(message):
-    return Path(input(message).strip().strip('"').strip("'")).expanduser()
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+Compare foci masks built from GMM component 4 only (G4) with masks built
+from components 3 + 4 (G3_G4), using the smoothed images of a previous
+gmm.py run. One 4-component GMM is fitted per image; components are
+numbered by increasing mean intensity.""",
+        epilog="""\
+input:
+  A gmm.py output folder (its smoothed_images/ subfolder is used), or the
+  smoothed_images/ folder itself, with <image>_smoothed.tif files.
+
+output (subfolders of the --output folder):
+  G4/, G3_G4/, difference/   each with binary_masks/, labeled_rois/,
+                             roi_measurements/ and panels/; difference/
+                             holds the pixels added by G3 (G3_G4 minus G4)
+  histograms/                intensity histograms with the fitted GMM
+  models/                    fitted GMM per image (.pkl) and its component
+                             means, stds and weights (.csv)
+  summary/                   comparison_summary.csv (areas, ROI counts, IoU,
+                             ROI overlap per image) and all_ROIs_<mask>.csv
+
+example:
+  python diff43.py -i results_gmm/ -o results_g4_vs_g34/""",
+    )
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
+                        help="gmm.py output folder or its smoothed_images/ folder (required)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR", required=True,
+                        help="folder for the comparison results; created if it does not "
+                             "exist, existing files with the same names are overwritten (required)")
+    return parser.parse_args()
 
 
 def make_folders(root):
@@ -184,8 +215,9 @@ def count_roi_overlap(labels_a, labels_b):
 
 
 def main():
-    previous_root = ask_directory('Previous results folder (containing smoothed_images/): ')
-    output_root = ask_directory('New comparison output folder: ')
+    args = parse_args()
+    previous_root = args.input
+    output_root = args.output
     
     images = get_images(previous_root)
     

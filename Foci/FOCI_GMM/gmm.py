@@ -145,7 +145,7 @@ def process_image(path):
                     'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity', 'min_intensity'))
     
     rois = pd.DataFrame(props)
-    # Image name without extension, same as image_id in FOCI_OUTSU/foci.py
+    # Image name without extension, same as image_id in FOCI_OUTSU/outsu.py
     rois.insert(0, 'image', path.stem)
     
     #t = log_step("ROI measurements completed", t)
@@ -478,13 +478,11 @@ examples:
   python gmm.py -i nuclei_tif/ -o results_gmm/
   python gmm.py -i nuclei_tif/ -o results_g34/ -c config_g34.toml""",
     )
-    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
-                        help="folder with the .tif/.tiff images to segment "
-                             "(asked interactively if omitted)")
-    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
+                        help="folder with the .tif/.tiff images to segment (required)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR", required=True,
                         help="folder for the results; created if it does not exist, "
-                             "existing files with the same names are overwritten "
-                             "(asked interactively if omitted)")
+                             "existing files with the same names are overwritten (required)")
     parser.add_argument("-c", "--config", type=Path, default=DEFAULT_CONFIG, metavar="FILE",
                         help="TOML file with the segmentation parameters; all keys are "
                              "required, see the comments in the file "
@@ -497,16 +495,8 @@ def main():
     config = load_config(args.config)
     
     # Ask user for directories if they were not given on the command line
-    input_dir = args.input or input(
-        "Enter the input directory containing TIFF images: "
-    ).strip().strip('"').strip("'")
-    
-    output_dir = args.output or input(
-    "Enter the output directory for GMM results: "
-    ).strip().strip('"').strip("'")
-    
-    IMAGE_FOLDER = Path(input_dir).expanduser()
-    OUTPUT_FOLDER = Path(output_dir).expanduser()
+    IMAGE_FOLDER = args.input
+    OUTPUT_FOLDER = args.output
     
     # Validate input directory
     if not IMAGE_FOLDER.is_dir():

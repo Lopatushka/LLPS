@@ -208,16 +208,14 @@ next step:
   python agg.py   (input: this output folder) -> aggregated_data.csv
 
 examples:
-  python foci.py -i nuclei_tif/ -o results/
-  python foci.py -i nuclei_tif/ -o results_t2/ -c config_threshold2.toml""",
+  python outsu.py -i nuclei_tif/ -o results/
+  python outsu.py -i nuclei_tif/ -o results_t2/ -c config_threshold2.toml""",
     )
-    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
-                        help="folder with the .tif/.tiff images to segment "
-                             "(asked interactively if omitted)")
-    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
+                        help="folder with the .tif/.tiff images to segment (required)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR", required=True,
                         help="folder for the results; created if it does not exist, "
-                             "existing files with the same names are overwritten "
-                             "(asked interactively if omitted)")
+                             "existing files with the same names are overwritten (required)")
     parser.add_argument("-c", "--config", type=Path, default=DEFAULT_CONFIG, metavar="FILE",
                         help="TOML file with the segmentation parameters; all keys are "
                              "required, see the comments in the file "
@@ -229,8 +227,8 @@ def main():
     args = parse_args()
     config = load_config(args.config)
 
-    input_dir = args.input or Path(input("Enter input folder path: ").strip().strip('"'))
-    output_dir = args.output or Path(input("Enter output folder path: ").strip().strip('"'))
+    input_dir = args.input
+    output_dir = args.output
 
     # Validate input folder
     if not input_dir.is_dir():

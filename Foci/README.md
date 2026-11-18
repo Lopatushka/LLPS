@@ -15,8 +15,8 @@ raw multichannel .tif
    │  FIJI/MFI_nuclei.py              (Fiji)  → MFI_nuclei.csv        (optional)
    ▼
 single-nucleus .tif images
-   │  FOCI_OUTSU/foci.py   or   FOCI_GMM/gmm.py   → per-image foci tables
-   │  FOCI_OUTSU/agg.py    or   FOCI_GMM/agg.py   → aggregated_data.csv (one row per cell)
+   │  FOCI_OUTSU/outsu.py  or   FOCI_GMM/gmm.py   → per-image foci tables
+   │  FOCI_OUTSU/agg.py   or   FOCI_GMM/agg.py   → aggregated_data.csv (one row per cell)
    ▼
 aggregated_data.csv for each condition
    │  STATISTICS/PCA.ipynb, STATISTICS/UMAP.ipynb
@@ -49,7 +49,7 @@ images currently open in Fiji and ask for an output folder.
 
 ### `FOCI_OUTSU/` — Otsu threshold segmentation
 
-- **`foci.py`** — for every `.tif`/`.tiff` in the input folder: Gaussian smoothing
+- **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: Gaussian smoothing
   (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
   (`min_area`) → distance transform + watershed to split
   touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
@@ -64,9 +64,10 @@ images currently open in Fiji and ask for an output folder.
 
 ### `FOCI_GMM/` — Gaussian mixture model segmentation
 
-- **`gmm.py`** — fits a GMM (`N_COMPONENTS = 4`) to pixel intensities of each
-  image; pixels whose probability of belonging to the brightest component(s)
-  (`SIGNAL_COMPONENTS`) exceeds `PROBABILITY_THRESHOLD` form the foci mask.
+- **`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities
+  of each image; pixels whose probability of belonging to the brightest
+  component(s) (`signal_components`) is at least `probability_threshold` form
+  the foci mask.
   Optional rolling-ball background subtraction and Gaussian smoothing. Outputs
   into subfolders: `histograms/`, `panels/`, `backgrounds/`,
   `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
@@ -142,8 +143,8 @@ misspelled or missing keys stop the run with an error.
 
 ```bash
 cd Foci/FOCI_OUTSU
-python foci.py --input <tif_folder> --output <results>          # uses config.toml
-python foci.py -i <tif_folder> -o <results> -c my_config.toml   # other parameters
+python outsu.py --input <tif_folder> --output <results>         # uses config.toml
+python outsu.py -i <tif_folder> -o <results> -c my_config.toml  # other parameters
 python agg.py -i <results> -o <results>                        # -> aggregated_data.csv
 ```
 
@@ -151,11 +152,12 @@ python agg.py -i <results> -o <results>                        # -> aggregated_d
 cd Foci/FOCI_GMM
 python gmm.py --input <tif_folder> --output <results>
 python agg.py -i <results>/roi_measurements -o <results>
+python diff43.py -i <results> -o <comparison_results>   # optional: G4 vs G3+G4
 ```
 
-If `--input` / `--output` are omitted, the scripts ask for them interactively.
+`--input` and `--output` are required for every script.
 Each script's `--help` explains its arguments, the expected input and every
-output file, e.g. `python foci.py --help`.
+output file, e.g. `python outsu.py --help`.
 
 Then open `STATISTICS/PCA.ipynb` or `STATISTICS/UMAP.ipynb`, point the `data`
 list at the `aggregated_data.csv` files and run the cells.

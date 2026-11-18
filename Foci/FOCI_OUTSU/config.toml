@@ -1,4 +1,4 @@
-# Parameters for foci.py (Otsu threshold + watershed foci segmentation).
+# Parameters for outsu.py (Otsu threshold + watershed foci segmentation).
 # A copy of this file is saved into every output folder as run_config.toml.
 # All keys are required; unknown keys are rejected to catch typos.
 
