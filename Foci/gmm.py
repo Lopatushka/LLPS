@@ -644,7 +644,8 @@ output (subfolders of the --output folder):
                                       partition_coefficient always on raw.
   summary/all_ROIs.csv                all ROI tables combined
   summary/summary.csv                 per image (image_id): number of foci,
-                                      nucleus area (non-zero px), total foci
+                                      nucleus area (non-zero px), foci_density
+                                      (foci / nucleus px), total foci
                                       area (px), foci area / nucleus area,
                                       nucleus and nucleoplasm mean intensity,
                                       fraction of nuclear signal in foci,
@@ -801,6 +802,7 @@ def main():
                 "signal_components": SIGNAL_COMPONENTS,
                 "n_rois": int(results["labels"].max()),
                 "nucleus_area_px": int(results["nucleus"].sum()),
+                "foci_density": float(results["labels"].max() / results["nucleus"].sum()),
                 "total_area_px": int(results["mask"].sum()),
                 "area_fraction": float(results["mask"].sum() / results["nucleus"].sum()),
                 "nucleus_mean_intensity": results["metrics"]["nucleus_mean_intensity"],

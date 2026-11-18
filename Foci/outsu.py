@@ -434,7 +434,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
   summary/all_ROIs.csv                all ROI tables combined
   summary/summary.csv                 per image (image_id): Otsu threshold,
                                       threshold used, number of foci,
-                                      nucleus area (non-zero px), total
+                                      nucleus area (non-zero px), foci_density
+                                      (foci / nucleus px), total
                                       foci area (px), foci area / nucleus area,
                                       nucleus and nucleoplasm mean intensity,
                                       fraction of nuclear signal in foci,
@@ -564,6 +565,7 @@ def main():
                 "threshold": result["threshold"],
                 "n_rois": len(rois),
                 "nucleus_area_px": nucleus_area,
+                "foci_density": len(rois) / nucleus_area,
                 "total_area_px": int(foci_pixels.sum()),
                 "area_fraction": float(foci_pixels.sum() / nucleus_area),
                 "nucleus_mean_intensity": result["metrics"]["nucleus_mean_intensity"],
