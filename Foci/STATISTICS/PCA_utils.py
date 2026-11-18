@@ -16,6 +16,187 @@ from scipy.spatial.distance import pdist, squareform, mahalanobis
 from skbio import DistanceMatrix
 from skbio.stats.distance import permanova, permdisp
 
+def run_pca(
+    df,
+    features,
+    group_col="sample",
+    n_components=2,
+    palette="Set2",
+    figsize=(9, 7),
+    point_size=60,
+    alpha=0.7,
+    title=None,
+    plot=True
+):
+    """
+    Perform PCA on standardized features across all cells.
+
+    Returns
+    -------
+    pca_df : pd.DataFrame
+        Original data with PC columns added.
+    pca : PCA
+        Fitted PCA model.
+    explained : np.ndarray
+        Explained variance percentages.
+    """
+
+    # Remove missing values
+    pca_df = df.dropna(
+        subset=list(features) + [group_col]
+    ).copy()
+
+    # Standardize all cells together
+    X = pca_df[features]
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Fit PCA
+    pca = PCA(n_components=n_components)
+    X_pca = pca.fit_transform(X_scaled)
+
+    # Add principal components
+    for i in range(n_components):
+        pca_df[f"PC{i+1}"] = X_pca[:, i]
+
+    # Explained variance (%)
+    explained = pca.explained_variance_ratio_ * 100
+
+    if plot:
+        fig, ax = plt.subplots(figsize=figsize)
+
+        sns.scatterplot(
+            data=pca_df,
+            x="PC1",
+            y="PC2",
+            hue=group_col,
+            palette=palette,
+            s=point_size,
+            alpha=alpha,
+            ax=ax
+        )
+
+        ax.axhline(
+            0, color="gray",
+            linestyle="--", alpha=0.4
+        )
+        ax.axvline(
+            0, color="gray",
+            linestyle="--", alpha=0.4
+        )
+
+        ax.set_xlabel(f"PC1 ({explained[0]:.1f}%)")
+        ax.set_ylabel(f"PC2 ({explained[1]:.1f}%)")
+
+        if title is None:
+            title = f"Combined PCA — Colored by {group_col}"
+
+        ax.set_title(title)
+
+        ax.legend(
+            title=group_col,
+            bbox_to_anchor=(1.05, 1),
+            loc="upper left"
+        )
+
+        plt.tight_layout()
+        plt.show()
+
+    return pca_df, pca, explained
+
+
+def run_permanova_permdisp(
+    df,
+    features,
+    variable="sample",
+    permutations=9999,
+    seed=42,
+    metric="euclidean",
+    print_results=True
+):
+    """
+    Run PERMANOVA and PERMDISP on standardized features.
+
+    Returns
+    -------
+    pd.DataFrame
+        Test statistics, p-values, R², sample size,
+        and number of groups.
+    """
+
+    # Remove missing values
+    data = df.dropna(
+        subset=list(features) + [variable]
+    ).copy()
+
+    n = len(data)
+    k = data[variable].nunique()
+
+    if k < 2:
+        raise ValueError("At least 2 groups are required.")
+
+    if k >= n:
+        raise ValueError("Number of groups must be smaller than n.")
+
+    # Standardize features
+    X = data[features].to_numpy()
+    X_scaled = StandardScaler().fit_transform(X)
+
+    # Calculate distance matrix
+    distances = squareform(
+        pdist(X_scaled, metric=metric)
+    )
+
+    dm = DistanceMatrix(
+        distances,
+        ids=[str(i) for i in range(n)]
+    )
+
+    grouping = data[variable].to_numpy()
+
+    # PERMANOVA
+    perm = permanova(
+        dm,
+        grouping=grouping,
+        permutations=permutations,
+        seed=seed
+    )
+
+    # PERMDISP
+    disp = permdisp(
+        dm,
+        grouping=grouping,
+        permutations=permutations,
+        seed=seed
+    )
+
+    # Calculate R²
+    F = perm["test statistic"]
+
+    R2 = (F * (k - 1)) / (
+        F * (k - 1) + (n - k)
+    )
+
+    # Results table
+    results = pd.DataFrame({
+        "Test": ["PERMANOVA", "PERMDISP"],
+        "F": [
+            perm["test statistic"],
+            disp["test statistic"]
+        ],
+        "p_value": [
+            perm["p-value"],
+            disp["p-value"]
+        ],
+        "R2": [R2, np.nan],
+        "n": [n, n],
+        "groups": [k, k]
+    })
+
+    if print_results:
+        print(results.to_string(index=False))
+
+    return results
 
 def plot_pca_centroids_ci(
     pca_df,
@@ -383,70 +564,6 @@ def bootstrap_pca_centroids(
     plt.show()
 
     return results
-
-
-def pca_permanova(
-    pca_df,
-    group_col="sample",
-    features=("PC1", "PC2"),
-    permutations=9999
-):
-    # Prepare data
-    df = pca_df[
-        [*features, group_col]
-    ].dropna().copy()
-
-    X = df[list(features)].to_numpy()
-    groups = df[group_col].to_numpy()
-
-    # Euclidean distance matrix
-    dm = DistanceMatrix(
-        squareform(pdist(X, metric="euclidean"))
-    )
-
-    # Statistical tests
-    result_permanova = permanova(
-        dm,
-        grouping=groups,
-        permutations=permutations,
-        seed=42
-    )
-
-    result_permdisp = permdisp(
-        dm,
-        grouping=groups,
-        permutations=permutations,
-        seed=42
-    )
-
-    # Calculate PERMANOVA R²
-    F = result_permanova["test statistic"]
-    n = result_permanova["sample size"]
-    k = result_permanova["number of groups"]
-
-    r_squared = (F * (k - 1)) / (F * (k - 1) + (n - k))
-
-    # Create results DataFrame
-    results_df = pd.DataFrame([
-        {
-            "Test": "PERMANOVA",
-            "Statistic": F,
-            "p_value": result_permanova["p-value"],
-            "R2": r_squared,
-            "n": n,
-            "groups": k
-        },
-        {
-            "Test": "PERMDISP",
-            "Statistic": result_permdisp["test statistic"],
-            "p_value": result_permdisp["p-value"],
-            "R2": None,
-            "n": result_permdisp["sample size"],
-            "groups": result_permdisp["number of groups"]
-        }
-    ])
-
-    return results_df
 
 def detect_pca_outliers(
     df,
