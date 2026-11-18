@@ -318,7 +318,7 @@ def plot_results(result, name, output=None):
         ax.set_title(title)
         ax.axis("off")
 
-    # Fifth panel: Numbered ROIs
+    # Fifth panel: Watershed ROIs
     ax = axes[1, 1]
     ax.imshow(original, cmap="gray")
 
@@ -342,7 +342,7 @@ def plot_results(result, name, output=None):
             va="center"
         )
 
-    ax.set_title(f"Numbered ROIs (N={labels.max()})")
+    ax.set_title(f"Watershed ROIs (N={labels.max()})")
     ax.axis("off")
 
     # Sixth panel: GMM histogram

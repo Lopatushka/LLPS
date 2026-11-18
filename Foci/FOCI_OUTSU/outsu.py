@@ -160,13 +160,12 @@ def plot_results(result, name, config, save_path):
         ax.set_title(title)
         ax.axis("off")
 
-    # Sixth panel: watershed boundaries and numbered ROIs
+    # Sixth panel: watershed boundaries on the background-corrected image
     ax = axes[1, 2]
-    ax.imshow(segmentation.mark_boundaries(original / (original.max() + 1e-8), labels))
-    for region in measure.regionprops(labels):
-        y, x = region.centroid
-        ax.text(x, y, str(region.label), color="yellow", fontsize=6,
-                ha="center", va="center")
+    corrected = result["corrected"].astype(float)
+    span = corrected.max() - corrected.min()
+    corrected = (corrected - corrected.min()) / (span if span > 0 else 1)
+    ax.imshow(segmentation.mark_boundaries(corrected, labels))
     ax.set_title(f"Watershed ROIs (N={len(result['rois'])})")
     ax.axis("off")
 
