@@ -97,7 +97,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
-`foci_density`, `area_fraction`, `nucleus_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
+`foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
@@ -111,6 +111,13 @@ zero foci are kept (`n_foci = 0`).
   expression-matched re-analysis). The `data` list has one entry per condition ×
   biological replicate (`condition`, `replicate`, `path`); at least 3 replicates
   per condition are needed for replicate-level tests.
+- **`CSAT.ipynb`** + `CSAT_utils.py` — saturation concentration from single-cell
+  expression (nuclear intensity = total, nucleoplasm intensity = dilute phase).
+  Three independent estimates with hierarchical-bootstrap CIs and a reliability
+  verdict each: onset (logistic fit of foci presence), dilute-phase buffering
+  (segmented log-log fit vs. straight line by BIC, buffering exponent β) and the
+  lever rule (fraction of signal in foci = A·(1 − c_sat/c_total)). Ratio to the
+  reference condition and replicate-level Welch test on log c_sat.
 - **`PCA_v2.ipynb`** + `PCA_v2_utils.py` — PCA of all foci metrics (same `data`
   format as `METRICS.ipynb`). Log transform and z-scoring, feature correlations
   and redundant pairs, scree plot with parallel analysis (components above
@@ -255,5 +262,5 @@ watershed splitting happened. 0 for a cell with one focus, empty without foci.
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
-`foci_density`, `area_fraction`, `nucleus_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
+`foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
