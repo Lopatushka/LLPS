@@ -145,7 +145,8 @@ def process_image(path):
                     'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity', 'min_intensity'))
     
     rois = pd.DataFrame(props)
-    rois.insert(0, 'image', path.name)
+    # Image name without extension, same as image_id in FOCI_OUTSU/foci.py
+    rois.insert(0, 'image', path.stem)
     
     #t = log_step("ROI measurements completed", t)
     
@@ -618,7 +619,7 @@ def main():
         all_roi_tables.append(roi_df)
 
         summary.append({
-            "image": path.name,
+            "image": path.stem,
             "n_components": N_COMPONENTS,
             "signal_components": SIGNAL_COMPONENTS,
             "n_rois": int(results["labels"].max()),

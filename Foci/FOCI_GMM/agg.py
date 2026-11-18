@@ -27,6 +27,12 @@ def table_aggregation(path):
     else:
         image_id = path.stem.removesuffix("_ROIs")
 
+    # Older gmm.py runs stored the image name with its extension (cell0.tif):
+    # strip it so image_id is the same with and without foci, and as in foci.py
+    image_id = str(image_id)
+    for ext in (".tiff", ".tif", ".TIFF", ".TIF"):
+        image_id = image_id.removesuffix(ext)
+
     # ----------------------------------------------
     # NUMBER OF FOCI
     # ----------------------------------------------
