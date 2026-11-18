@@ -97,7 +97,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
-`foci_density`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
+`foci_density`, `area_fraction`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
@@ -239,5 +239,5 @@ watershed splitting happened. 0 for a cell with one focus, empty without foci.
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
-`foci_density`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
+`foci_density`, `area_fraction`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
