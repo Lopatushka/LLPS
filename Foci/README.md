@@ -50,7 +50,7 @@ images currently open in Fiji and ask for an output folder.
 ### `FOCI_OUTSU/` — Otsu threshold segmentation
 
 - **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: optional
-  rolling-ball background subtraction (`background_radius`, `0` = off, the
+  rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
   default) → Gaussian smoothing (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
   (`min_area`) → distance transform + watershed to split
   touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
@@ -58,7 +58,7 @@ images currently open in Fiji and ask for an output folder.
   - `<image>_segmentation.csv`: one row per focus (`area`, `centroid`,
     `equivalent_diameter_area`, `eccentricity`, `solidity`, `perimeter`,
     `mean/max/min_intensity`, `circularity`, `image_id`). With
-    `background_radius > 0` the intensities are measured on the
+    `rolling_ball_radius > 0` the intensities are measured on the
     background-subtracted image, otherwise on the raw image.
   - `<image>_segmentation.png`: mask, distance transform and watershed overlay
 - **`agg.py`** — reads all `*_segmentation.csv` files and writes

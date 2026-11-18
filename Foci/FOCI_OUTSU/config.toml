@@ -17,7 +17,7 @@ min_distance = 3
 # Rolling-ball background subtraction radius, in pixels (applied before smoothing).
 # 0 = no background subtraction. When > 0, the foci intensities
 # (mean/max/min_intensity) are also measured on the background-subtracted image.
-background_radius = 0
+rolling_ball_radius = 0
 
 # Save the segmentation figure (<image>_segmentation.png) for every image.
 save_figures = true
