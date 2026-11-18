@@ -166,6 +166,13 @@ def process_image(path):
         # Fragments that touch no larger ROI stay 0 and are removed below.
         big = morphology.remove_small_objects(labels, min_size=MIN_AREA)
         labels = segmentation.watershed(-distance, big, mask=mask, connectivity=2)
+
+        # A small focus split only into fragments < min_area has no ROI left
+        # to merge into: keep it as one unsplit ROI (its connected region)
+        unsplit = mask & (labels == 0)
+        if unsplit.any():
+            regions = measure.label(unsplit, connectivity=2)
+            labels[unsplit] = regions[unsplit] + labels.max()
     else:
         labels = measure.label(mask, connectivity=2)
 
