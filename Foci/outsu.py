@@ -21,6 +21,10 @@ HIST_PERCENTILE = 99.99
 # microscope blur spreads foci light into it and would inflate the nucleoplasm mean
 NUCLEOPLASM_RING_PX = 2
 
+# Foci whose nn_gap (edge-to-edge distance to the nearest focus) is at most this
+# many pixels count as touching in fraction_touching
+TOUCHING_GAP_PX = 1
+
 
 def signal_metrics(original, nucleus, labels):
     """Partition coefficient per focus and fraction of nuclear signal in foci.
@@ -68,7 +72,46 @@ def gini(values):
     return float(g * n / (n - 1))
 
 
-def spacing_metrics(rois, nucleus):
+def edge_gaps(labels, rois):
+    """Edge-to-edge distance (px) from each focus to the nearest other focus.
+
+    Exact: shortest distance between the pixel centres of the two foci minus 1,
+    so foci with adjacent pixels (e.g. the parts of a watershed split) have gap
+    0, a diagonal contact 0.41, one background pixel between them 1. Only the
+    border pixels are compared. Foci j are visited by increasing centroid
+    distance; centroid distance - radius_i - radius_j is a lower bound on the
+    pixel distance, so foci that can't beat the best one so far are skipped.
+    """
+    ids = rois["label"].to_numpy(int)
+    centroids = rois[["centroid-0", "centroid-1"]].to_numpy(float)
+    border = segmentation.find_boundaries(labels, mode="inner")
+    rr, cc = np.nonzero(border)
+    owner = labels[rr, cc]
+    order = np.argsort(owner, kind="stable")
+    rr, cc, owner = rr[order], cc[order], owner[order]
+    starts = np.searchsorted(owner, ids)
+    ends = np.searchsorted(owner, ids, side="right")
+    pts = [np.column_stack((rr[s:e], cc[s:e])).astype(float) for s, e in zip(starts, ends)]
+    radius = np.array([np.sqrt(((p - c) ** 2).sum(1)).max() for p, c in zip(pts, centroids)])
+    trees = [cKDTree(p) for p in pts]
+
+    gaps = np.empty(len(ids))
+    for i in range(len(ids)):
+        dist = np.sqrt(((centroids - centroids[i]) ** 2).sum(1))
+        best = np.inf  # shortest pixel-centre distance found so far
+        for j in np.argsort(dist):
+            if j == i:
+                continue
+            if dist[j] - radius[i] - radius.max() > best:
+                break  # no farther focus can be closer
+            if dist[j] - radius[i] - radius[j] > best:
+                continue
+            best = min(best, trees[j].query(pts[i], k=1)[0].min())
+        gaps[i] = max(best - 1, 0.0)
+    return gaps
+
+
+def spacing_metrics(rois, nucleus, labels):
     """Nearest-neighbour distance per focus and Clark-Evans ratio per cell.
 
     nn_distance: centroid-to-centroid distance (px) from each focus to the
@@ -78,18 +121,25 @@ def spacing_metrics(rois, nucleus):
     The expected value uses Donnelly's edge correction
     0.5*sqrt(A/n) + (0.0514 + 0.041/sqrt(n)) * P/n, because foci near the
     nuclear edge have no neighbours outside it (A, P = nucleus area and
-    perimeter). NaN for fewer than 2 foci.
+    perimeter). nn_gap: edge-to-edge distance to the nearest focus (see
+    edge_gaps); fraction_touching: fraction of foci with nn_gap <=
+    TOUCHING_GAP_PX. NaN for fewer than 2 foci, except fraction_touching = 0
+    for a single focus.
     """
     n = len(rois)
     if n < 2:
-        return np.full(n, np.nan), dict(mean_nn_distance=np.nan, clark_evans_ratio=np.nan)
+        return np.full(n, np.nan), np.full(n, np.nan), dict(
+            mean_nn_distance=np.nan, clark_evans_ratio=np.nan,
+            fraction_touching=0.0 if n == 1 else np.nan)
     points = rois[["centroid-0", "centroid-1"]].to_numpy(float)
     nn = cKDTree(points).query(points, k=2)[0][:, 1]  # k=1 is the point itself
     area = float(nucleus.sum())
     perim = float(measure.perimeter(nucleus))
     expected = 0.5 * np.sqrt(area / n) + (0.0514 + 0.041 / np.sqrt(n)) * perim / n
     mean_nn = float(nn.mean())
-    return nn, dict(mean_nn_distance=mean_nn, clark_evans_ratio=mean_nn / expected)
+    gaps = edge_gaps(labels, rois)
+    return nn, gaps, dict(mean_nn_distance=mean_nn, clark_evans_ratio=mean_nn / expected,
+                          fraction_touching=float((gaps <= TOUCHING_GAP_PX).mean()))
 
 def process_image(image_path,
                   threshold_factor=1,
@@ -213,8 +263,9 @@ def process_image(image_path,
     rois["partition_coefficient"] = metrics["partition_coefficient"][rois["label"].to_numpy(int) - 1]
 
     # Nearest-neighbour distances and Clark-Evans ratio
-    nn, spacing = spacing_metrics(rois, nucleus)
+    nn, gaps, spacing = spacing_metrics(rois, nucleus, labels)
     rois["nn_distance"] = nn
+    rois["nn_gap"] = gaps
     metrics.update(spacing)
 
     return dict(metrics=metrics, original=original, nucleus=nucleus, background=background,
@@ -373,7 +424,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       solidity, perimeter,
                                       mean/max/min_intensity,
                                       partition_coefficient, nn_distance
-                                      (to the nearest focus). Sizes are in
+                                      (centre to centre) and nn_gap (edge
+                                      to edge) to the nearest focus. Sizes are in
                                       pixels. Intensities are measured on the
                                       background-subtracted image if
                                       rolling_ball_radius > 0, else raw;
@@ -387,7 +439,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       nucleus and nucleoplasm mean intensity,
                                       fraction of nuclear signal in foci,
                                       size_gini (Gini of foci areas),
-                                      mean_nn_distance (px), clark_evans_ratio
+                                      mean_nn_distance (px), clark_evans_ratio,
+                                      fraction_touching
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -519,6 +572,7 @@ def main():
                 "size_gini": gini(rois["area"]),
                 "mean_nn_distance": result["metrics"]["mean_nn_distance"],
                 "clark_evans_ratio": result["metrics"]["clark_evans_ratio"],
+                "fraction_touching": result["metrics"]["fraction_touching"],
             })
 
             print(f"Processed: {path.name} ({len(rois)} ROIs)")

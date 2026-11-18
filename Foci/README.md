@@ -97,7 +97,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
-`fraction_signal_in_foci`, `size_gini` and `clark_evans_ratio` from `summary/summary.csv` of the same run. Cells with
+`fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
@@ -203,6 +203,7 @@ one row per focus. They are computed with `skimage.measure.regionprops_table`.
 | `min_intensity` | Dimmest pixel of the focus | grey values |
 | `partition_coefficient` | Mean raw intensity of the focus / mean raw intensity of the nucleoplasm (nucleus minus all foci and a 2 px ring around them). How many times more concentrated the protein is in the focus; independent of expression level | ratio |
 | `nn_distance` | Distance from the focus centroid to the centroid of the nearest other focus in the same nucleus. Empty if the nucleus has only one focus | px |
+| `nn_gap` | Edge-to-edge distance to the nearest other focus: shortest distance between the pixel centres of the two foci minus 1, so touching foci (e.g. two parts of a watershed split) have 0 and one background pixel between them gives 1. Independent of focus size, unlike `nn_distance`. Empty if the nucleus has only one focus | px |
 
 Intensities are measured on the background-subtracted image when
 `rolling_ball_radius > 0`, otherwise on the raw image (not on the smoothed one).
@@ -226,9 +227,15 @@ value uses Donnelly's edge correction, 0.5·√(A/n) + (0.0514 + 0.041/√n)·P/
 neighbours outside it. Foci are not points: they cannot sit closer than about
 their radii, so large or densely packed foci push the ratio above 1 even when
 placed at random. Both are empty for cells with fewer than 2 foci.
+`clark_evans_ratio` uses centre-to-centre distances on purpose: its random
+expectation is only defined for points. `fraction_touching` is the fraction of
+the cell's foci whose `nn_gap` is ≤ 1 px (`TOUCHING_GAP_PX` in the scripts):
+foci in contact or separated by one pixel. With `segmentation = "watershed"`
+this includes the parts of every split focus, so it also shows how much
+watershed splitting happened. 0 for a cell with one focus, empty without foci.
 
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
-`fraction_signal_in_foci`, `size_gini` and `clark_evans_ratio` from `summary/summary.csv`. Cells without foci have
+`fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
