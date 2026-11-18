@@ -6,12 +6,16 @@ from PIL import Image
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
 
-# For Ayriscan detector filration conditions are the following:
+# Filtration conditions (see df_filtration):
 #
-# Sigma, nm - [100, 1000]
-# MFI > 100
-# MFI/SD of FI > 5
-# If to circles are overllaped > 30%, keep only the biggest
+# Sigma, nm - (SIGMA_MIN_NM, SIGMA_MAX_NM)
+# MFI > MFI_MIN
+# If two circles overlap by more than OVERLAP_THRESHOLD (fraction of the
+# smaller circle), keep only the bigger one
+SIGMA_MIN_NM = 75
+SIGMA_MAX_NM = 250
+MFI_MIN = 5
+OVERLAP_THRESHOLD = 0.5
 
 def check_directory(path):
     if not isinstance(path, str):
@@ -74,13 +78,14 @@ def overlap_fraction(c1, c2):
         return 1.0
 
     # 3. Частичное пересечение
-    alpha = np.arccos(
-        (d**2 + r1**2 - r2**2) / (2 * d * r1)
-    )
+    # (clip: float rounding can push the cosine slightly outside [-1, 1] -> NaN)
+    alpha = np.arccos(np.clip(
+        (d**2 + r1**2 - r2**2) / (2 * d * r1), -1.0, 1.0
+    ))
 
-    beta = np.arccos(
-        (d**2 + r2**2 - r1**2) / (2 * d * r2)
-    )
+    beta = np.arccos(np.clip(
+        (d**2 + r2**2 - r1**2) / (2 * d * r2), -1.0, 1.0
+    ))
 
     intersection_area = (
         r1**2 * alpha
@@ -249,21 +254,21 @@ def df_filtration(path_to_df, path_to_img = "",
     df_path = Path(path_to_df)
     file_name = df_path.stem
     
-    if path_to_img != "":
-        img_path = Path(path_to_img)
-        img_name = img_path.stem
-    
+    img_path = Path(path_to_img) if path_to_img != "" else None
+    if plot and img_path is None:
+        raise ValueError("plot=True requires path_to_img")
+
     output_dir = Path(output_dir)
-    
+
     # Load dataframe
     df = pd.read_csv(df_path)
-        
+
     # --- Perform filrations ---
     # Sigma filtation
-    df = df[(df['sigma_nm'] > 75) & (df['sigma_nm'] < 250)]
-    
+    df = df[(df['sigma_nm'] > SIGMA_MIN_NM) & (df['sigma_nm'] < SIGMA_MAX_NM)]
+
     # MFI filtration
-    df = df[df['foci_MFI'] > 5]
+    df = df[df['foci_MFI'] > MFI_MIN]
     
     # S.d. filtration
     #df = df[df['foci_MFI'] / df['foci_SD'] > 3]
@@ -274,7 +279,7 @@ def df_filtration(path_to_df, path_to_img = "",
         x_col="x_pixel",
         y_col="y_pixel",
         radius_col="sigma_pixel",
-        threshold=0.5
+        threshold=OVERLAP_THRESHOLD
     )
     
     # Save filtrated .csv file
@@ -311,14 +316,15 @@ def df_filtration(path_to_df, path_to_img = "",
                     save_image = True,
                     save_path = output_dir / f"{file_name}_foci_sd_hist.png",
                     )
-        if plot:
-            image = Image.open(img_path) # open image
-            draw_foci(image = image, # draw filtered foci on the omage and save it
-            df = df,
-            showplot = False,
-            save_image = True,
-            save_path = output_dir / f"{img_name}_filtered_mapped.png",
-            )
+
+    if plot:
+        image = Image.open(img_path) # open image
+        draw_foci(image = image, # draw filtered foci on the omage and save it
+        df = df,
+        showplot = False,
+        save_image = True,
+        save_path = output_dir / f"{img_path.stem}_filtered_mapped.png",
+        )
 
 # -----------------
 # MAIN FUNCTION
@@ -352,23 +358,28 @@ def main():
     
     print(f"Number of founded images is {len(paths_images)}")
     
-    # List of paths to the foci.csv
+    # List of paths to the mapped foci tables (<image>_foci_mapped.csv, written by map.py)
+    suffix = "_foci_mapped.csv"
     paths_foci_csv = [
         os.path.join(dir_foci, f)
         for f in os.listdir(dir_foci)
         if os.path.isfile(os.path.join(dir_foci, f))
-        and f.lower().endswith(".csv")   
+        and f.lower().endswith(suffix)
         ]
-    
+
     print(f"Number of founded .csv files is {len(paths_foci_csv)}")
-    
+
     # Create dictionaries
     img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
-    csv_by_key = {filename(csv_name)[:-12]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
-    
-    #csv_by_key = {filename(csv_name)[:-5]: csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
-    
-    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
+    csv_by_key = {os.path.basename(csv_name)[:-len(suffix)]: csv_name for csv_name in paths_foci_csv} # dictionary {image name: csv path}
+
+    # Pair only images that have a CSV (and vice versa); report the rest
+    keys = sorted(img_by_key.keys() & csv_by_key.keys())
+    for k in sorted(img_by_key.keys() - csv_by_key.keys()):
+        print(f"No *{suffix} for image: {k}")
+    for k in sorted(csv_by_key.keys() - img_by_key.keys()):
+        print(f"No image for {k}{suffix}")
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in keys} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
     
     n_images = len(combined)
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")

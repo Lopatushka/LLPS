@@ -28,18 +28,26 @@ def filename(path):
     return os.path.splitext(os.path.basename(path))[0]
 
 def foci_data(dir, output_dir):
-    paths_csv_files = [
-    os.path.join(dir, f)
-    for f in os.listdir(dir)
-    if os.path.isfile(os.path.join(dir, f))
-    and f.lower().endswith(".csv")
-    ]
+    # Only per-image foci tables: filtered ones (filter.py) if present,
+    # otherwise mapped ones (map.py). Never raw ThunderSTORM CSVs or a previous
+    # foci_aggregation.csv, which lack the sigma_nm / foci_MFI columns.
+    for suffix in ("_foci_filtered.csv", "_foci_mapped.csv"):
+        paths_csv_files = sorted(
+            os.path.join(dir, f)
+            for f in os.listdir(dir)
+            if os.path.isfile(os.path.join(dir, f))
+            and f.lower().endswith(suffix)
+        )
+        if paths_csv_files:
+            break
 
     # Number of .csv files and check
     n = len(paths_csv_files)
     if n == 0:
-        raise FileNotFoundError(f"No CSV files found in the directory: {dir}")
-    print(f"Founded {n} .csv files")
+        raise FileNotFoundError(
+            f"No *_foci_filtered.csv or *_foci_mapped.csv files found in the directory: {dir}"
+        )
+    print(f"Founded {n} *{suffix} files")
 
     # Create a list of dictionaries
     rows = []
@@ -67,7 +75,7 @@ def foci_data(dir, output_dir):
         foci_MFI_sd = df["foci_MFI"].std()
 
         rows.append({
-            "filname": name,
+            "filename": name,
             "n_foci": n_foci,
             "sigma_nm_mean": sigma_nm_mean,
             "sigma_nm_sd": sigma_nm_sd,

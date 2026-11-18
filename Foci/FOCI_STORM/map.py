@@ -1,19 +1,30 @@
 import os
+import re
 import pandas as pd
 import numpy as np
 from PIL import Image
 from skimage.draw import disk
+from scipy.ndimage import gaussian_filter, map_coordinates
 from matplotlib.patches import Circle
 import matplotlib.pyplot as plt
+
+# ThunderSTORM puts the coordinate origin at the top-left CORNER of the image,
+# so the centre of pixel (0, 0) is at (0.5, 0.5) px. NumPy/skimage index pixel
+# centres at integers, hence: pixel_index = coordinate_nm / pixel_size_nm - 0.5
+THUNDERSTORM_ORIGIN_SHIFT_PX = -0.5
+
+# Warn if the pixel size that best aligns localizations with image intensity
+# differs from the pixel size used by more than this fraction.
+PIXEL_SIZE_TOLERANCE = 0.005
 
 def check_directory(path):
     if not isinstance(path, str):
         raise TypeError("Path must be a string.")
-    
+
     path = path.strip()
     if path == "":
         raise ValueError("Path is empty.")
-    
+
     if not os.path.exists(path):
         raise FileNotFoundError(
             "Directory does not exist:\n{}".format(path)
@@ -30,55 +41,61 @@ def create_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
         print(f"The directrory {path} is created.")
-        
+
 def filename(path):
     """
     Return filename without extenstion
     """
     return os.path.splitext(os.path.basename(path))[0]
 
-def _offset_foci(image, df, px_size_nm, window=10):
-    arr = np.asarray(image, dtype=float)
-    offsets_x = []
-    offsets_y = []
+def tiff_pixel_size_nm(image):
+    """
+    Pixel size (nm) from ImageJ TIFF tags. ImageJ stores XResolution as
+    pixels per unit, with the unit in the ImageDescription (e.g. unit=micron).
+    """
+    x_res = image.tag_v2.get(282)  # XResolution
+    if x_res is None or float(x_res) == 0:
+        return None
+    desc = str(image.tag_v2.get(270) or "")
+    m = re.search(r"unit=(\S+)", desc)
+    unit = m.group(1).lower() if m else "micron"
+    factor = {"nm": 1.0, "micron": 1000.0, "um": 1000.0, "\\u00b5m": 1000.0, "µm": 1000.0}.get(unit)
+    if factor is None:
+        return None
+    return factor / float(x_res)
 
-    H, W = arr.shape
+def protocol_pixel_size_nm(csv_path):
+    """
+    Pixel size (nm) ThunderSTORM actually used, read from the protocol file
+    written next to the CSV (<csv name>-protocol.txt). None if unavailable.
+    """
+    protocol = os.path.splitext(csv_path)[0] + "-protocol.txt"
+    if not os.path.isfile(protocol):
+        return None
+    with open(protocol, encoding="utf-8", errors="ignore") as f:
+        m = re.search(r'"pixelSize"\s*:\s*([0-9.eE+-]+)', f.read())
+    return float(m.group(1)) if m else None
 
-    for _, row in df.iterrows():
-        x = row["x_nm"] / px_size_nm
-        y = row["y_nm"] / px_size_nm
-
-        # Search around each predicted position
-        x0 = int(round(x))
-        y0 = int(round(y))
-
-        x_min = max(0, x0 - window)
-        x_max = min(W, x0 + window + 1)
-
-        y_min = max(0, y0 - window)
-        y_max = min(H, y0 + window + 1)
-
-        region = arr[y_min:y_max, x_min:x_max]
-
-        if region.size == 0:
-            continue
-
-        # Find brightest pixel
-        dy, dx = np.unravel_index(
-            np.argmax(region),
-            region.shape
-        )
-
-        x_peak = x_min + dx
-        y_peak = y_min + dy
-
-        offsets_x.append(x_peak - x)
-        offsets_y.append(y_peak - y)
-
-    return {
-        "x_offset": np.median(offsets_x),
-        "y_offset": np.median(offsets_y)
-    }
+def estimate_pixel_size_nm(arr, x_nm, y_nm, guess_nm, rel_range=0.05, step_nm=0.05):
+    """
+    QC: find the pixel size that maximizes the mean (smoothed) image intensity
+    at the localizations. A wrong pixel size misplaces foci progressively
+    with distance from the origin, which lowers this score.
+    Returns None if there are too few foci for a reliable estimate.
+    """
+    if len(x_nm) < 30:
+        return None
+    sm = gaussian_filter(np.asarray(arr, dtype=float), 1)
+    candidates = np.arange(guess_nm * (1 - rel_range), guess_nm * (1 + rel_range), step_nm)
+    scores = [
+        map_coordinates(
+            sm,
+            [y_nm / p + THUNDERSTORM_ORIGIN_SHIFT_PX, x_nm / p + THUNDERSTORM_ORIGIN_SHIFT_PX],
+            order=1
+        ).mean()
+        for p in candidates
+    ]
+    return float(candidates[int(np.argmax(scores))])
 
 def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
     # Convert image to numpy array
@@ -102,7 +119,7 @@ def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
         marker="+",
         linewidths=0.25
     )
-    
+
     # Draw red circles
     for _, row in df.iterrows():
         x = row["x_pixel"]
@@ -137,25 +154,16 @@ def draw_foci(image, df, showplot=True, save_image=True, save_path=""):
         plt.show()
 
     plt.close(fig)
-    
-def foci_one_image(image, df, plot=True, save_path=""):
-    # Get pixel size in nm and image dimensions    
-    x_res = float(image.tag_v2.get(282))  # XResolution
-    y_res = float(image.tag_v2.get(283))  # YResolution
-    
-    x_px_size = 1000/x_res
-    y_px_size = 1000/y_res
-    r_px_size = (x_px_size + y_px_size) / 2  # Average pixel size
-    
+
+def foci_one_image(image, df, px_size_nm, plot=True, save_path="", name=""):
+    """
+    Convert ThunderSTORM localizations to pixel coordinates and measure the
+    mean/SD intensity of each focus inside a circle of radius sigma.
+
+    px_size_nm must be the pixel size ThunderSTORM used for this image.
+    """
     arr = np.array(image)
     H, W = arr.shape
-
-    # Storage lists
-    x_list = []
-    y_list = []
-    mean_list = []
-    sd_list = []
-    sigma_list = []
 
     # Prepare dataframe
     df = df.copy()
@@ -168,42 +176,41 @@ def foci_one_image(image, df, plot=True, save_path=""):
         "intensity [photon]": "intensity_photon"
     })
 
-    # Iterate through ThunderSTORM dataframe
-    for _, row in df.iterrows():
-        #offsets = offset_foci(image, df, px_size_nm = x_px_size, window=4)
-        
-        x_px = row["x_nm"] / x_px_size - 5
-        y_px = row["y_nm"] / y_px_size - 5
-        r_px = row["sigma_nm"] / r_px_size
+    # QC: does the pixel size align localizations with the image?
+    best = estimate_pixel_size_nm(arr, df["x_nm"].to_numpy(), df["y_nm"].to_numpy(), px_size_nm)
+    if best is not None and abs(best - px_size_nm) / px_size_nm > PIXEL_SIZE_TOLERANCE:
+        print(
+            f"  WARNING {name}: localizations align best with pixel size "
+            f"{best:.2f} nm, but {px_size_nm:.2f} nm is used. Foci positions and "
+            f"MFI may be wrong; check the ThunderSTORM camera setup."
+        )
 
-        # Circular mask for intensity measurements
-        rr, cc = disk((y_px, x_px), r_px, shape=(H, W))
-        mask = np.zeros((H, W), dtype=bool)
-        mask[rr, cc] = True
-        
-        n_pixels_mask = np.sum(mask)
+    # Pixel coordinates (pixel-centre convention, see THUNDERSTORM_ORIGIN_SHIFT_PX)
+    x_px = df["x_nm"].to_numpy() / px_size_nm + THUNDERSTORM_ORIGIN_SHIFT_PX
+    y_px = df["y_nm"].to_numpy() / px_size_nm + THUNDERSTORM_ORIGIN_SHIFT_PX
+    r_px = df["sigma_nm"].to_numpy() / px_size_nm
 
-        # Compute mean intensity
-        if n_pixels_mask > 0:
-            mean_intensity = arr[mask].mean()
-            sd_intensity = arr[mask].std()
+    mean_list = []
+    sd_list = []
+    for xc, yc, r in zip(x_px, y_px, r_px):
+        # Circular region for intensity measurements
+        rr, cc = disk((yc, xc), r, shape=(H, W))
+        if len(rr) > 0:
+            values = arr[rr, cc]
+            mean_list.append(values.mean())
+            sd_list.append(values.std())
         else:
-            mean_intensity = np.nan
-            sd_intensity = np.nan
-
-        x_list.append(x_px)
-        y_list.append(y_px)
-        sigma_list.append(r_px)
-        mean_list.append(mean_intensity)
-        sd_list.append(sd_intensity)
+            mean_list.append(np.nan)
+            sd_list.append(np.nan)
 
     # Modified dataframe
     df_out = df.copy()
-    df_out["x_pixel"] = x_list
-    df_out["y_pixel"] = y_list
-    df_out["sigma_pixel"] = sigma_list
+    df_out["x_pixel"] = x_px
+    df_out["y_pixel"] = y_px
+    df_out["sigma_pixel"] = r_px
     df_out["foci_MFI"] = mean_list
     df_out["foci_SD"] = sd_list
+    df_out["pixel_size_nm"] = px_size_nm
 
     # Plot only foci centers
     if plot:
@@ -224,8 +231,13 @@ def main():
     # Ask user about the path to the directory with images and foci.csv files
     dir_images = check_directory(input("Enter pathway to the directory with the images: "))
     dir_foci = check_directory(input("Enter pathway to the directory with ThunderSTORM output in .csv format): "))
-    #px = float(input("Enter the pixel size in nm [default value is 57.5]: ") or 57.5)
-    
+
+    # Pixel size override, for ThunderSTORM CSVs produced without a protocol file
+    px_answer = input(
+        "ThunderSTORM pixel size in nm [Enter = read from protocol file, else from TIFF]: "
+    ).strip()
+    px_override = float(px_answer) if px_answer else None
+
     while True:
         answer = input("Save results in the same folder as foci? (Y/N): ").strip().upper()
         if answer == "Y":
@@ -236,11 +248,11 @@ def main():
             break
         else:
             print("Please enter Y or N.")
-    
+
     # -------------------------
     # --- Process foci data ---
     # -------------------------
-    
+
     # List of paths to the images
     paths_images = [
     os.path.join(dir_images, f)
@@ -248,53 +260,76 @@ def main():
     if os.path.isfile(os.path.join(dir_images, f))
     and f.lower().endswith(".tif") and "_roi_" in f.lower()
     ]
-    
+
     print(f"Number of founded images is {len(paths_images)}")
-    
-    # List of paths to the foci.csv
+
+    # List of paths to the ThunderSTORM CSVs (<image>_foci.csv, written by run_thunderstorm.py)
+    suffix = "_foci.csv"
     paths_foci_csv = [
         os.path.join(dir_foci, f)
         for f in os.listdir(dir_foci)
         if os.path.isfile(os.path.join(dir_foci, f))
-        and f.lower().endswith(".csv")   
+        and f.lower().endswith(suffix)
         ]
-    
+
     print(f"Number of founded .csv files is {len(paths_foci_csv)}")
-    
+
     # Create dictionaries
     img_by_key = {filename(image_name).replace(" ", "_"): image_name for image_name in paths_images} # dictionary {image name w/o ext: image path}
-        
-    csv_by_key = {filename(csv_name)[:-5].replace(" ", "_"): csv_name for csv_name in paths_foci_csv} # dictionary {csv file name w/o ext: image path}
-        
-    combined = {k: (img_by_key[k], csv_by_key[k]) for k in img_by_key} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
-    
+
+    csv_by_key = {os.path.basename(csv_name)[:-len(suffix)].replace(" ", "_"): csv_name for csv_name in paths_foci_csv} # dictionary {image name: csv path}
+
+    # Pair only images that have a CSV (and vice versa); report the rest
+    keys = sorted(img_by_key.keys() & csv_by_key.keys())
+    for k in sorted(img_by_key.keys() - csv_by_key.keys()):
+        print(f"No ThunderSTORM CSV for image: {k}")
+    for k in sorted(csv_by_key.keys() - img_by_key.keys()):
+        print(f"No image for ThunderSTORM CSV: {k}")
+    combined = {k: (img_by_key[k], csv_by_key[k]) for k in keys} # dictionary {file_name: (path_to_image, path_to_foci_csv)}
+
     n_images = len(combined)
     print(f"Founded {n_images} pairs of image.tif : foci.csv files.")
-    
+
     # Iteration through combined dictioanry
     for name, (img_path, csv_path) in combined.items():
         try:
             # Open image
             image = Image.open(img_path)
-            
+
             # Read foci.csv file
             df = pd.read_csv(csv_path)
-            
-            #plot_path = os.path.join(output_dir, f"{name}_foci_mapped.png")
+
+            # Pixel size ThunderSTORM used: override > protocol file > TIFF calibration
+            px_tiff = tiff_pixel_size_nm(image)
+            px_protocol = protocol_pixel_size_nm(csv_path)
+            if px_override is not None:
+                px, source = px_override, "user input"
+            elif px_protocol is not None:
+                px, source = px_protocol, "ThunderSTORM protocol"
+            elif px_tiff is not None:
+                px, source = px_tiff, "TIFF calibration (no protocol file found)"
+            else:
+                raise ValueError("pixel size unknown: no protocol file, no TIFF calibration; enter it at the prompt")
+            if px_tiff is not None and abs(px - px_tiff) / px_tiff > PIXEL_SIZE_TOLERANCE:
+                print(f"  NOTE {name}: ThunderSTORM pixel size {px:.2f} nm differs from TIFF calibration {px_tiff:.2f} nm")
+            print(f"  {name}: pixel size {px:.3f} nm ({source})")
+
             result = foci_one_image(image = image,
                                     df = df,
+                                    px_size_nm = px,
                                     plot = True,
-                                    save_path = os.path.join(output_dir, f"{name}_foci.png"))
-            
+                                    save_path = os.path.join(output_dir, f"{name}_foci.png"),
+                                    name = name)
+
             # Save the result to a new .csv file
             result_csv_path = os.path.join(output_dir, f"{name}_foci_mapped.csv")
             result.to_csv(result_csv_path, index=False)
-            
+
             print(f"Sucessfully processed image {name}.")
-            
+
         except Exception as e:
             print(f"Error processing {name}: {e}")
             continue
-        
+
 if __name__ == "__main__":
     main()

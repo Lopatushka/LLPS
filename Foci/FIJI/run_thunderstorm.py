@@ -19,9 +19,11 @@ def ask_params_for_thunderstorm():
     gd = GenericDialog("ThunderSTORM parameters (apply to ALL images)")
 
     # ---- Filter ----
+    # Only the wavelet filter is offered: scale/order below and the default
+    # threshold expression std(Wave.F1) are specific to it.
     gd.addChoice(
         "Filter:",
-        ["Wavelet filter (B-Spline)", "Gaussian filter"],
+        ["Wavelet filter (B-Spline)"],
         "Wavelet filter (B-Spline)"
     )
     gd.addNumericField("Wavelet scale:", 2.0, 1)
@@ -45,13 +47,15 @@ def ask_params_for_thunderstorm():
     # ---- Renderer ----
     gd.addChoice("Renderer:", ["No Renderer", "Gaussian rendering"], "No Renderer")
 
-    # ---- Camera parameters ----
-    gd.addNumericField("Pixel size:", 57.5, 1)
-    gd.addNumericField("Photoelectrons per ADU:", 1.0, 1)
-    gd.addNumericField("Quantum efficiency (0..1):", 1, 1)
-    gd.addNumericField("ADU offset:", 0, 1)
-    gd.addNumericField("Electrons/pixel:", 1, 1)
-    gd.addNumericField("EMCCD gain:", 1, 1)
+    # ---- Camera parameters (applied via ThunderSTORM "Camera setup") ----
+    gd.addMessage("Pixel size is taken from each image's calibration (nm/px);\n"
+                  "the value below is used only for uncalibrated images.")
+    gd.addNumericField("Fallback pixel size (nm):", 57.5, 2)
+    gd.addNumericField("Photoelectrons per ADU:", 1.0, 2)
+    gd.addNumericField("Quantum efficiency (0..1):", 1, 2)
+    gd.addNumericField("Base level / offset (ADU):", 0, 1)
+    gd.addNumericField("Readout noise (e-/px):", 0, 2)
+    gd.addNumericField("EM gain (1 = no EM gain):", 1, 1)
 
     gd.showDialog()
     if gd.wasCanceled():
@@ -100,7 +104,7 @@ def thunderstorm_options(p):
         'order={}'.format(p["order"]),
         'detector=[{}]'.format(p["detector"]),
         'connectivity={}'.format(p["connectivity"]),
-        'threshold={}'.format(p["threshold"]),
+        'threshold=[{}]'.format(p["threshold"]),  # brackets: expression may contain spaces
         'estimator=[{}]'.format(p["estimator"]),
         'sigma={}'.format(p["sigma"]),
         'fitradius={}'.format(p["fitradius"]),
@@ -110,6 +114,38 @@ def thunderstorm_options(p):
         'renderer=[{}]'.format(p["renderer"]),
     ]
     return " ".join(opts)
+
+def image_pixel_size_nm(imp, fallback_nm):
+    """
+    Pixel size in nm from the image calibration, or fallback_nm if the image
+    is uncalibrated. Returns (pixel_size_nm, source_description).
+    """
+    cal = imp.getCalibration()
+    unit = (cal.getUnit() or "").strip().lower()
+    width = cal.pixelWidth
+    if cal.scaled() and width > 0:
+        if unit in ("micron", "microns", "um", u"µm", u"μm"):
+            return width * 1000.0, "image calibration"
+        if unit in ("nm", "nanometer", "nanometers"):
+            return width, "image calibration"
+    return fallback_nm, "fallback (image not calibrated in um/nm)"
+
+def camera_setup(p, pixel_size_nm):
+    """
+    Apply camera parameters in ThunderSTORM. Must run before 'Run analysis',
+    otherwise ThunderSTORM silently uses the last saved camera setup and all
+    nm coordinates / sigma values are scaled by the wrong pixel size.
+    """
+    em = p["em_gain"] > 1
+    opts = (
+        "readoutnoise={} offset={} quantumefficiency={} isemgain={} "
+        "photons2adu={} gainem={} pixelsize={}"
+    ).format(
+        p["readout_noise"], p["base_level"], p["quantum_efficiency"],
+        "true" if em else "false",
+        p["photoelectrons_per_adu"], p["em_gain"] if em else 1.0, pixel_size_nm
+    )
+    IJ.run("Camera setup", opts)
 
 def safe_name(s):
     """Make a string safe for filenames."""
@@ -132,12 +168,13 @@ def close_all_images():
                 imp.changes = False   # avoid "Save changes?" dialog
                 imp.close()
 
-def foci_image(imp, parameters, output_dir):
+def foci_image(imp, parameters, camera, output_dir):
     """
     Process a single image.
 
-    imp  : ImagePlus
-    p    : dict-like parameters (optional, used later)
+    imp        : ImagePlus
+    parameters : ThunderSTORM 'Run analysis' options string
+    camera     : parameter dict from ask_params_for_thunderstorm (camera fields)
     """
     img_name = imp.getTitle()
     img_base = safe_name(os.path.splitext(img_name)[0])
@@ -154,7 +191,10 @@ def foci_image(imp, parameters, output_dir):
         IJ.run(dup, "16-bit", "")
         dup.changes = False
     
-    # Run ThunderSTORM for the image
+    # Camera setup with this image's pixel size, then run ThunderSTORM
+    px_nm, px_source = image_pixel_size_nm(imp, camera["pixel_size"])
+    IJ.log("  Pixel size: {:.3f} nm ({})".format(px_nm, px_source))
+    camera_setup(camera, px_nm)
     IJ.run(dup, "Run analysis", parameters)
 
     # Check that ThunderSTORM output exists
@@ -168,7 +208,9 @@ def foci_image(imp, parameters, output_dir):
     export_opts = (
         'filepath=[{}] '
         'fileformat=[CSV (comma separated)] '
-        'sigma=true intensity=true chi2=false offset=false saveprotocol=false '
+        # saveprotocol=true writes <name>_foci-protocol.txt with the camera
+        # settings used; FOCI_STORM/map.py reads the pixel size from it.
+        'sigma=true intensity=true chi2=false offset=false saveprotocol=true '
         'x=true y=true bkgstd=false id=true uncertainty=false frame=false'
     ).format(csv_path_ij)
 
@@ -200,7 +242,7 @@ def main():
         f for f in os.listdir(input_dir)
         if os.path.isfile(os.path.join(input_dir, f))
         and f.lower().endswith(exts)
-        and "ROI" in f
+        and "roi" in f
     ]
     images.sort()
 
@@ -232,7 +274,7 @@ def main():
 
         # Check that there is image
         if imp is None:
-            IJ.log("SKIP (cannot open image): " + title)
+            IJ.log("SKIP (cannot open image): " + filename)
             continue
 
         title = imp.getTitle()
@@ -245,7 +287,7 @@ def main():
         imp.show()
 
         try:
-            foci_image(imp, ts_opts, output_dir)
+            foci_image(imp, ts_opts, ts_params, output_dir)
 
         except Exception as e:
             IJ.log("IMAGE ANALYSIS FAILED {}: {}".format(title, e))
