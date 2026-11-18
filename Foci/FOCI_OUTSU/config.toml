@@ -6,7 +6,7 @@
 sigma = 0.6
 
 # Foci mask = smoothed image > Otsu threshold * threshold_factor.
-threshold_factor = 3.0
+threshold_factor = 2.0
 
 # Smallest object kept in the mask, in pixels.
 min_area = 2

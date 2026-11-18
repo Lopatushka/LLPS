@@ -98,7 +98,7 @@ def process_image(image_path,
     df["image_id"] = image_name
 
 
-    print("Total detected objects:", len(df))
+    #print("Total detected objects:", len(df))
 
     # Plot or save figure
     if plot or save_path is not None:
@@ -239,7 +239,7 @@ def main():
 
     # Keep the exact parameters used for this run next to the results
     shutil.copyfile(args.config, output_dir / "run_config.toml")
-    print(f"Parameters from {args.config}: {config}")
+    #print(f"Parameters from {args.config}: {config}")
 
     # Find all TIFF images
     paths = sorted(
