@@ -10,6 +10,9 @@ import argparse
 # 1. AGGREGATE ONE IMAGE
 # =====================================================
 
+# Per-cell values copied from <output>/summary/summary.csv
+CELL_FEATURES = ["fraction_signal_in_foci"]
+
 def table_aggregation(path):
 
     df = pd.read_csv(path)
@@ -52,6 +55,7 @@ def table_aggregation(path):
         "mean_intensity",
         "max_intensity",
         "min_intensity",
+        "partition_coefficient",
     ]
 
     row = {
@@ -86,8 +90,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-Aggregate the per-image ROI tables written by FOCI_OUTSU/outsu.py or
-FOCI_GMM/gmm.py into one table
+Aggregate the per-image ROI tables written by outsu.py or
+gmm.py into one table
 with one row per cell (image).
 
 For every <image>_ROIs.csv: n_foci = number of foci, plus the median of
@@ -104,7 +108,10 @@ output:
                                  image_id, n_foci, and the medians of area,
                                  equivalent_diameter_area, eccentricity,
                                  solidity, perimeter, mean_intensity,
-                                 max_intensity, min_intensity.
+                                 max_intensity, min_intensity,
+                                 partition_coefficient, plus the per-cell
+                                 fraction_signal_in_foci (read from
+                                 summary/summary.csv next to the input folder).
                                  Sizes are in pixels.
 
 next step:
@@ -194,6 +201,27 @@ def main():
         )
 
     final = pd.DataFrame(rows)
+
+    # ----------------------------------------------
+    # PER-CELL VALUES FROM summary/summary.csv
+    # ----------------------------------------------
+    # The fraction of nuclear signal in foci is one value per cell, written by
+    # outsu.py / gmm.py into <output>/summary/summary.csv next to roi_measurements/
+
+    summary_path = input_dir.parent / "summary" / "summary.csv"
+    if summary_path.is_file():
+        per_cell = pd.read_csv(summary_path)
+        per_cell["image_id"] = per_cell["image_id"].astype(str)
+        if CELL_FEATURES[0] in per_cell.columns:
+            final["image_id"] = final["image_id"].astype(str)
+            final = final.merge(per_cell[["image_id", *CELL_FEATURES]],
+                                on="image_id", how="left")
+            print(f"Added {', '.join(CELL_FEATURES)} from {summary_path}")
+        else:
+            print(f"Warning: {summary_path} has no {CELL_FEATURES[0]} column "
+                  "(older run?); per-cell features not added")
+    else:
+        print(f"Warning: {summary_path} not found; per-cell features not added")
 
     # ----------------------------------------------
     # SAVE

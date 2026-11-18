@@ -15,7 +15,7 @@ raw multichannel .tif
    │  FIJI/MFI_nuclei.py              (Fiji)  → MFI_nuclei.csv        (optional)
    ▼
 single-nucleus .tif images
-   │  FOCI_OUTSU/outsu.py  or   FOCI_GMM/gmm.py   → per-image foci tables
+   │  outsu.py  or   gmm.py                     → per-image foci tables
    │  agg.py   (both methods)                     → aggregated_data.csv (one row per cell)
    ▼
 aggregated_data.csv for each condition
@@ -29,8 +29,8 @@ plots and statistical tests
 ```
 Foci/
 ├── FIJI/              Jython scripts, run inside Fiji/ImageJ
-├── FOCI_OUTSU/        Otsu threshold foci segmentation
-├── FOCI_GMM/          Gaussian-mixture-model foci segmentation
+├── outsu.py           Otsu threshold foci segmentation   (config_outsu.toml)
+├── gmm.py             Gaussian-mixture-model foci segmentation (config_gmm.toml)
 ├── agg.py             aggregates the foci tables of either method, one row per cell
 ├── STATISTICS/        PCA / UMAP analysis notebooks and helpers
 └── requirements.txt   Python dependencies
@@ -48,7 +48,7 @@ images currently open in Fiji and ask for an output folder.
 | `MFI_nuclei.py` | Measures area and mean intensity of every open image and saves `MFI_nuclei.csv`. |
 | `opener.py` | Opens all files in a folder whose name contains a given pattern and has a given extension. |
 
-### `FOCI_OUTSU/` — Otsu threshold segmentation
+### `outsu.py` — Otsu threshold segmentation
 
 Both `outsu.py` and `gmm.py` expect single-nucleus images with everything outside
 the nucleus set to 0: the non-zero pixels are the nucleus. Foci are only searched
@@ -61,7 +61,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
   transform + watershed to split touching foci, seeds `min_distance` apart;
   fragments smaller than `min_area` are merged into the touching focus; a focus
   split only into such fragments is kept unsplit) or
-  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `FOCI_OUTSU/config.toml`. Outputs go
+  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `config_outsu.toml`. Outputs go
   into the same subfolders as `gmm.py`: `roi_measurements/` (`<image>_ROIs.csv`,
   one row per focus, see *Measured foci features* below), `summary/`
   (`all_ROIs.csv`, and `summary.csv` with the Otsu threshold, the threshold used,
@@ -73,7 +73,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
   With `rolling_ball_radius > 0` the intensities are measured on the
   background-subtracted image, otherwise on the raw image.
 
-### `FOCI_GMM/` — Gaussian mixture model segmentation
+### `gmm.py` — Gaussian mixture model segmentation
 
 - **`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities
   of each image; pixels whose probability of belonging to the brightest
@@ -90,16 +90,15 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
   into subfolders: `histograms/`, `panels/`, `backgrounds/`,
   `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
   `roi_measurements/` (`*_ROIs.csv`) and `summary/`.
-  Parameters are set in `FOCI_GMM/config.toml`.
-- **`diff43.py`** — uses the `smoothed_images/` from a previous `gmm.py` run to
-  compare masks built from component 4 only vs. components 3 + 4.
+  Parameters are set in `config_gmm.toml`.
 
 ### `agg.py` — aggregation (both methods)
 
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
-plus the median of each foci feature. Cells with zero foci are kept
-(`n_foci = 0`).
+plus the median of each foci feature, and the per-cell
+`fraction_signal_in_foci` from `summary/summary.csv` of the same run. Cells with
+zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
 
@@ -153,8 +152,8 @@ Results were produced with the following versions.
 
 ### Parameters
 
-All segmentation parameters are in a `config.toml` file next to each script
-(`FOCI_OUTSU/config.toml`, `FOCI_GMM/config.toml`). Each parameter is commented
+All segmentation parameters are in a config file next to each script
+(`config_outsu.toml`, `config_gmm.toml`; used by default). Each parameter is commented
 in the file. Every run copies the config it used into the output folder as
 `run_config.toml`, so each results folder records how it was produced.
 
@@ -165,17 +164,16 @@ misspelled or missing keys stop the run with an error.
 ### Running
 
 ```bash
-cd Foci/FOCI_OUTSU
-python outsu.py --input <tif_folder> --output <results>         # uses config.toml
+cd Foci
+python outsu.py --input <tif_folder> --output <results>         # uses config_outsu.toml
 python outsu.py -i <tif_folder> -o <results> -c my_config.toml  # other parameters
-python ../agg.py -i <results>/roi_measurements -o <results>    # -> aggregated_data.csv
+python agg.py -i <results>/roi_measurements -o <results>       # -> aggregated_data.csv
 ```
 
 ```bash
-cd Foci/FOCI_GMM
-python gmm.py --input <tif_folder> --output <results>
-python ../agg.py -i <results>/roi_measurements -o <results>
-python diff43.py -i <results> -o <comparison_results>   # optional: G4 vs G3+G4
+cd Foci
+python gmm.py --input <tif_folder> --output <results>           # uses config_gmm.toml
+python agg.py -i <results>/roi_measurements -o <results>
 ```
 
 `--input` and `--output` are required for every script.
@@ -203,11 +201,21 @@ one row per focus. They are computed with `skimage.measure.regionprops_table`.
 | `mean_intensity` | Mean pixel intensity of the focus (MFI) | grey values |
 | `max_intensity` | Brightest pixel of the focus | grey values |
 | `min_intensity` | Dimmest pixel of the focus | grey values |
+| `partition_coefficient` | Mean raw intensity of the focus / mean raw intensity of the nucleoplasm (nucleus minus all foci and a 2 px ring around them). How many times more concentrated the protein is in the focus; independent of expression level | ratio |
 
 Intensities are measured on the background-subtracted image when
 `rolling_ball_radius > 0`, otherwise on the raw image (not on the smoothed one).
+`partition_coefficient` is always measured on the raw image, because the
+rolling ball would remove the nucleoplasm signal it is divided by.
+
+`summary/summary.csv` (one row per cell) also has `nucleus_area_px`,
+`area_fraction` (foci area / nucleus area), `nucleus_mean_intensity`,
+`nucleoplasm_mean_intensity` and `fraction_signal_in_foci` (summed raw intensity
+of all foci / summed raw intensity of the nucleus; 0–1, independent of
+expression level).
 
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
-above over all foci of that cell (the centroids are not aggregated). Cells
-without foci have `n_foci = 0` and empty feature values.
+above over all foci of that cell (the centroids are not aggregated), plus
+`fraction_signal_in_foci` from `summary/summary.csv`. Cells without foci have
+`n_foci = 0` and empty feature values.

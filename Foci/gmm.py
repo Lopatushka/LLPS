@@ -1,9 +1,9 @@
 """GMM foci segmentation of 2D TIFF images.
 
-Install: pip install -r ../requirements.txt
-Run:     python gmm.py --input <images> --output <results> [--config config.toml]
+Install: pip install -r requirements.txt
+Run:     python gmm.py --input <images> --output <results> [--config config_gmm.toml]
 
-Parameters are read from config.toml (next to this script by default) and a copy
+Parameters are read from config_gmm.toml (next to this script by default) and a copy
 is saved into the output folder as run_config.toml.
 """
 from pathlib import Path
@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, binary_fill_holes, distance_transform_edt
+from scipy import ndimage as ndi
 from scipy.stats import norm
 from skimage import io, measure, morphology, restoration, segmentation
 from skimage.feature import peak_local_max
@@ -40,6 +41,42 @@ MAX_FIT_PIXELS = 150000 # Subsample size for the GMM fit; 0 = use all pixels.
 SEGMENTATION = "watershed" # How the mask is split into ROIs: "watershed" or "connected"
 MIN_DISTANCE = 3 # Minimum distance between watershed seeds, in pixels
 SEGMENTATION_METHODS = ("watershed", "connected")
+
+
+# Width (px) of the ring around the foci that is excluded from the nucleoplasm:
+# microscope blur spreads foci light into it and would inflate the nucleoplasm mean
+NUCLEOPLASM_RING_PX = 2
+
+
+def signal_metrics(original, nucleus, labels):
+    """Partition coefficient per focus and fraction of nuclear signal in foci.
+
+    Measured on the raw image: rolling-ball subtraction would remove the
+    nucleoplasm signal itself. Nucleoplasm = nucleus minus the foci and a
+    NUCLEOPLASM_RING_PX ring around them.
+    """
+    foci = labels > 0
+    near_foci = ndi.binary_dilation(foci, structure=np.ones((3, 3)),
+                                    iterations=NUCLEOPLASM_RING_PX) if foci.any() else foci
+    nucleoplasm = nucleus & ~near_foci
+
+    nucleus_mean = float(original[nucleus].mean())
+    nucleoplasm_mean = float(original[nucleoplasm].mean()) if nucleoplasm.any() else np.nan
+
+    total = float(original[nucleus].sum())
+    fraction_in_foci = float(original[foci].sum()) / total if total > 0 else np.nan
+
+    n = int(labels.max())
+    if n and nucleoplasm_mean > 0:
+        raw_means = ndi.mean(original, labels=labels, index=np.arange(1, n + 1))
+        partition = np.asarray(raw_means) / nucleoplasm_mean
+    else:
+        partition = np.full(n, np.nan)
+
+    return dict(partition_coefficient=partition,  # index i = ROI label i + 1
+                nucleus_mean_intensity=nucleus_mean,
+                nucleoplasm_mean_intensity=nucleoplasm_mean,
+                fraction_signal_in_foci=fraction_in_foci)
 
 def log_step(message, start):
     print(
@@ -189,12 +226,16 @@ def process_image(path):
                     'eccentricity', 'solidity', 'perimeter', 'mean_intensity', 'max_intensity', 'min_intensity'))
     
     rois = pd.DataFrame(props)
-    # Image name without extension, same column as in FOCI_OUTSU/outsu.py
+    # Image name without extension, same column as in outsu.py
     rois.insert(0, 'image_id', path.stem)
+
+    # Partition coefficient and fraction of signal in foci (raw image)
+    metrics = signal_metrics(original, nucleus, labels)
+    rois['partition_coefficient'] = metrics['partition_coefficient'][rois['label'].to_numpy(int) - 1]
     
     #t = log_step("ROI measurements completed", t)
     
-    return dict(original=original, nucleus=nucleus, background=background, corrected=corrected,
+    return dict(metrics=metrics, original=original, nucleus=nucleus, background=background, corrected=corrected,
                 smoothed=smoothed, mask=mask, labels=labels, gmm=gmm,
                 signal_indices=signal_indices, signal_prob=signal_prob, rois=rois)
 
@@ -419,7 +460,7 @@ def plot_results(result, name, output=None):
     plt.close(fig)
 
 
-DEFAULT_CONFIG = Path(__file__).with_name("config.toml")
+DEFAULT_CONFIG = Path(__file__).with_name("config_gmm.toml")
 
 # config.toml key -> (module variable, allowed types)
 CONFIG_KEYS = {
@@ -497,15 +538,19 @@ output (subfolders of the --output folder):
                                       area, centroid-0/-1,
                                       equivalent_diameter_area, eccentricity,
                                       solidity, perimeter,
-                                      mean/max/min_intensity. Sizes are in
+                                      mean/max/min_intensity,
+                                      partition_coefficient. Sizes are in
                                       pixels.
                                       Intensities are measured on the
                                       background-subtracted image if
-                                      rolling_ball_radius > 0, else raw.
+                                      rolling_ball_radius > 0, else raw;
+                                      partition_coefficient always on raw.
   summary/all_ROIs.csv                all ROI tables combined
   summary/summary.csv                 per image (image_id): number of foci,
                                       nucleus area (non-zero px), total foci
-                                      area (px), foci area / nucleus area
+                                      area (px), foci area / nucleus area,
+                                      nucleus and nucleoplasm mean intensity,
+                                      fraction of nuclear signal in foci
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -515,7 +560,7 @@ output (subfolders of the --output folder):
   run_config.toml                     copy of the parameter file used
 
 next step:
-  python ../agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
+  python agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
 
 examples:
   python gmm.py -i nuclei_tif/ -o results_gmm/
@@ -657,7 +702,10 @@ def main():
                 "n_rois": int(results["labels"].max()),
                 "nucleus_area_px": int(results["nucleus"].sum()),
                 "total_area_px": int(results["mask"].sum()),
-                "area_fraction": float(results["mask"].sum() / results["nucleus"].sum())
+                "area_fraction": float(results["mask"].sum() / results["nucleus"].sum()),
+                "nucleus_mean_intensity": results["metrics"]["nucleus_mean_intensity"],
+                "nucleoplasm_mean_intensity": results["metrics"]["nucleoplasm_mean_intensity"],
+                "fraction_signal_in_foci": results["metrics"]["fraction_signal_in_foci"],
             })
 
         except Exception as e:
