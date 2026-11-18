@@ -93,12 +93,6 @@ def process_image(image_path,
 
     df = pd.DataFrame(properties)
 
-    # Circularity: 1 means approximately circular
-    df["circularity"] = (
-        4 * np.pi * df["area"]
-        / (df["perimeter"] ** 2 + 1e-8)
-    )
-
     df["image_id"] = image_name
 
 
@@ -205,7 +199,7 @@ input:
 output (written to the --output folder):
   <image>_segmentation.csv   one row per focus: label, area, centroid-0/-1,
                              equivalent_diameter_area, eccentricity, solidity,
-                             perimeter, mean/max/min_intensity, circularity,
+                             perimeter, mean/max/min_intensity,
                              image_id. Sizes are in pixels. Intensities are
                              measured on the background-subtracted image
                              if rolling_ball_radius > 0, else on the raw image.

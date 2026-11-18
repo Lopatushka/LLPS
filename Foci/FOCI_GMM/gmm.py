@@ -142,11 +142,11 @@ def process_image(path):
     
     props = measure.regionprops_table(labels, intensity_image=corrected,  # background-subtracted if ROLLING_BALL_RADIUS > 0
         properties=('label', 'area', 'centroid', 'equivalent_diameter_area',
-                    'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity', 'min_intensity'))
+                    'eccentricity', 'solidity', 'perimeter', 'mean_intensity', 'max_intensity', 'min_intensity'))
     
     rois = pd.DataFrame(props)
-    # Image name without extension, same as image_id in FOCI_OUTSU/outsu.py
-    rois.insert(0, 'image', path.stem)
+    # Image name without extension, same column as in FOCI_OUTSU/outsu.py
+    rois['image_id'] = path.stem
     
     #t = log_step("ROI measurements completed", t)
     
@@ -456,15 +456,16 @@ input:
   Other files in the folder are ignored.
 
 output (subfolders of the --output folder):
-  roi_measurements/<image>_ROIs.csv   one row per focus: image, label, area,
+  roi_measurements/<image>_ROIs.csv   one row per focus: label, area,
                                       centroid-0/-1, equivalent_diameter_area,
-                                      perimeter, eccentricity, solidity,
-                                      mean/max/min_intensity (pixels).
+                                      eccentricity, solidity, perimeter,
+                                      mean/max/min_intensity,
+                                      image_id. Sizes are in pixels.
                                       Intensities are measured on the
                                       background-subtracted image if
                                       rolling_ball_radius > 0, else raw.
   summary/all_ROIs.csv                all ROI tables combined
-  summary/summary.csv                 per image: number of foci, total foci
+  summary/summary.csv                 per image (image_id): number of foci, total foci
                                       area (px), foci area fraction
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
@@ -612,7 +613,7 @@ def main():
         all_roi_tables.append(roi_df)
 
         summary.append({
-            "image": path.stem,
+            "image_id": path.stem,
             "n_components": N_COMPONENTS,
             "signal_components": SIGNAL_COMPONENTS,
             "n_rois": int(results["labels"].max()),

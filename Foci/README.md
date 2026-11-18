@@ -57,7 +57,7 @@ images currently open in Fiji and ask for an output folder.
   it writes:
   - `<image>_segmentation.csv`: one row per focus (`area`, `centroid`,
     `equivalent_diameter_area`, `eccentricity`, `solidity`, `perimeter`,
-    `mean/max/min_intensity`, `circularity`, `image_id`). With
+    `mean/max/min_intensity`, `image_id`). With
     `rolling_ball_radius > 0` the intensities are measured on the
     background-subtracted image, otherwise on the raw image.
   - `<image>_segmentation.png`: mask, distance transform and watershed overlay
