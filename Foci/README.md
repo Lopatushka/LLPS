@@ -50,16 +50,22 @@ images currently open in Fiji and ask for an output folder.
 
 ### `FOCI_OUTSU/` — Otsu threshold segmentation
 
+Both `outsu.py` and `gmm.py` expect single-nucleus images with everything outside
+the nucleus set to 0: the non-zero pixels are the nucleus. Foci are only searched
+inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
+
 - **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: optional
   rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
-  default) → Gaussian smoothing (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
+  default) → Gaussian smoothing (`sigma`) → Otsu threshold (computed on the nucleus, i.e. the non-zero pixels) × `threshold_factor` → small-object removal
   (`min_area`) → foci ROIs: `segmentation = "watershed"` (default; distance
-  transform + watershed to split touching foci, seeds `min_distance` apart) or
+  transform + watershed to split touching foci, seeds `min_distance` apart;
+  fragments smaller than `min_area` are merged into the touching focus; a focus
+  split only into such fragments is kept unsplit) or
   `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `FOCI_OUTSU/config.toml`. Outputs go
   into the same subfolders as `gmm.py`: `roi_measurements/` (`<image>_ROIs.csv`,
   one row per focus, see *Measured foci features* below), `summary/`
   (`all_ROIs.csv`, and `summary.csv` with the Otsu threshold, the threshold used,
-  number of foci and foci area per image), `binary_masks/`, `labeled_rois/`
+  number of foci, nucleus area and foci area per image), `binary_masks/`, `labeled_rois/`,
   `backgrounds/`, `corrected_images/`, `smoothed_images/`,
   and — if `save_figures = true` — `panels/` (`<image>_six_panels.png`: original,
   background, corrected, mask, distance transform, segmented ROIs) and
@@ -73,7 +79,9 @@ images currently open in Fiji and ask for an output folder.
   of each image; pixels whose probability of belonging to the brightest
   component(s) (`signal_components`) is at least `probability_threshold` form
   the foci mask. The mask is split into ROIs by `segmentation`: `"watershed"`
-  (default; distance transform + watershed, seeds `min_distance` apart) or
+  (default; distance transform + watershed, seeds `min_distance` apart;
+  fragments smaller than `min_area` are merged into the touching focus; a focus
+  split only into such fragments is kept unsplit) or
   `"connected"` (connected regions); ROIs smaller than `min_area` are then removed.
   Optional rolling-ball background subtraction (`rolling_ball_radius`, `0` =
   off) and Gaussian smoothing. With `rolling_ball_radius > 0` the foci

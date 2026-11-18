@@ -9,6 +9,7 @@ is saved into the output folder as run_config.toml.
 from pathlib import Path
 import argparse
 import shutil
+import traceback
 import tomllib
 import numpy as np
 import pandas as pd
@@ -75,7 +76,7 @@ def validate_parameters():
         raise ValueError('MIN_DISTANCE must be >= 1')
 
     if SMOOTH_SIGMA < 0 or MIN_AREA < 1:
-        raise ValueError('Check rolling ball radius, sigma, and minimum area')
+        raise ValueError('SMOOTH_SIGMA must be >= 0 and MIN_AREA >= 1')
 
 
 def process_image(path):
@@ -88,6 +89,11 @@ def process_image(path):
     original = original.astype(np.float64)
     if not np.isfinite(original).all():
         raise ValueError(f'{path.name}: image contains NaN or infinity')
+
+    # Nucleus = non-zero pixels (everything outside the nucleus is set to 0)
+    nucleus = original > 0
+    if not nucleus.any():
+        raise ValueError(f'{path.name}: image has no non-zero (nucleus) pixels')
     
     #t = log_step("Image loaded", t)
     
@@ -140,8 +146,8 @@ def process_image(path):
     
     #t = log_step("Probabilities completed", t)
     
-    mask = signal_prob >= PROBABILITY_THRESHOLD
-    mask = morphology.remove_small_objects(mask, min_size=MIN_AREA)
+    mask = (signal_prob >= PROBABILITY_THRESHOLD) & nucleus
+    mask = morphology.remove_small_objects(mask, min_size=MIN_AREA, connectivity=2)
     
     if FILL_HOLES:
         mask = binary_fill_holes(mask)
@@ -152,11 +158,18 @@ def process_image(path):
         coordinates = peak_local_max(distance, min_distance=MIN_DISTANCE, labels=mask)
         markers = np.zeros(mask.shape, dtype=np.int32)
         markers[tuple(coordinates.T)] = np.arange(1, len(coordinates) + 1)
-        labels = segmentation.watershed(-distance, markers, mask=mask)
+        # connectivity=2: also reach diagonally connected pixels
+        labels = segmentation.watershed(-distance, markers, mask=mask, connectivity=2)
+
+        # Merge fragments smaller than min_area into the touching ROI: the
+        # remaining ROIs are grown back over the mask by a second watershed.
+        # Fragments that touch no larger ROI stay 0 and are removed below.
+        big = morphology.remove_small_objects(labels, min_size=MIN_AREA)
+        labels = segmentation.watershed(-distance, big, mask=mask, connectivity=2)
     else:
         labels = measure.label(mask, connectivity=2)
 
-    # Drop ROIs smaller than min_area (watershed can split off small fragments),
+    # Drop ROIs smaller than min_area (isolated small objects),
     # renumber 1..N and keep the mask consistent with the ROIs
     labels = morphology.remove_small_objects(labels, min_size=MIN_AREA)
     labels = segmentation.relabel_sequential(labels)[0]
@@ -174,7 +187,7 @@ def process_image(path):
     
     #t = log_step("ROI measurements completed", t)
     
-    return dict(original=original, background=background, corrected=corrected,
+    return dict(original=original, nucleus=nucleus, background=background, corrected=corrected,
                 smoothed=smoothed, mask=mask, labels=labels, gmm=gmm,
                 signal_indices=signal_indices, signal_prob=signal_prob, rois=rois)
 
@@ -483,8 +496,9 @@ output (subfolders of the --output folder):
                                       background-subtracted image if
                                       rolling_ball_radius > 0, else raw.
   summary/all_ROIs.csv                all ROI tables combined
-  summary/summary.csv                 per image (image_id): number of foci, total foci
-                                      area (px), foci area fraction
+  summary/summary.csv                 per image (image_id): number of foci,
+                                      nucleus area (non-zero px), total foci
+                                      area (px), foci area / nucleus area
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -516,7 +530,6 @@ def main():
     args = parse_args()
     config = load_config(args.config)
     
-    # Ask user for directories if they were not given on the command line
     IMAGE_FOLDER = args.input
     OUTPUT_FOLDER = args.output
     
@@ -562,90 +575,99 @@ def main():
     
     all_roi_tables, summary = [], []
     
-    # Import images and process them
+    # Import images and process them; an error in one image skips it
+    failed = []
     for path in paths:
+        try:
+            print(f"\nProcessing: {path.name}", flush=True)
         
-        print(f"\nProcessing: {path.name}", flush=True)
+            results = process_image(path)
+            name = path.stem
         
-        results = process_image(path)
-        name = path.stem
+            # Six-panel visualization
+            plot_results(
+                results,
+                name=name,
+                output=OUTPUT_DIRS["panels"]
+            )
         
-        # Six-panel visualization
-        plot_results(
-            results,
-            name=name,
-            output=OUTPUT_DIRS["panels"]
-        )
-        
-        # Separate GMM histogram
-        # This assumes your histogram function accepts save_path.
-        draw_histogram(
-            results,
-            name=name,
-            save_path=OUTPUT_DIRS["histograms"] / f"{name}_histograms.png"
-        )
+            # Separate GMM histogram
+            draw_histogram(
+                results,
+                name=name,
+                save_path=OUTPUT_DIRS["histograms"] / f"{name}_histograms.png"
+            )
 
-        # Background image
-        io.imsave(
-            OUTPUT_DIRS["backgrounds"] / f"{name}_background.tif",
-            results["background"].astype(np.float32),
-            check_contrast=False
-        )
+            # Background image
+            io.imsave(
+                OUTPUT_DIRS["backgrounds"] / f"{name}_background.tif",
+                results["background"].astype(np.float32),
+                check_contrast=False
+            )
 
-        # Background-corrected image
-        io.imsave(
-            OUTPUT_DIRS["corrected"] / f"{name}_corrected.tif",
-            results["corrected"].astype(np.float32),
-            check_contrast=False
-        )
+            # Background-corrected image
+            io.imsave(
+                OUTPUT_DIRS["corrected"] / f"{name}_corrected.tif",
+                results["corrected"].astype(np.float32),
+                check_contrast=False
+            )
 
-        # Smoothed image
-        io.imsave(
-            OUTPUT_DIRS["smoothed"] / f"{name}_smoothed.tif",
-            results["smoothed"].astype(np.float32),
-            check_contrast=False
-        )
+            # Smoothed image
+            io.imsave(
+                OUTPUT_DIRS["smoothed"] / f"{name}_smoothed.tif",
+                results["smoothed"].astype(np.float32),
+                check_contrast=False
+            )
 
-        # Binary mask
-        io.imsave(
-            OUTPUT_DIRS["masks"] / f"{name}_mask.tif",
-            results["mask"].astype(np.uint8) * 255,
-            check_contrast=False
-        )
+            # Binary mask
+            io.imsave(
+                OUTPUT_DIRS["masks"] / f"{name}_mask.tif",
+                results["mask"].astype(np.uint8) * 255,
+                check_contrast=False
+            )
 
-        # Labeled ROIs
-        io.imsave(
-            OUTPUT_DIRS["labels"] / f"{name}_labels.tif",
-            results["labels"].astype(np.int32),
-            check_contrast=False
-        )
+            # Labeled ROIs
+            io.imsave(
+                OUTPUT_DIRS["labels"] / f"{name}_labels.tif",
+                results["labels"].astype(np.int32),
+                check_contrast=False
+            )
 
-        # ROI measurements
-        roi_df = results["rois"].copy()
+            # ROI measurements
+            roi_df = results["rois"].copy()
 
-        roi_df.to_csv(
-            OUTPUT_DIRS["measurements"] / f"{name}_ROIs.csv",
-            index=False
-        )
+            roi_df.to_csv(
+                OUTPUT_DIRS["measurements"] / f"{name}_ROIs.csv",
+                index=False
+            )
 
-        all_roi_tables.append(roi_df)
+            all_roi_tables.append(roi_df)
 
-        summary.append({
-            "image_id": path.stem,
-            "n_components": N_COMPONENTS,
-            "signal_components": SIGNAL_COMPONENTS,
-            "n_rois": int(results["labels"].max()),
-            "total_area_px": int(results["mask"].sum()),
-            "area_fraction": float(results["mask"].mean())
-        })
+            summary.append({
+                "image_id": path.stem,
+                "n_components": N_COMPONENTS,
+                "signal_components": SIGNAL_COMPONENTS,
+                "n_rois": int(results["labels"].max()),
+                "nucleus_area_px": int(results["nucleus"].sum()),
+                "total_area_px": int(results["mask"].sum()),
+                "area_fraction": float(results["mask"].sum() / results["nucleus"].sum())
+            })
+
+        except Exception as e:
+            print(f"Error processing {path.name}: {e}")
+            traceback.print_exc()
+            failed.append(path.name)
+        finally:
+            plt.close("all")
 
     # Save combined results
-    combined_df = pd.concat(all_roi_tables, ignore_index=True)
+    if all_roi_tables:
+        combined_df = pd.concat(all_roi_tables, ignore_index=True)
 
-    combined_df.to_csv(
-        OUTPUT_DIRS["summary"] / "all_ROIs.csv",
-        index=False
-    )
+        combined_df.to_csv(
+            OUTPUT_DIRS["summary"] / "all_ROIs.csv",
+            index=False
+        )
 
     summary_df = pd.DataFrame(summary)
 
@@ -654,7 +676,10 @@ def main():
         index=False
     )
 
-    print("\nAll images processed successfully.")
+    if failed:
+        print(f"\nDone with errors: {len(failed)} of {len(paths)} images failed: {', '.join(failed)}")
+    else:
+        print("\nAll images processed successfully.")
        
 
 if __name__ == '__main__':

@@ -28,7 +28,17 @@ def process_image(image_path,
     image_path = Path(image_path)
 
     # 1. Load and convert to float
-    original = io.imread(image_path).astype(np.float32)
+    original = io.imread(image_path)
+    if original.ndim != 2:
+        raise ValueError(f"{image_path.name}: expected 2D grayscale TIFF, got {original.shape}")
+    original = original.astype(np.float32)
+    if not np.isfinite(original).all():
+        raise ValueError(f"{image_path.name}: image contains NaN or infinity")
+
+    # Nucleus = non-zero pixels (everything outside the nucleus is set to 0)
+    nucleus = original > 0
+    if not nucleus.any():
+        raise ValueError(f"{image_path.name}: image has no non-zero (nucleus) pixels")
 
     # 2. Background subtraction (rolling ball); 0 disables it
     if rolling_ball_radius > 0:
@@ -45,15 +55,17 @@ def process_image(image_path,
         preserve_range=True
     )
 
-    # 4. Otsu threshold
-    otsu_threshold = float(filters.threshold_otsu(smoothed))
+    # 4. Otsu threshold, computed on the nucleus pixels only (the zeros
+    #    outside the nucleus would otherwise pull the threshold down)
+    otsu_threshold = float(filters.threshold_otsu(smoothed[nucleus]))
     threshold = otsu_threshold * threshold_factor
 
-    binary_mask = smoothed > threshold
+    binary_mask = (smoothed > threshold) & nucleus
 
     mask = morphology.remove_small_objects(
         binary_mask,
-        min_size=min_area
+        min_size=min_area,
+        connectivity=2  # 8-connectivity, same as the ROIs
     )
 
     # 5. Split the mask into foci: watershed on the distance transform
@@ -75,12 +87,19 @@ def process_image(image_path,
         labels = segmentation.watershed(
             -distance,
             markers,
-            mask=mask
+            mask=mask,
+            connectivity=2  # also reach diagonally connected pixels
         )
+
+        # Merge fragments smaller than min_area into the touching ROI: the
+        # remaining ROIs are grown back over the mask by a second watershed.
+        # Fragments that touch no larger ROI stay 0 and are removed below.
+        big = morphology.remove_small_objects(labels, min_size=min_area)
+        labels = segmentation.watershed(-distance, big, mask=mask, connectivity=2)
     else:
         labels = measure.label(mask, connectivity=2)
 
-    # Drop ROIs smaller than min_area (watershed can split off small fragments),
+    # Drop ROIs smaller than min_area (isolated small objects),
     # renumber 1..N and keep the mask consistent with the ROIs
     labels = morphology.remove_small_objects(labels, min_size=min_area)
     labels = segmentation.relabel_sequential(labels)[0]
@@ -107,8 +126,9 @@ def process_image(image_path,
     rois = pd.DataFrame(properties)
     rois.insert(0, "image_id", image_path.stem)
 
-    return dict(original=original, background=background, corrected=corrected,
-                smoothed=smoothed, mask=mask, distance=distance, labels=labels,
+    return dict(original=original, nucleus=nucleus, background=background,
+                corrected=corrected, smoothed=smoothed, mask=mask,
+                distance=distance, labels=labels,
                 otsu_threshold=otsu_threshold, threshold=threshold, rois=rois)
 
 
@@ -246,7 +266,7 @@ Otsu threshold foci segmentation of single-nucleus TIFF images.
 
 For every image: optional rolling-ball background subtraction
 (rolling_ball_radius, 0 = off) -> Gaussian smoothing (sigma) -> mask = pixels above
-Otsu threshold * threshold_factor -> removal of objects smaller than
+Otsu threshold (computed on the nucleus = non-zero pixels) * threshold_factor -> removal of objects smaller than
 min_area -> foci ROIs (segmentation = "watershed": distance transform +
 watershed to split touching foci; "connected": connected regions) ->
 shape and intensity measurements of every focus.""",
@@ -267,8 +287,9 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       Header only if no foci were found.
   summary/all_ROIs.csv                all ROI tables combined
   summary/summary.csv                 per image (image_id): Otsu threshold,
-                                      threshold used, number of foci, total
-                                      foci area (px), foci area fraction
+                                      threshold used, number of foci,
+                                      nucleus area (non-zero px), total
+                                      foci area (px), foci area / nucleus area
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -337,6 +358,9 @@ def main():
         list(input_dir.glob("*.tiff"))
     )
 
+    if not paths:
+        raise FileNotFoundError(f"No .tif/.tiff images found in {input_dir}")
+
     print(f"Found {len(paths)} images")
 
     all_roi_tables, summary = [], []
@@ -379,16 +403,18 @@ def main():
             rois.to_csv(output_dirs["measurements"] / f"{name}_ROIs.csv", index=False)
             all_roi_tables.append(rois)
 
-            # Foci pixels = pixels assigned to an ROI
+            # Foci pixels = pixels assigned to an ROI; fraction of the nucleus area
             foci_pixels = result["labels"] > 0
+            nucleus_area = int(result["nucleus"].sum())
             summary.append({
                 "image_id": name,
                 "otsu_threshold": result["otsu_threshold"],
                 "threshold_factor": config["threshold_factor"],
                 "threshold": result["threshold"],
                 "n_rois": len(rois),
+                "nucleus_area_px": nucleus_area,
                 "total_area_px": int(foci_pixels.sum()),
-                "area_fraction": float(foci_pixels.mean()),
+                "area_fraction": float(foci_pixels.sum() / nucleus_area),
             })
 
             print(f"Processed: {path.name} ({len(rois)} ROIs)")
