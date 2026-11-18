@@ -79,6 +79,7 @@ temp/
 tmp/
 test/
 OLD/
+FOCI_STORM/
 
 # Large/raw data
 data/
