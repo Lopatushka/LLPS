@@ -1,9 +1,11 @@
 # Python dependencies for the Foci analysis scripts and notebooks.
+# Tested with Python 3.13.13 (see README.md, "Tested environment").
 # Scripts that import `ij` / `java` (FIJI/) are Jython scripts
 # run inside Fiji, so they need no pip packages.
 
+imageio==2.37.3
 matplotlib==3.11.0
-numpy==2.4.6
+numpy==2.5.4
 pandas==3.0.3
 Pillow==12.2.0
 scikit-bio==0.7.4
@@ -12,4 +14,5 @@ scikit-learn==1.9.0
 scipy==1.17.1
 seaborn==0.13.2
 statsmodels==0.15.0
+tifffile==2026.6.1
 umap-learn==0.5.12

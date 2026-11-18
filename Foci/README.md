@@ -98,7 +98,7 @@ Install [Fiji](https://fiji.sc/). The `FIJI/` scripts need no extra plugins or
 Python packages.
 
 ### Python
-Python 3.10+ is recommended.
+Use Python 3.13 (the tested version, see below).
 
 ```bash
 git clone https://github.com/Lopatushka/LLPS.git
@@ -109,6 +109,19 @@ pip install -r requirements.txt
 ```
 
 Jupyter (or VS Code with the Jupyter extension) is needed to run the notebooks.
+
+### Tested environment
+
+Results were produced with the following versions.
+
+| Component | Version |
+|---|---|
+| Python | 3.13.13 (conda env, WSL2 / Linux) |
+| Python packages | exact versions pinned in `requirements.txt` |
+| Fiji | 2.16.1 (ImageJ2 2.16.0) |
+| ImageJ | 1.54p |
+| Jython (Fiji script engine) | 2.7.4 |
+| OS for Fiji | Windows 64-bit |
 
 ## Usage
 
