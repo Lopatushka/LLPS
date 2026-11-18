@@ -498,26 +498,13 @@ def plot_results(result, name, output=None):
         ax.set_title(title)
         ax.axis("off")
 
-    # Fifth panel: Segmented ROIs
+    # Fifth panel: ROI boundaries on the background-corrected image
+    # (shows the watershed splits; same style as outsu.py)
     ax = axes[1, 1]
-    # ROI boundaries (shows the watershed splits)
-    span = original.max() - original.min()
-    ax.imshow(segmentation.mark_boundaries(
-        (original - original.min()) / (span if span > 0 else 1),
-        labels, color=(0, 1, 0)
-    ))
-
-    for region in measure.regionprops(labels):
-        y, x = region.centroid
-
-        ax.text(
-            x, y,
-            str(region.label),
-            color="yellow",
-            fontsize=6,
-            ha="center",
-            va="center"
-        )
+    corrected_norm = corrected.astype(float)
+    span = corrected_norm.max() - corrected_norm.min()
+    corrected_norm = (corrected_norm - corrected_norm.min()) / (span if span > 0 else 1)
+    ax.imshow(segmentation.mark_boundaries(corrected_norm, labels))
 
     ax.set_title(f"Segmented ROIs ({SEGMENTATION}, N={labels.max()})")
     ax.axis("off")
