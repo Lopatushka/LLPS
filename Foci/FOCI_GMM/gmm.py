@@ -234,11 +234,11 @@ def draw_histogram(
     result,
     name=None,
     save_path=None,
-    figsize=(16, 5),
+    figsize=(8, 5),
     show=False
 ):
     """
-    Create linear and logarithmic GMM histograms.
+    Create a log-scale GMM histogram.
 
     If save_path is provided, save the figure.
     If show=True, display the figure.
@@ -249,17 +249,10 @@ def draw_histogram(
         result["gmm"]
     )
 
-    fig, axs = plt.subplots(1, 2, figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize)
 
     _draw_histogram_ax(
-        axs[0],
-        hist,
-        result["signal_indices"],
-        log=False
-    )
-
-    _draw_histogram_ax(
-        axs[1],
+        ax,
         hist,
         result["signal_indices"],
         log=True

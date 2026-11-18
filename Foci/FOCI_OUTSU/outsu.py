@@ -128,10 +128,9 @@ def _draw_histogram_ax(ax, result, threshold_factor, log=False):
 
 
 def draw_histogram(result, name, threshold_factor, save_path, figure_dpi):
-    """Linear and logarithmic intensity histograms with the Otsu threshold."""
-    fig, axs = plt.subplots(1, 2, figsize=(16, 5))
-    _draw_histogram_ax(axs[0], result, threshold_factor, log=False)
-    _draw_histogram_ax(axs[1], result, threshold_factor, log=True)
+    """Log-scale intensity histogram with the Otsu threshold."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _draw_histogram_ax(ax, result, threshold_factor, log=True)
     fig.suptitle(f"{name}: intensity distributions", fontsize=14)
     fig.tight_layout()
     try:
