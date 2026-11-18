@@ -1,6 +1,7 @@
 import pandas as pd
 from pathlib import Path
 import traceback
+import argparse
 
 def table_aggregation(path):
     df = pd.read_csv(path)
@@ -38,9 +39,51 @@ def table_aggregation(path):
     
     return row
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+Aggregate the per-image foci tables written by foci.py into one table
+with one row per cell (image).
+
+For every <image>_segmentation.csv: n_foci = number of foci, plus the
+median of each foci feature over all foci of that cell. Cells without
+foci are kept with n_foci = 0 and empty (NaN) feature values.""",
+        epilog="""\
+input:
+  The output folder of foci.py, containing <image>_segmentation.csv files
+  (other files, including an earlier aggregated_data.csv, are ignored).
+
+output:
+  <output>/aggregated_data.csv   one row per cell with columns:
+                                 image_id, n_foci, and the medians of area,
+                                 equivalent_diameter_area, eccentricity,
+                                 solidity, perimeter, mean_intensity,
+                                 max_intensity, min_intensity.
+                                 Sizes are in pixels.
+
+next step:
+  Add the aggregated_data.csv of each condition to the `data` list in
+  STATISTICS/PCA.ipynb or STATISTICS/UMAP.ipynb.
+
+examples:
+  python agg.py -i results/ -o results/
+  python agg.py -i WT/otsu/ -o WT/""",
+    )
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
+                        help="folder with the per-image foci tables "
+                             "(asked interactively if omitted)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+                        help="folder for aggregated_data.csv; created if it does not exist, "
+                             "an existing aggregated_data.csv is overwritten "
+                             "(asked interactively if omitted)")
+    return parser.parse_args()
+
+
 def main():
-    input_dir = Path(input("Enter input folder path: ").strip().strip('"'))
-    output_dir = Path(input("Enter output folder path: ").strip().strip('"'))
+    args = parse_args()
+    input_dir = args.input or Path(input("Enter input folder path: ").strip().strip('"'))
+    output_dir = args.output or Path(input("Enter output folder path: ").strip().strip('"'))
     
     # Validate input folder
     if not input_dir.is_dir():

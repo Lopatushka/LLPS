@@ -1,0 +1,21 @@
+# Parameters for foci.py (Otsu threshold + watershed foci segmentation).
+# A copy of this file is saved into every output folder as run_config.toml.
+# All keys are required; unknown keys are rejected to catch typos.
+
+# Gaussian smoothing before thresholding, in pixels.
+sigma = 0.6
+
+# Foci mask = smoothed image > Otsu threshold * threshold_factor.
+threshold_factor = 3.0
+
+# Smallest object kept in the mask, in pixels.
+min_area = 2
+
+# Minimum distance between watershed seeds (peaks of the distance transform), in pixels.
+min_distance = 3
+
+# Save the segmentation figure (<image>_segmentation.png) for every image.
+save_figures = true
+
+# Resolution of the saved figures.
+figure_dpi = 300

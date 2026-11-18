@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import traceback
+import argparse
 
 
 # =====================================================
@@ -75,13 +76,58 @@ def table_aggregation(path):
 # 2. PROCESS ALL CSV FILES
 # =====================================================
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+Aggregate the per-image ROI tables written by gmm.py into one table
+with one row per cell (image).
+
+For every <image>_ROIs.csv: n_foci = number of foci, plus the median of
+each foci feature over all foci of that cell. Cells without foci are
+kept with n_foci = 0 and empty (NaN) feature values.""",
+        epilog="""\
+input:
+  The roi_measurements/ subfolder of a gmm.py output folder, containing
+  <image>_ROIs.csv files (other files are ignored).
+
+output:
+  <output>/aggregated_data.csv   one row per cell with columns:
+                                 image_id, n_foci, and the medians of area,
+                                 equivalent_diameter_area, eccentricity,
+                                 solidity, perimeter, mean_intensity,
+                                 max_intensity, min_intensity.
+                                 Sizes are in pixels.
+
+next step:
+  Add the aggregated_data.csv of each condition to the `data` list in
+  STATISTICS/PCA.ipynb or STATISTICS/UMAP.ipynb.
+
+examples:
+  python agg.py -i results_gmm/roi_measurements/ -o results_gmm/
+  python agg.py -i WT/gmm4/roi_measurements/ -o WT/gmm4/""",
+    )
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
+                        help="folder with the per-image foci tables "
+                             "(asked interactively if omitted)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+                        help="folder for aggregated_data.csv; created if it does not exist, "
+                             "an existing aggregated_data.csv is overwritten "
+                             "(asked interactively if omitted)")
+    return parser.parse_args()
+
+
 def main():
 
-    input_path = input(
+    args = parse_args()
+
+    # Ask interactively for folders that were not given on the command line;
+    # an empty answer uses the default shown in brackets
+    input_path = args.input or input(
         "Enter input folder path [GMM_refined_segmentation/measurements]: "
     ).strip().strip('"')
 
-    output_path = input(
+    output_path = args.output or input(
         "Enter output folder path [GMM_refined_segmentation]: "
     ).strip().strip('"')
 

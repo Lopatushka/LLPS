@@ -1,8 +1,15 @@
-"""ORC1 four-image Standard GMM segmentation.
-Install: pip install numpy pandas matplotlib scipy scikit-image scikit-learn tifffile
-Put exactly four 2D TIFF files in ./images and run this script.
+"""GMM foci segmentation of 2D TIFF images.
+
+Install: pip install -r ../requirements.txt
+Run:     python gmm.py --input <images> --output <results> [--config config.toml]
+
+Parameters are read from config.toml (next to this script by default) and a copy
+is saved into the output folder as run_config.toml.
 """
 from pathlib import Path
+import argparse
+import shutil
+import tomllib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,12 +19,13 @@ from skimage import io, measure, morphology, restoration
 from sklearn.mixture import GaussianMixture
 import time
 
-# ========== CONFIG ==========
+# ========== DEFAULTS ==========
+# Used when the module is imported. main() overrides them from config.toml.
 N_COMPONENTS = 4 # Number of GMM components to fit
 SIGNAL_COMPONENTS = [4] # Components selected for segmentation (ordered by mean intensity)
 
 PROBABILITY_THRESHOLD = 0.5
-ROLLING_BALL_RADIUS = None # Set to None to skip background subtraction
+ROLLING_BALL_RADIUS = 0 # 0 = skip background subtraction
 SMOOTH_SIGMA = 1.0
 MIN_AREA = 20
 FILL_HOLES = True
@@ -26,7 +34,7 @@ RANDOM_STATE = 42
 HIST_BINS = 200
 HIST_PERCENTILE = 99.99
 FIG_DPI = 180
-MAX_FIT_PIXELS = 150000 # For large images, set to e.g. 150000 to reduce GMM fit time.
+MAX_FIT_PIXELS = 150000 # Subsample size for the GMM fit; 0 = use all pixels.
 
 def log_step(message, start):
     print(
@@ -50,9 +58,11 @@ def validate_parameters():
     if not (0 < PROBABILITY_THRESHOLD <= 1):
         raise ValueError('PROBABILITY_THRESHOLD must be in (0, 1]')
     
-    if ROLLING_BALL_RADIUS is not None:
-        if ROLLING_BALL_RADIUS <= 0:
-            raise ValueError('ROLLING_BALL_RADIUS must be a positive number')
+    if ROLLING_BALL_RADIUS is not None and ROLLING_BALL_RADIUS < 0:
+        raise ValueError('ROLLING_BALL_RADIUS must be >= 0 (0 = no background subtraction)')
+    
+    if MAX_FIT_PIXELS is not None and MAX_FIT_PIXELS < 0:
+        raise ValueError('MAX_FIT_PIXELS must be >= 0 (0 = use all pixels)')
         
     if SMOOTH_SIGMA < 0 or MIN_AREA < 1:
         raise ValueError('Check rolling ball radius, sigma, and minimum area')
@@ -86,7 +96,7 @@ def process_image(path):
     
     pixels = smoothed.reshape(-1, 1)
     
-    if MAX_FIT_PIXELS is not None and len(pixels) > MAX_FIT_PIXELS:
+    if MAX_FIT_PIXELS and len(pixels) > MAX_FIT_PIXELS:
         rng = np.random.default_rng(RANDOM_STATE)
         fit_pixels = pixels[rng.choice(len(pixels), MAX_FIT_PIXELS, replace=False)]
     else:
@@ -144,7 +154,10 @@ def process_image(path):
                 signal_indices=signal_indices, signal_prob=signal_prob, rois=rois)
 
 
-def histogram_data(image, gmm, bins=HIST_BINS, percentile=HIST_PERCENTILE):
+def histogram_data(image, gmm, bins=None, percentile=None):
+    # Read the module settings at call time so that config.toml values apply
+    bins = HIST_BINS if bins is None else bins
+    percentile = HIST_PERCENTILE if percentile is None else percentile
     values = image.ravel()
     lo = float(values.min())
     hi = float(np.percentile(values, percentile))
@@ -371,15 +384,123 @@ def plot_results(result, name, output=None):
     plt.close(fig)
 
 
-def main():
+DEFAULT_CONFIG = Path(__file__).with_name("config.toml")
+
+# config.toml key -> (module variable, allowed types)
+CONFIG_KEYS = {
+    "n_components": ("N_COMPONENTS", int),
+    "signal_components": ("SIGNAL_COMPONENTS", list),
+    "probability_threshold": ("PROBABILITY_THRESHOLD", (int, float)),
+    "rolling_ball_radius": ("ROLLING_BALL_RADIUS", (int, float)),
+    "smooth_sigma": ("SMOOTH_SIGMA", (int, float)),
+    "min_area": ("MIN_AREA", int),
+    "fill_holes": ("FILL_HOLES", bool),
+    "n_init": ("N_INIT", int),
+    "random_state": ("RANDOM_STATE", int),
+    "max_fit_pixels": ("MAX_FIT_PIXELS", int),
+    "hist_bins": ("HIST_BINS", int),
+    "hist_percentile": ("HIST_PERCENTILE", (int, float)),
+    "figure_dpi": ("FIG_DPI", int),
+}
+
+
+def load_config(path):
+    """Read the TOML config, check it and apply it to the module settings."""
+    with open(path, "rb") as f:
+        config = tomllib.load(f)
+
+    missing = CONFIG_KEYS.keys() - config.keys()
+    unknown = config.keys() - CONFIG_KEYS.keys()
+    if missing or unknown:
+        raise ValueError(
+            f"{path}: missing keys {sorted(missing)}, unknown keys {sorted(unknown)}"
+        )
+
+    for key, (name, types) in CONFIG_KEYS.items():
+        value = config[key]
+        # bool is a subclass of int: reject true/false for numeric keys
+        if not isinstance(value, types) or (types is not bool and isinstance(value, bool)):
+            raise TypeError(f"{path}: '{key}' has invalid value {value!r}")
+        if key == "signal_components" and not all(
+            isinstance(c, int) and not isinstance(c, bool) for c in value
+        ):
+            raise TypeError(f"{path}: 'signal_components' must be a list of integers")
+        globals()[name] = value
+
     validate_parameters()
+    if N_INIT < 1 or HIST_BINS < 1 or FIG_DPI < 1:
+        raise ValueError(f"{path}: n_init, hist_bins and figure_dpi must be >= 1")
+    if not (0 < HIST_PERCENTILE <= 100):
+        raise ValueError(f"{path}: hist_percentile must be in (0, 100]")
+
+    return config
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""\
+Gaussian-mixture-model (GMM) foci segmentation of 2D TIFF images.
+
+For every image: optional rolling-ball background subtraction ->
+Gaussian smoothing (smooth_sigma) -> GMM with n_components fitted to the
+pixel intensities -> pixels whose probability of belonging to the
+signal_components is >= probability_threshold form the foci mask ->
+removal of objects smaller than min_area, optional hole filling ->
+shape and intensity measurements of every focus.""",
+        epilog="""\
+input:
+  A folder with 2D grayscale images (*.tif / *.tiff), one nucleus per image,
+  e.g. the single-nucleus images saved by FIJI/nuclei_manual_segment.py.
+  Other files in the folder are ignored.
+
+output (subfolders of the --output folder):
+  roi_measurements/<image>_ROIs.csv   one row per focus: image, label, area,
+                                      centroid-0/-1, equivalent_diameter_area,
+                                      perimeter, eccentricity, solidity,
+                                      mean/max/min_intensity (pixels)
+  summary/all_ROIs.csv                all ROI tables combined
+  summary/summary.csv                 per image: number of foci, total foci
+                                      area (px), foci area fraction
+  binary_masks/<image>_mask.tif       foci mask (0/255)
+  labeled_rois/<image>_labels.tif     labelled foci (1..N)
+  backgrounds/, corrected_images/,    intermediate images (float32)
+  smoothed_images/
+  panels/<image>_six_panels.png       overview figure
+  histograms/<image>_histograms.png   intensity histogram with fitted GMM
+  run_config.toml                     copy of the parameter file used
+
+next step:
+  python agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
+
+examples:
+  python gmm.py -i nuclei_tif/ -o results_gmm/
+  python gmm.py -i nuclei_tif/ -o results_g34/ -c config_g34.toml""",
+    )
+    parser.add_argument("-i", "--input", type=Path, metavar="DIR",
+                        help="folder with the .tif/.tiff images to segment "
+                             "(asked interactively if omitted)")
+    parser.add_argument("-o", "--output", type=Path, metavar="DIR",
+                        help="folder for the results; created if it does not exist, "
+                             "existing files with the same names are overwritten "
+                             "(asked interactively if omitted)")
+    parser.add_argument("-c", "--config", type=Path, default=DEFAULT_CONFIG, metavar="FILE",
+                        help="TOML file with the segmentation parameters; all keys are "
+                             "required, see the comments in the file "
+                             f"(default: {DEFAULT_CONFIG.name} next to this script)")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    config = load_config(args.config)
     
-    # Ask user for directories
-    input_dir = input(
+    # Ask user for directories if they were not given on the command line
+    input_dir = args.input or input(
         "Enter the input directory containing TIFF images: "
     ).strip().strip('"').strip("'")
     
-    output_dir = input(
+    output_dir = args.output or input(
     "Enter the output directory for GMM results: "
     ).strip().strip('"').strip("'")
     
@@ -413,6 +534,10 @@ def main():
     
     for folder in OUTPUT_DIRS.values():
         folder.mkdir(parents=True, exist_ok=True)
+    
+    # Keep the exact parameters used for this run next to the results
+    shutil.copyfile(args.config, OUTPUT_FOLDER / "run_config.toml")
+    print(f"Parameters from {args.config}: {config}")
     
     print(f"\nInput directory: {IMAGE_FOLDER.resolve()}")
     print(f"Output directory: {OUTPUT_FOLDER.resolve()}\n")

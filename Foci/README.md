@@ -50,9 +50,10 @@ images currently open in Fiji and ask for an output folder.
 ### `FOCI_OUTSU/` — Otsu threshold segmentation
 
 - **`foci.py`** — for every `.tif`/`.tiff` in the input folder: Gaussian smoothing
-  (`sigma=0.6`) → Otsu threshold × `threshold_factor` (3 by default in `main`) →
-  small-object removal (`min_area=2`) → distance transform + watershed to split
-  touching foci. For each image it writes:
+  (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
+  (`min_area`) → distance transform + watershed to split
+  touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
+  it writes:
   - `<image>_segmentation.csv`: one row per focus (`area`, `centroid`,
     `equivalent_diameter_area`, `eccentricity`, `solidity`, `perimeter`,
     `mean/max/min_intensity`, `circularity`, `image_id`)
@@ -70,7 +71,7 @@ images currently open in Fiji and ask for an output folder.
   into subfolders: `histograms/`, `panels/`, `backgrounds/`,
   `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
   `roi_measurements/` (`*_ROIs.csv`) and `summary/`.
-  Parameters are set in the `CONFIG` block at the top of the file.
+  Parameters are set in `FOCI_GMM/config.toml`.
 - **`agg.py`** — aggregates the `*_ROIs.csv` tables into `aggregated_data.csv`
   (one row per image).
 - **`diff43.py`** — uses the `smoothed_images/` from a previous `gmm.py` run to
@@ -98,7 +99,8 @@ Install [Fiji](https://fiji.sc/). The `FIJI/` scripts need no extra plugins or
 Python packages.
 
 ### Python
-Use Python 3.13 (the tested version, see below).
+Use Python 3.13 (the tested version, see below); 3.11 is the minimum, because
+the config files are read with the built-in `tomllib`.
 
 ```bash
 git clone https://github.com/Lopatushka/LLPS.git
@@ -125,19 +127,35 @@ Results were produced with the following versions.
 
 ## Usage
 
-The Python scripts ask for the input and output folders interactively:
+### Parameters
+
+All segmentation parameters are in a `config.toml` file next to each script
+(`FOCI_OUTSU/config.toml`, `FOCI_GMM/config.toml`). Each parameter is commented
+in the file. Every run copies the config it used into the output folder as
+`run_config.toml`, so each results folder records how it was produced.
+
+To try other settings (e.g. per microscope or for a sensitivity analysis), copy
+the file, edit the copy and pass it with `--config`. Every key must be present;
+misspelled or missing keys stop the run with an error.
+
+### Running
 
 ```bash
 cd Foci/FOCI_OUTSU
-python foci.py      # input: folder with single-nucleus .tif images
-python agg.py       # input: the foci.py output folder
+python foci.py --input <tif_folder> --output <results>          # uses config.toml
+python foci.py -i <tif_folder> -o <results> -c my_config.toml   # other parameters
+python agg.py -i <results> -o <results>                        # -> aggregated_data.csv
 ```
 
 ```bash
 cd Foci/FOCI_GMM
-python gmm.py
-python agg.py       # input: the roi_measurements/ folder
+python gmm.py --input <tif_folder> --output <results>
+python agg.py -i <results>/roi_measurements -o <results>
 ```
+
+If `--input` / `--output` are omitted, the scripts ask for them interactively.
+Each script's `--help` explains its arguments, the expected input and every
+output file, e.g. `python foci.py --help`.
 
 Then open `STATISTICS/PCA.ipynb` or `STATISTICS/UMAP.ipynb`, point the `data`
 list at the `aggregated_data.csv` files and run the cells.

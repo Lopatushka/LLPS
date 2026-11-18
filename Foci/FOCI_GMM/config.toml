@@ -1,0 +1,42 @@
+# Parameters for gmm.py (Gaussian-mixture-model foci segmentation).
+# A copy of this file is saved into every output folder as run_config.toml.
+# All keys are required; unknown keys are rejected to catch typos.
+
+# Number of Gaussian components fitted to the pixel intensities.
+n_components = 4
+
+# Components used as foci signal, numbered 1..n_components in order of
+# increasing mean intensity (e.g. [4] = brightest only, [3, 4] = two brightest).
+signal_components = [4]
+
+# A pixel is foci if its summed probability of the signal components >= this value. Range (0, 1].
+probability_threshold = 0.5
+
+# Rolling-ball background subtraction radius, in pixels. 0 = no background subtraction.
+rolling_ball_radius = 0
+
+# Gaussian smoothing before fitting, in pixels.
+smooth_sigma = 1.0
+
+# Smallest foci kept, in pixels.
+min_area = 20
+
+# Fill holes inside foci masks.
+fill_holes = true
+
+# Number of GMM initialisations; the best fit is kept.
+n_init = 10
+
+# Seed for the pixel subsampling and GMM initialisation.
+random_state = 42
+
+# Fit the GMM on a random subsample of this many pixels (faster for large images).
+# 0 = use all pixels.
+max_fit_pixels = 150000
+
+# Histogram plots: number of bins and upper intensity percentile shown.
+hist_bins = 200
+hist_percentile = 99.99
+
+# Resolution of the saved figures.
+figure_dpi = 180
