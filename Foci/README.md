@@ -16,7 +16,7 @@ raw multichannel .tif
    ▼
 single-nucleus .tif images
    │  FOCI_OUTSU/outsu.py  or   FOCI_GMM/gmm.py   → per-image foci tables
-   │  FOCI_OUTSU/agg.py   or   FOCI_GMM/agg.py   → aggregated_data.csv (one row per cell)
+   │  agg.py   (both methods)                     → aggregated_data.csv (one row per cell)
    ▼
 aggregated_data.csv for each condition
    │  STATISTICS/PCA.ipynb, STATISTICS/UMAP.ipynb
@@ -31,6 +31,7 @@ Foci/
 ├── FIJI/              Jython scripts, run inside Fiji/ImageJ
 ├── FOCI_OUTSU/        Otsu threshold foci segmentation
 ├── FOCI_GMM/          Gaussian-mixture-model foci segmentation
+├── agg.py             aggregates the foci tables of either method, one row per cell
 ├── STATISTICS/        PCA / UMAP analysis notebooks and helpers
 └── requirements.txt   Python dependencies
 ```
@@ -65,9 +66,6 @@ images currently open in Fiji and ask for an output folder.
   `histograms/` (`<image>_histograms.png`: intensity histogram with the threshold).
   With `rolling_ball_radius > 0` the intensities are measured on the
   background-subtracted image, otherwise on the raw image.
-- **`agg.py`** — reads all `*_ROIs.csv` files in `roi_measurements/` and writes
-  `aggregated_data.csv` with one row per cell: `n_foci` plus the median of each
-  foci feature. Cells with zero foci are kept (`n_foci = 0`).
 
 ### `FOCI_GMM/` — Gaussian mixture model segmentation
 
@@ -85,10 +83,15 @@ images currently open in Fiji and ask for an output folder.
   `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
   `roi_measurements/` (`*_ROIs.csv`) and `summary/`.
   Parameters are set in `FOCI_GMM/config.toml`.
-- **`agg.py`** — aggregates the `*_ROIs.csv` tables into `aggregated_data.csv`
-  (one row per image).
 - **`diff43.py`** — uses the `smoothed_images/` from a previous `gmm.py` run to
   compare masks built from component 4 only vs. components 3 + 4.
+
+### `agg.py` — aggregation (both methods)
+
+Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
+or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
+plus the median of each foci feature. Cells with zero foci are kept
+(`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
 
@@ -157,13 +160,13 @@ misspelled or missing keys stop the run with an error.
 cd Foci/FOCI_OUTSU
 python outsu.py --input <tif_folder> --output <results>         # uses config.toml
 python outsu.py -i <tif_folder> -o <results> -c my_config.toml  # other parameters
-python agg.py -i <results>/roi_measurements -o <results>       # -> aggregated_data.csv
+python ../agg.py -i <results>/roi_measurements -o <results>    # -> aggregated_data.csv
 ```
 
 ```bash
 cd Foci/FOCI_GMM
 python gmm.py --input <tif_folder> --output <results>
-python agg.py -i <results>/roi_measurements -o <results>
+python ../agg.py -i <results>/roi_measurements -o <results>
 python diff43.py -i <results> -o <comparison_results>   # optional: G4 vs G3+G4
 ```
 
@@ -196,7 +199,7 @@ one row per focus. They are computed with `skimage.measure.regionprops_table`.
 Intensities are measured on the background-subtracted image when
 `rolling_ball_radius > 0`, otherwise on the raw image (not on the smoothed one).
 
-`agg.py` (both methods) writes `aggregated_data.csv` with one row per cell:
+`agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated). Cells
 without foci have `n_foci = 0` and empty feature values.

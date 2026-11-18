@@ -279,7 +279,7 @@ output (subfolders of the --output folder, same layout as gmm.py):
   run_config.toml                     copy of the parameter file used
 
 next step:
-  python agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
+  python ../agg.py   (input: <output>/roi_measurements) -> aggregated_data.csv
 
 examples:
   python outsu.py -i nuclei_tif/ -o results/
