@@ -21,7 +21,8 @@ def process_image(image_path,
                   sigma=0.6,
                   min_area=2,
                   min_distance=3,
-                  rolling_ball_radius=0):
+                  rolling_ball_radius=0,
+                  segmentation_method="watershed"):
     """Segment the foci of one image; return the intermediate images and the ROI table."""
 
     image_path = Path(image_path)
@@ -55,25 +56,35 @@ def process_image(image_path,
         min_size=min_area
     )
 
-    # 5. Distance transform + watershed to split touching foci
+    # 5. Split the mask into foci: watershed on the distance transform
+    #    (splits touching foci) or plain connected regions
     distance = ndi.distance_transform_edt(mask)
 
-    coordinates = peak_local_max(
-        distance,
-        min_distance=min_distance,
-        labels=mask
-    )
+    if segmentation_method == "watershed":
+        coordinates = peak_local_max(
+            distance,
+            min_distance=min_distance,
+            labels=mask
+        )
 
-    markers = np.zeros_like(mask, dtype=np.int32)
+        markers = np.zeros_like(mask, dtype=np.int32)
 
-    for i, (y, x) in enumerate(coordinates, start=1):
-        markers[y, x] = i
+        for i, (y, x) in enumerate(coordinates, start=1):
+            markers[y, x] = i
 
-    labels = segmentation.watershed(
-        -distance,
-        markers,
-        mask=mask
-    )
+        labels = segmentation.watershed(
+            -distance,
+            markers,
+            mask=mask
+        )
+    else:
+        labels = measure.label(mask, connectivity=2)
+
+    # Drop ROIs smaller than min_area (watershed can split off small fragments),
+    # renumber 1..N and keep the mask consistent with the ROIs
+    labels = morphology.remove_small_objects(labels, min_size=min_area)
+    labels = segmentation.relabel_sequential(labels)[0]
+    mask = labels > 0
 
     # 6. Measurements
     properties = measure.regionprops_table(
@@ -140,7 +151,7 @@ def draw_histogram(result, name, threshold_factor, save_path, figure_dpi):
 
 
 def plot_results(result, name, config, save_path):
-    """Six-panel overview figure of the Otsu + watershed segmentation."""
+    """Six-panel overview figure of the Otsu segmentation."""
     original = result["original"]
     labels = result["labels"]
 
@@ -160,13 +171,13 @@ def plot_results(result, name, config, save_path):
         ax.set_title(title)
         ax.axis("off")
 
-    # Sixth panel: watershed boundaries on the background-corrected image
+    # Sixth panel: ROI boundaries on the background-corrected image
     ax = axes[1, 2]
     corrected = result["corrected"].astype(float)
     span = corrected.max() - corrected.min()
     corrected = (corrected - corrected.min()) / (span if span > 0 else 1)
     ax.imshow(segmentation.mark_boundaries(corrected, labels))
-    ax.set_title(f"Watershed ROIs (N={len(result['rois'])})")
+    ax.set_title(f"Segmented ROIs ({config['segmentation']}, N={len(result['rois'])})")
     ax.axis("off")
 
     fig.suptitle(
@@ -182,11 +193,15 @@ def plot_results(result, name, config, save_path):
 
 DEFAULT_CONFIG = Path(__file__).with_name("config.toml")
 
+# How the foci mask is split into ROIs
+SEGMENTATION_METHODS = ("watershed", "connected")
+
 CONFIG_TYPES = {
     "sigma": (int, float),
     "threshold_factor": (int, float),
     "min_area": int,
     "min_distance": int,
+    "segmentation": str,
     "rolling_ball_radius": (int, float),
     "save_figures": bool,
     "figure_dpi": int,
@@ -215,6 +230,8 @@ def load_config(path):
         raise ValueError(f"{path}: sigma must be >= 0 and threshold_factor > 0")
     if config["min_area"] < 1 or config["min_distance"] < 1 or config["figure_dpi"] < 1:
         raise ValueError(f"{path}: min_area, min_distance and figure_dpi must be >= 1")
+    if config["segmentation"] not in SEGMENTATION_METHODS:
+        raise ValueError(f"{path}: segmentation must be one of {SEGMENTATION_METHODS}")
     if config["rolling_ball_radius"] < 0:
         raise ValueError(f"{path}: rolling_ball_radius must be >= 0 (0 = no background subtraction)")
 
@@ -225,12 +242,13 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-Otsu + watershed foci segmentation of single-nucleus TIFF images.
+Otsu threshold foci segmentation of single-nucleus TIFF images.
 
 For every image: optional rolling-ball background subtraction
 (rolling_ball_radius, 0 = off) -> Gaussian smoothing (sigma) -> mask = pixels above
 Otsu threshold * threshold_factor -> removal of objects smaller than
-min_area -> distance transform + watershed to split touching foci ->
+min_area -> foci ROIs (segmentation = "watershed": distance transform +
+watershed to split touching foci; "connected": connected regions) ->
 shape and intensity measurements of every focus.""",
         epilog="""\
 input:
@@ -252,7 +270,7 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       threshold used, number of foci, total
                                       foci area (px), foci area fraction
   binary_masks/<image>_mask.tif       foci mask (0/255)
-  labeled_rois/<image>_labels.tif     labelled foci after watershed (1..N)
+  labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
   smoothed_images/
   panels/<image>_six_panels.png       overview figure     (if save_figures = true)
@@ -334,6 +352,7 @@ def main():
                 min_area=config["min_area"],
                 min_distance=config["min_distance"],
                 rolling_ball_radius=config["rolling_ball_radius"],
+                segmentation_method=config["segmentation"],
             )
 
             # Figures
@@ -360,7 +379,7 @@ def main():
             rois.to_csv(output_dirs["measurements"] / f"{name}_ROIs.csv", index=False)
             all_roi_tables.append(rois)
 
-            # Foci pixels = pixels assigned to a watershed ROI
+            # Foci pixels = pixels assigned to an ROI
             foci_pixels = result["labels"] > 0
             summary.append({
                 "image_id": name,

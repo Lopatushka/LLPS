@@ -29,7 +29,7 @@ plots and statistical tests
 ```
 Foci/
 ├── FIJI/              Jython scripts, run inside Fiji/ImageJ
-├── FOCI_OUTSU/        Otsu + watershed foci segmentation
+├── FOCI_OUTSU/        Otsu threshold foci segmentation
 ├── FOCI_GMM/          Gaussian-mixture-model foci segmentation
 ├── STATISTICS/        PCA / UMAP analysis notebooks and helpers
 └── requirements.txt   Python dependencies
@@ -52,15 +52,16 @@ images currently open in Fiji and ask for an output folder.
 - **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: optional
   rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
   default) → Gaussian smoothing (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
-  (`min_area`) → distance transform + watershed to split
-  touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. Outputs go
+  (`min_area`) → foci ROIs: `segmentation = "watershed"` (default; distance
+  transform + watershed to split touching foci, seeds `min_distance` apart) or
+  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `FOCI_OUTSU/config.toml`. Outputs go
   into the same subfolders as `gmm.py`: `roi_measurements/` (`<image>_ROIs.csv`,
   one row per focus, see *Measured foci features* below), `summary/`
   (`all_ROIs.csv`, and `summary.csv` with the Otsu threshold, the threshold used,
   number of foci and foci area per image), `binary_masks/`, `labeled_rois/`
-  (after watershed), `backgrounds/`, `corrected_images/`, `smoothed_images/`,
+  `backgrounds/`, `corrected_images/`, `smoothed_images/`,
   and — if `save_figures = true` — `panels/` (`<image>_six_panels.png`: original,
-  background, corrected, mask, distance transform, numbered watershed ROIs) and
+  background, corrected, mask, distance transform, segmented ROIs) and
   `histograms/` (`<image>_histograms.png`: intensity histogram with the threshold).
   With `rolling_ball_radius > 0` the intensities are measured on the
   background-subtracted image, otherwise on the raw image.
@@ -73,7 +74,9 @@ images currently open in Fiji and ask for an output folder.
 - **`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities
   of each image; pixels whose probability of belonging to the brightest
   component(s) (`signal_components`) is at least `probability_threshold` form
-  the foci mask.
+  the foci mask. The mask is split into ROIs by `segmentation`: `"watershed"`
+  (default; distance transform + watershed, seeds `min_distance` apart) or
+  `"connected"` (connected regions); ROIs smaller than `min_area` are then removed.
   Optional rolling-ball background subtraction (`rolling_ball_radius`, `0` =
   off) and Gaussian smoothing. With `rolling_ball_radius > 0` the foci
   intensities (`mean/max/min_intensity`) are measured on the

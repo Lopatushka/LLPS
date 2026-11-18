@@ -13,9 +13,10 @@ import tomllib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter, binary_fill_holes
+from scipy.ndimage import gaussian_filter, binary_fill_holes, distance_transform_edt
 from scipy.stats import norm
-from skimage import io, measure, morphology, restoration
+from skimage import io, measure, morphology, restoration, segmentation
+from skimage.feature import peak_local_max
 from sklearn.mixture import GaussianMixture
 import time
 
@@ -35,6 +36,9 @@ HIST_BINS = 200
 HIST_PERCENTILE = 99.99
 FIG_DPI = 180
 MAX_FIT_PIXELS = 150000 # Subsample size for the GMM fit; 0 = use all pixels.
+SEGMENTATION = "watershed" # How the mask is split into ROIs: "watershed" or "connected"
+MIN_DISTANCE = 3 # Minimum distance between watershed seeds, in pixels
+SEGMENTATION_METHODS = ("watershed", "connected")
 
 def log_step(message, start):
     print(
@@ -64,6 +68,12 @@ def validate_parameters():
     if MAX_FIT_PIXELS is not None and MAX_FIT_PIXELS < 0:
         raise ValueError('MAX_FIT_PIXELS must be >= 0 (0 = use all pixels)')
         
+    if SEGMENTATION not in SEGMENTATION_METHODS:
+        raise ValueError(f'SEGMENTATION must be one of {SEGMENTATION_METHODS}')
+
+    if MIN_DISTANCE < 1:
+        raise ValueError('MIN_DISTANCE must be >= 1')
+
     if SMOOTH_SIGMA < 0 or MIN_AREA < 1:
         raise ValueError('Check rolling ball radius, sigma, and minimum area')
 
@@ -136,7 +146,21 @@ def process_image(path):
     if FILL_HOLES:
         mask = binary_fill_holes(mask)
         
-    labels = measure.label(mask, connectivity=2)
+    if SEGMENTATION == "watershed":
+        # Distance transform + watershed to split touching foci
+        distance = distance_transform_edt(mask)
+        coordinates = peak_local_max(distance, min_distance=MIN_DISTANCE, labels=mask)
+        markers = np.zeros(mask.shape, dtype=np.int32)
+        markers[tuple(coordinates.T)] = np.arange(1, len(coordinates) + 1)
+        labels = segmentation.watershed(-distance, markers, mask=mask)
+    else:
+        labels = measure.label(mask, connectivity=2)
+
+    # Drop ROIs smaller than min_area (watershed can split off small fragments),
+    # renumber 1..N and keep the mask consistent with the ROIs
+    labels = morphology.remove_small_objects(labels, min_size=MIN_AREA)
+    labels = segmentation.relabel_sequential(labels)[0]
+    mask = labels > 0
     
     #t = log_step("Segmentation completed", t)
     
@@ -318,17 +342,14 @@ def plot_results(result, name, output=None):
         ax.set_title(title)
         ax.axis("off")
 
-    # Fifth panel: Watershed ROIs
+    # Fifth panel: Segmented ROIs
     ax = axes[1, 1]
-    ax.imshow(original, cmap="gray")
-
-    if mask.any() and (~mask).any():
-        ax.contour(
-            mask.astype(float),
-            levels=[0.5],
-            colors="lime",
-            linewidths=0.7
-        )
+    # ROI boundaries (shows the watershed splits)
+    span = original.max() - original.min()
+    ax.imshow(segmentation.mark_boundaries(
+        (original - original.min()) / (span if span > 0 else 1),
+        labels, color=(0, 1, 0)
+    ))
 
     for region in measure.regionprops(labels):
         y, x = region.centroid
@@ -342,7 +363,7 @@ def plot_results(result, name, output=None):
             va="center"
         )
 
-    ax.set_title(f"Watershed ROIs (N={labels.max()})")
+    ax.set_title(f"Segmented ROIs ({SEGMENTATION}, N={labels.max()})")
     ax.axis("off")
 
     # Sixth panel: GMM histogram
@@ -389,6 +410,8 @@ CONFIG_KEYS = {
     "smooth_sigma": ("SMOOTH_SIGMA", (int, float)),
     "min_area": ("MIN_AREA", int),
     "fill_holes": ("FILL_HOLES", bool),
+    "segmentation": ("SEGMENTATION", str),
+    "min_distance": ("MIN_DISTANCE", int),
     "n_init": ("N_INIT", int),
     "random_state": ("RANDOM_STATE", int),
     "max_fit_pixels": ("MAX_FIT_PIXELS", int),
@@ -441,7 +464,8 @@ Gaussian smoothing (smooth_sigma) -> GMM with n_components fitted to the
 pixel intensities -> pixels whose probability of belonging to the
 signal_components is >= probability_threshold form the foci mask ->
 removal of objects smaller than min_area, optional hole filling ->
-shape and intensity measurements of every focus.""",
+foci ROIs (segmentation = "watershed": distance transform + watershed to
+split touching foci; "connected": connected regions) -> shape and intensity measurements of every focus.""",
         epilog="""\
 input:
   A folder with 2D grayscale images (*.tif / *.tiff), one nucleus per image,

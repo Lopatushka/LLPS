@@ -26,6 +26,15 @@ min_area = 20
 # Fill holes inside foci masks.
 fill_holes = true
 
+# How the foci mask is split into ROIs:
+#   "watershed" = distance transform + watershed, splits touching foci
+#   "connected" = connected regions of the mask (8-connectivity)
+segmentation = "watershed"
+
+# Minimum distance between watershed seeds (peaks of the distance transform), in pixels.
+# Used only with segmentation = "watershed".
+min_distance = 3
+
 # Number of GMM initialisations; the best fit is kept.
 n_init = 10
 

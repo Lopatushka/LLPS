@@ -1,4 +1,4 @@
-# Parameters for outsu.py (Otsu threshold + watershed foci segmentation).
+# Parameters for outsu.py (Otsu threshold foci segmentation).
 # A copy of this file is saved into every output folder as run_config.toml.
 # All keys are required; unknown keys are rejected to catch typos.
 
@@ -11,7 +11,13 @@ threshold_factor = 2.0
 # Smallest object kept in the mask, in pixels.
 min_area = 2
 
+# How the foci mask is split into ROIs:
+#   "watershed" = distance transform + watershed, splits touching foci
+#   "connected" = connected regions of the mask (8-connectivity)
+segmentation = "watershed"
+
 # Minimum distance between watershed seeds (peaks of the distance transform), in pixels.
+# Used only with segmentation = "watershed".
 min_distance = 3
 
 # Rolling-ball background subtraction radius, in pixels (applied before smoothing).
