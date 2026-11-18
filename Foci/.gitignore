@@ -86,3 +86,7 @@ data/
 *.tif
 *.tiff
 *.csv
+# =========================
+# Not tracked: ThunderSTORM pipeline (kept locally only)
+# =========================
+FOCI_STORM/
