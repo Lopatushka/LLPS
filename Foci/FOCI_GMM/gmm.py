@@ -140,7 +140,7 @@ def process_image(path):
     
     #t = log_step("Segmentation completed", t)
     
-    props = measure.regionprops_table(labels, intensity_image=original,
+    props = measure.regionprops_table(labels, intensity_image=corrected,  # background-subtracted if ROLLING_BALL_RADIUS > 0
         properties=('label', 'area', 'centroid', 'equivalent_diameter_area',
                     'perimeter', 'eccentricity', 'solidity', 'mean_intensity', 'max_intensity', 'min_intensity'))
     
@@ -459,7 +459,10 @@ output (subfolders of the --output folder):
   roi_measurements/<image>_ROIs.csv   one row per focus: image, label, area,
                                       centroid-0/-1, equivalent_diameter_area,
                                       perimeter, eccentricity, solidity,
-                                      mean/max/min_intensity (pixels)
+                                      mean/max/min_intensity (pixels).
+                                      Intensities are measured on the
+                                      background-subtracted image if
+                                      rolling_ball_radius > 0, else raw.
   summary/all_ROIs.csv                all ROI tables combined
   summary/summary.csv                 per image: number of foci, total foci
                                       area (px), foci area fraction

@@ -13,6 +13,8 @@ signal_components = [4]
 probability_threshold = 0.5
 
 # Rolling-ball background subtraction radius, in pixels. 0 = no background subtraction.
+# When > 0, the foci intensities (mean/max/min_intensity) are also measured on the
+# background-subtracted image.
 rolling_ball_radius = 0
 
 # Gaussian smoothing before fitting, in pixels.

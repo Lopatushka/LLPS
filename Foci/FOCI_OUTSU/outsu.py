@@ -20,6 +20,7 @@ def process_image(image_path,
                   sigma = 0.6,
                   min_area=2,
                   min_distance=3,
+                  background_radius=0,
                   plot=True,
                   save_path=None,
                   figure_dpi=300):   
@@ -31,12 +32,15 @@ def process_image(image_path,
     # 1. Convert to float
     img = image.astype(np.float32)
 
-    # 2. Background subtraction
-    #background = rolling_ball(img, radius=20)
-    #corrected = np.clip(img - background, 0, None)
-    
+    # 2. Background subtraction (rolling ball); 0 disables it
+    if background_radius > 0:
+        background = rolling_ball(img, radius=background_radius)
+        corrected = np.clip(img - background, 0, None)
+    else:
+        corrected = img
+
     smoothed = filters.gaussian(
-    img,
+    corrected,
     sigma=sigma,
     preserve_range=True
     )
@@ -72,7 +76,7 @@ def process_image(image_path,
     
     properties = measure.regionprops_table(
     labels,
-    intensity_image=img,
+    intensity_image=corrected,  # background-subtracted if background_radius > 0
     properties=[
         "label",
         "area",
@@ -148,6 +152,7 @@ CONFIG_TYPES = {
     "threshold_factor": (int, float),
     "min_area": int,
     "min_distance": int,
+    "background_radius": (int, float),
     "save_figures": bool,
     "figure_dpi": int,
 }
@@ -175,6 +180,8 @@ def load_config(path):
         raise ValueError(f"{path}: sigma must be >= 0 and threshold_factor > 0")
     if config["min_area"] < 1 or config["min_distance"] < 1 or config["figure_dpi"] < 1:
         raise ValueError(f"{path}: min_area, min_distance and figure_dpi must be >= 1")
+    if config["background_radius"] < 0:
+        raise ValueError(f"{path}: background_radius must be >= 0 (0 = no background subtraction)")
 
     return config
 
@@ -185,7 +192,8 @@ def parse_args():
         description="""\
 Otsu + watershed foci segmentation of single-nucleus TIFF images.
 
-For every image: Gaussian smoothing (sigma) -> mask = pixels above
+For every image: optional rolling-ball background subtraction
+(background_radius, 0 = off) -> Gaussian smoothing (sigma) -> mask = pixels above
 Otsu threshold * threshold_factor -> removal of objects smaller than
 min_area -> distance transform + watershed to split touching foci ->
 shape and intensity measurements of every focus.""",
@@ -198,7 +206,9 @@ output (written to the --output folder):
   <image>_segmentation.csv   one row per focus: label, area, centroid-0/-1,
                              equivalent_diameter_area, eccentricity, solidity,
                              perimeter, mean/max/min_intensity, circularity,
-                             image_id. Sizes are in pixels.
+                             image_id. Sizes are in pixels. Intensities are
+                             measured on the background-subtracted image
+                             if background_radius > 0, else on the raw image.
                              Header only if no foci were found.
   <image>_segmentation.png   binary mask, distance transform and watershed
                              overlay (only if save_figures = true)
@@ -261,6 +271,7 @@ def main():
                 sigma=config["sigma"],
                 min_area=config["min_area"],
                 min_distance=config["min_distance"],
+                background_radius=config["background_radius"],
                 plot=False,
                 save_path=save_path if config["save_figures"] else None,
                 figure_dpi=config["figure_dpi"],
