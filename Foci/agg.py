@@ -86,7 +86,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="""\
-Aggregate the per-image ROI tables written by gmm.py into one table
+Aggregate the per-image ROI tables written by FOCI_OUTSU/outsu.py or
+FOCI_GMM/gmm.py into one table
 with one row per cell (image).
 
 For every <image>_ROIs.csv: n_foci = number of foci, plus the median of
@@ -94,7 +95,8 @@ each foci feature over all foci of that cell. Cells without foci are
 kept with n_foci = 0 and empty (NaN) feature values.""",
         epilog="""\
 input:
-  The roi_measurements/ subfolder of a gmm.py output folder, containing
+  The roi_measurements/ subfolder of an outsu.py or gmm.py output folder,
+  containing
   <image>_ROIs.csv files (other files are ignored).
 
 output:
@@ -110,7 +112,7 @@ next step:
   STATISTICS/PCA.ipynb or STATISTICS/UMAP.ipynb.
 
 examples:
-  python agg.py -i results_gmm/roi_measurements/ -o results_gmm/
+  python agg.py -i results_otsu/roi_measurements/ -o results_otsu/
   python agg.py -i WT/gmm4/roi_measurements/ -o WT/gmm4/""",
     )
     parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
