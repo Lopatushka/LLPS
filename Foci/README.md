@@ -49,14 +49,17 @@ images currently open in Fiji and ask for an output folder.
 
 ### `FOCI_OUTSU/` — Otsu threshold segmentation
 
-- **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: Gaussian smoothing
-  (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
+- **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: optional
+  rolling-ball background subtraction (`background_radius`, `0` = off, the
+  default) → Gaussian smoothing (`sigma`) → Otsu threshold × `threshold_factor` → small-object removal
   (`min_area`) → distance transform + watershed to split
   touching foci. Parameters are set in `FOCI_OUTSU/config.toml`. For each image
   it writes:
   - `<image>_segmentation.csv`: one row per focus (`area`, `centroid`,
     `equivalent_diameter_area`, `eccentricity`, `solidity`, `perimeter`,
-    `mean/max/min_intensity`, `circularity`, `image_id`)
+    `mean/max/min_intensity`, `circularity`, `image_id`). With
+    `background_radius > 0` the intensities are measured on the
+    background-subtracted image, otherwise on the raw image.
   - `<image>_segmentation.png`: mask, distance transform and watershed overlay
 - **`agg.py`** — reads all `*_segmentation.csv` files and writes
   `aggregated_data.csv` with one row per cell: `n_foci` plus the median of each
@@ -68,7 +71,10 @@ images currently open in Fiji and ask for an output folder.
   of each image; pixels whose probability of belonging to the brightest
   component(s) (`signal_components`) is at least `probability_threshold` form
   the foci mask.
-  Optional rolling-ball background subtraction and Gaussian smoothing. Outputs
+  Optional rolling-ball background subtraction (`rolling_ball_radius`, `0` =
+  off) and Gaussian smoothing. With `rolling_ball_radius > 0` the foci
+  intensities (`mean/max/min_intensity`) are measured on the
+  background-subtracted image, otherwise on the raw image. Outputs
   into subfolders: `histograms/`, `panels/`, `backgrounds/`,
   `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
   `roi_measurements/` (`*_ROIs.csv`) and `summary/`.
