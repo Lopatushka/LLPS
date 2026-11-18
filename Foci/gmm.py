@@ -16,6 +16,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, binary_fill_holes, distance_transform_edt
 from scipy import ndimage as ndi
+from scipy.spatial import cKDTree
 from scipy.stats import norm
 from skimage import io, measure, morphology, restoration, segmentation
 from skimage.feature import peak_local_max
@@ -92,6 +93,29 @@ def gini(values):
         return np.nan
     g = 2 * np.sum(np.arange(1, n + 1) * x) / (n * x.sum()) - (n + 1) / n
     return float(g * n / (n - 1))
+
+def spacing_metrics(rois, nucleus):
+    """Nearest-neighbour distance per focus and Clark-Evans ratio per cell.
+
+    nn_distance: centroid-to-centroid distance (px) from each focus to the
+    closest other focus of the same nucleus. Clark-Evans ratio R = observed
+    mean nn_distance / mean expected for the same number of randomly placed
+    points in the nucleus: R < 1 clustered, ~1 random, > 1 evenly spaced.
+    The expected value uses Donnelly's edge correction
+    0.5*sqrt(A/n) + (0.0514 + 0.041/sqrt(n)) * P/n, because foci near the
+    nuclear edge have no neighbours outside it (A, P = nucleus area and
+    perimeter). NaN for fewer than 2 foci.
+    """
+    n = len(rois)
+    if n < 2:
+        return np.full(n, np.nan), dict(mean_nn_distance=np.nan, clark_evans_ratio=np.nan)
+    points = rois[["centroid-0", "centroid-1"]].to_numpy(float)
+    nn = cKDTree(points).query(points, k=2)[0][:, 1]  # k=1 is the point itself
+    area = float(nucleus.sum())
+    perim = float(measure.perimeter(nucleus))
+    expected = 0.5 * np.sqrt(area / n) + (0.0514 + 0.041 / np.sqrt(n)) * perim / n
+    mean_nn = float(nn.mean())
+    return nn, dict(mean_nn_distance=mean_nn, clark_evans_ratio=mean_nn / expected)
 
 def log_step(message, start):
     print(
@@ -247,6 +271,11 @@ def process_image(path):
     # Partition coefficient and fraction of signal in foci (raw image)
     metrics = signal_metrics(original, nucleus, labels)
     rois['partition_coefficient'] = metrics['partition_coefficient'][rois['label'].to_numpy(int) - 1]
+
+    # Nearest-neighbour distances and Clark-Evans ratio
+    nn, spacing = spacing_metrics(rois, nucleus)
+    rois['nn_distance'] = nn
+    metrics.update(spacing)
     
     #t = log_step("ROI measurements completed", t)
     
@@ -554,7 +583,8 @@ output (subfolders of the --output folder):
                                       equivalent_diameter_area, eccentricity,
                                       solidity, perimeter,
                                       mean/max/min_intensity,
-                                      partition_coefficient. Sizes are in
+                                      partition_coefficient, nn_distance
+                                      (to the nearest focus). Sizes are in
                                       pixels.
                                       Intensities are measured on the
                                       background-subtracted image if
@@ -566,7 +596,8 @@ output (subfolders of the --output folder):
                                       area (px), foci area / nucleus area,
                                       nucleus and nucleoplasm mean intensity,
                                       fraction of nuclear signal in foci,
-                                      size_gini (Gini of foci areas)
+                                      size_gini (Gini of foci areas),
+                                      mean_nn_distance (px), clark_evans_ratio
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -723,6 +754,8 @@ def main():
                 "nucleoplasm_mean_intensity": results["metrics"]["nucleoplasm_mean_intensity"],
                 "fraction_signal_in_foci": results["metrics"]["fraction_signal_in_foci"],
                 "size_gini": gini(roi_df["area"]),
+                "mean_nn_distance": results["metrics"]["mean_nn_distance"],
+                "clark_evans_ratio": results["metrics"]["clark_evans_ratio"],
             })
 
         except Exception as e:

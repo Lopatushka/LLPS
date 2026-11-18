@@ -11,7 +11,7 @@ import argparse
 # =====================================================
 
 # Per-cell values copied from <output>/summary/summary.csv
-CELL_FEATURES = ["fraction_signal_in_foci", "size_gini"]
+CELL_FEATURES = ["fraction_signal_in_foci", "size_gini", "clark_evans_ratio"]
 
 def table_aggregation(path):
 
@@ -56,6 +56,7 @@ def table_aggregation(path):
         "max_intensity",
         "min_intensity",
         "partition_coefficient",
+        "nn_distance",
     ]
 
     row = {
@@ -109,8 +110,8 @@ output:
                                  equivalent_diameter_area, eccentricity,
                                  solidity, perimeter, mean_intensity,
                                  max_intensity, min_intensity,
-                                 partition_coefficient, plus the per-cell
-                                 fraction_signal_in_foci and size_gini (read from
+                                 partition_coefficient, nn_distance, plus the per-cell
+                                 fraction_signal_in_foci, size_gini and clark_evans_ratio (read from
                                  summary/summary.csv next to the input folder).
                                  Sizes are in pixels.
 

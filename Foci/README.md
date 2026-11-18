@@ -97,7 +97,7 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
-`fraction_signal_in_foci` and `size_gini` from `summary/summary.csv` of the same run. Cells with
+`fraction_signal_in_foci`, `size_gini` and `clark_evans_ratio` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
@@ -202,6 +202,7 @@ one row per focus. They are computed with `skimage.measure.regionprops_table`.
 | `max_intensity` | Brightest pixel of the focus | grey values |
 | `min_intensity` | Dimmest pixel of the focus | grey values |
 | `partition_coefficient` | Mean raw intensity of the focus / mean raw intensity of the nucleoplasm (nucleus minus all foci and a 2 px ring around them). How many times more concentrated the protein is in the focus; independent of expression level | ratio |
+| `nn_distance` | Distance from the focus centroid to the centroid of the nearest other focus in the same nucleus. Empty if the nucleus has only one focus | px |
 
 Intensities are measured on the background-subtracted image when
 `rolling_ball_radius > 0`, otherwise on the raw image (not on the smoothed one).
@@ -216,9 +217,18 @@ expression level) and `size_gini`: the Gini coefficient of the foci areas of
 the cell, rescaled by n/(n−1) so that it ranges from 0 (all foci the same size)
 to 1 (one focus holds all the foci area) for any number of foci. Empty for cells
 with fewer than 2 foci; noisy with few foci, so filter on `n_rois` if needed.
+`mean_nn_distance` is the mean `nn_distance` of the cell (px), and
+`clark_evans_ratio` divides it by the mean expected if the same number of foci
+were placed at random in that nucleus: < 1 = clustered, ≈ 1 = random,
+> 1 = evenly spaced. This corrects for nucleus size and foci count. The expected
+value uses Donnelly's edge correction, 0.5·√(A/n) + (0.0514 + 0.041/√n)·P/n
+(A, P = nucleus area and perimeter), because foci near the nuclear edge have no
+neighbours outside it. Foci are not points: they cannot sit closer than about
+their radii, so large or densely packed foci push the ratio above 1 even when
+placed at random. Both are empty for cells with fewer than 2 foci.
 
 `agg.py` (in `Foci/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
-`fraction_signal_in_foci` and `size_gini` from `summary/summary.csv`. Cells without foci have
+`fraction_signal_in_foci`, `size_gini` and `clark_evans_ratio` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.

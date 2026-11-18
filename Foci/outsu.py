@@ -10,6 +10,7 @@ from skimage import io, filters, morphology, measure, segmentation
 from skimage.feature import peak_local_max
 from skimage.restoration import rolling_ball
 from scipy import ndimage as ndi
+from scipy.spatial import cKDTree
 
 # Histogram plots: number of bins and upper intensity percentile shown
 HIST_BINS = 200
@@ -66,6 +67,29 @@ def gini(values):
     g = 2 * np.sum(np.arange(1, n + 1) * x) / (n * x.sum()) - (n + 1) / n
     return float(g * n / (n - 1))
 
+
+def spacing_metrics(rois, nucleus):
+    """Nearest-neighbour distance per focus and Clark-Evans ratio per cell.
+
+    nn_distance: centroid-to-centroid distance (px) from each focus to the
+    closest other focus of the same nucleus. Clark-Evans ratio R = observed
+    mean nn_distance / mean expected for the same number of randomly placed
+    points in the nucleus: R < 1 clustered, ~1 random, > 1 evenly spaced.
+    The expected value uses Donnelly's edge correction
+    0.5*sqrt(A/n) + (0.0514 + 0.041/sqrt(n)) * P/n, because foci near the
+    nuclear edge have no neighbours outside it (A, P = nucleus area and
+    perimeter). NaN for fewer than 2 foci.
+    """
+    n = len(rois)
+    if n < 2:
+        return np.full(n, np.nan), dict(mean_nn_distance=np.nan, clark_evans_ratio=np.nan)
+    points = rois[["centroid-0", "centroid-1"]].to_numpy(float)
+    nn = cKDTree(points).query(points, k=2)[0][:, 1]  # k=1 is the point itself
+    area = float(nucleus.sum())
+    perim = float(measure.perimeter(nucleus))
+    expected = 0.5 * np.sqrt(area / n) + (0.0514 + 0.041 / np.sqrt(n)) * perim / n
+    mean_nn = float(nn.mean())
+    return nn, dict(mean_nn_distance=mean_nn, clark_evans_ratio=mean_nn / expected)
 
 def process_image(image_path,
                   threshold_factor=1,
@@ -187,6 +211,11 @@ def process_image(image_path,
     # 7. Partition coefficient and fraction of signal in foci (raw image)
     metrics = signal_metrics(original, nucleus, labels)
     rois["partition_coefficient"] = metrics["partition_coefficient"][rois["label"].to_numpy(int) - 1]
+
+    # Nearest-neighbour distances and Clark-Evans ratio
+    nn, spacing = spacing_metrics(rois, nucleus)
+    rois["nn_distance"] = nn
+    metrics.update(spacing)
 
     return dict(metrics=metrics, original=original, nucleus=nucleus, background=background,
                 corrected=corrected, smoothed=smoothed, mask=mask,
@@ -343,7 +372,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       equivalent_diameter_area, eccentricity,
                                       solidity, perimeter,
                                       mean/max/min_intensity,
-                                      partition_coefficient. Sizes are in
+                                      partition_coefficient, nn_distance
+                                      (to the nearest focus). Sizes are in
                                       pixels. Intensities are measured on the
                                       background-subtracted image if
                                       rolling_ball_radius > 0, else raw;
@@ -356,7 +386,8 @@ output (subfolders of the --output folder, same layout as gmm.py):
                                       foci area (px), foci area / nucleus area,
                                       nucleus and nucleoplasm mean intensity,
                                       fraction of nuclear signal in foci,
-                                      size_gini (Gini of foci areas)
+                                      size_gini (Gini of foci areas),
+                                      mean_nn_distance (px), clark_evans_ratio
   binary_masks/<image>_mask.tif       foci mask (0/255)
   labeled_rois/<image>_labels.tif     labelled foci (1..N)
   backgrounds/, corrected_images/,    intermediate images (float32)
@@ -486,6 +517,8 @@ def main():
                 "nucleoplasm_mean_intensity": result["metrics"]["nucleoplasm_mean_intensity"],
                 "fraction_signal_in_foci": result["metrics"]["fraction_signal_in_foci"],
                 "size_gini": gini(rois["area"]),
+                "mean_nn_distance": result["metrics"]["mean_nn_distance"],
+                "clark_evans_ratio": result["metrics"]["clark_evans_ratio"],
             })
 
             print(f"Processed: {path.name} ({len(rois)} ROIs)")
