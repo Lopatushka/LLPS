@@ -111,6 +111,13 @@ zero foci are kept (`n_foci = 0`).
   expression-matched re-analysis). The `data` list has one entry per condition ×
   biological replicate (`condition`, `replicate`, `path`); at least 3 replicates
   per condition are needed for replicate-level tests.
+- **`PCA_v2.ipynb`** + `PCA_v2_utils.py` — PCA of all foci metrics (same `data`
+  format as `METRICS.ipynb`). Log transform and z-scoring, feature correlations
+  and redundant pairs, scree plot with parallel analysis (components above
+  chance), loadings and correlation circle, PCA map with replicate centroids and
+  hierarchical-bootstrap confidence ellipses, PERMANOVA / PERMDISP at cell and
+  replicate level (exact permutations), distance from the reference centroid,
+  PC-score SuperPlots, expression check, within-condition outliers.
 - **`PCA.ipynb`** + `PCA_utils.py` — PCA on standardised per-cell features,
   Spearman correlation heatmap, violin plots, bootstrapped centroid confidence
   regions, PERMANOVA / PERMDISP between samples, centroid distance tree, outlier
