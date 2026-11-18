@@ -153,8 +153,19 @@ def hierarchical_bootstrap_ratio(arrays_a, arrays_b, n_boot=1000, ci=95, seed=0)
 # =====================================================
 
 def comparison_pairs(conditions, reference=None, mode="vs_reference"):
-    """(condition, baseline) pairs: each vs the reference, or all pairs."""
+    """(condition, baseline) pairs: each vs the reference ("vs_reference"),
+    every pair ("all_pairs"), or an explicit list of (condition, baseline)
+    tuples, e.g. [("MGS3", "WT"), ("WT, Apt.3", "WT, NC")]."""
     conditions = list(conditions)
+    if isinstance(mode, (list, tuple)):
+        pairs = [tuple(map(str, p)) for p in mode]
+        unknown = sorted({c for p in pairs for c in p} - set(map(str, conditions)))
+        if unknown:
+            raise ValueError(f"unknown condition(s) in COMPARISONS: {unknown}; "
+                             f"conditions are {conditions}")
+        if any(len(p) != 2 or p[0] == p[1] for p in pairs):
+            raise ValueError("each comparison must be a pair of two different conditions")
+        return pairs
     if mode == "vs_reference":
         reference = conditions[0] if reference is None else reference
         if reference not in conditions:
@@ -162,7 +173,7 @@ def comparison_pairs(conditions, reference=None, mode="vs_reference"):
         return [(c, reference) for c in conditions if c != reference]
     if mode == "all_pairs":
         return [(b, a) for a, b in combinations(conditions, 2)]
-    raise ValueError('mode must be "vs_reference" or "all_pairs"')
+    raise ValueError('mode must be "vs_reference", "all_pairs" or a list of pairs')
 
 
 def compare_metrics(df, metrics, pairs, n_boot=1000, seed=0):
@@ -327,17 +338,81 @@ def _headroom(ax, log, fraction=0.16):
     return hi + (new - hi) * 0.45
 
 
+BRACKET_IN = 0.27      # height of one bracket level, in inches
+
+
+def _bracket_items(comparisons, conditions, q_col, show_ns):
+    """(x positions, stars) of the brackets to draw for one metric."""
+    items = []
+    for _, r in comparisons.iterrows():
+        if r["condition"] not in conditions or r["baseline"] not in conditions:
+            continue
+        s = stars(r[q_col])
+        if not s or (s == "ns" and not show_ns):
+            continue
+        items.append(((conditions.index(r["baseline"]), conditions.index(r["condition"])), s))
+    return items
+
+
+def _bracket_levels(pairs):
+    """Stack comparison brackets: short spans low, no overlap on a level.
+    `pairs` = list of (i, j) x positions; returns a level per pair."""
+    order = sorted(range(len(pairs)), key=lambda k: (abs(pairs[k][1] - pairs[k][0]), min(pairs[k])))
+    taken, levels = {}, [0] * len(pairs)
+    for k in order:
+        lo, hi = sorted(pairs[k])
+        lvl = 0
+        while any(lo < b and a < hi for a, b in taken.get(lvl, [])):
+            lvl += 1
+        taken.setdefault(lvl, []).append((lo, hi))
+        levels[k] = lvl
+    return levels
+
+
+def _draw_brackets(ax, items, log):
+    """Raise the y axis to make room, then draw the brackets with their stars."""
+    from matplotlib import transforms
+    fig_h_in = ax.get_position().height * ax.figure.get_figheight()
+    step = BRACKET_IN / fig_h_in                      # one level, in axes fraction
+    levels = _bracket_levels([p for p, _ in items]) if items else []
+    n_lev = (max(levels) + 1) if levels else 0
+    data_frac = max(0.35, 1 - 0.04 - step * max(n_lev, 0.6) - 0.02)
+    lo, hi = ax.get_ylim()
+    if log:
+        llo, lhi = np.log10(lo), np.log10(hi)
+        ax.set_ylim(lo, 10 ** (llo + (lhi - llo) / data_frac))
+    else:
+        ax.set_ylim(lo, lo + (hi - lo) / data_frac)
+    trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+    y0 = data_frac + 0.03
+    tick = min(0.022, step * 0.25)
+    for ((i, j), s), lvl in zip(items, levels):
+        a, b = sorted((i, j))
+        y = y0 + lvl * step
+        sig = s != "ns"
+        colour = "#222222" if sig else "#b3b3b3"
+        ax.plot([a + 0.06, a + 0.06, b - 0.06, b - 0.06], [y - tick, y, y, y - tick],
+                transform=trans, color=colour, linewidth=1.1 if sig else 0.8,
+                clip_on=False, zorder=5, solid_capstyle="butt")
+        ax.text((a + b) / 2, y + (0.002 if sig else 0.006), s, transform=trans,
+                ha="center", va="center_baseline" if sig else "bottom", clip_on=False, zorder=6,
+                **({**STAR_STYLE, "fontsize": 13} if sig else {**NS_STYLE, "fontsize": 8}))
+
+
 def plot_superplots(df, metrics, labels=None, log_metrics=(), ncols=4,
                     height=3.4, results=None, q_col="q_replicates", title=None,
-                    names=None):
+                    names=None, show_ns="auto"):
     """SuperPlot grid: one panel per metric.
 
     grey shape : distribution of all cells of the condition (violin)
     small dots : cells, coloured by replicate (by condition if one replicate)
     big dots   : replicate medians (black edge)
     black bar  : mean of the replicate medians; error bar = SD between replicates
-    stars      : q-value of each comparison vs its baseline, if `results` given,
-                 in a band above the data: * < 0.05, ** < 0.01, *** < 0.001
+    brackets   : one bracket per comparison in `results` (condition vs its
+                 baseline), stacked above the data, with the q-value as stars:
+                 * < 0.05, ** < 0.01, *** < 0.001; ns in grey (hidden with
+                 show_ns=False; "auto" = shown when a panel has at most 3
+                 comparisons)
     title      : figure title, shown above the legend
     names      : {metric: panel title}, overrides DISPLAY_NAMES
     labels     : {metric: y-axis label (unit)}
@@ -356,6 +431,18 @@ def plot_superplots(df, metrics, labels=None, log_metrics=(), ncols=4,
     rotate = max(len(str(c)) for c in conditions) > 6 or len(conditions) > 4
     ncols = min(ncols, len(metrics))
     nrows = int(np.ceil(len(metrics) / ncols))
+
+    # Brackets per metric; panels grow with the number of bracket levels
+    brackets, max_levels = {}, 0
+    if results is not None:
+        for metric in metrics:
+            comp = results[results["metric"] == metric]
+            ns_on = (len(comp) <= 3) if show_ns == "auto" else bool(show_ns)
+            items = _bracket_items(comp, conditions, q_col, ns_on)
+            brackets[metric] = items
+            if items:
+                max_levels = max(max_levels, max(_bracket_levels([p for p, _ in items])) + 1)
+        height = height + BRACKET_IN * max_levels
     rng = np.random.default_rng(0)
 
     with plt.rc_context(STYLE):
@@ -420,19 +507,13 @@ def plot_superplots(df, metrics, labels=None, log_metrics=(), ncols=4,
                                ha="right" if rotate else "center")
             ax.set_xlim(-0.6, len(conditions) - 0.4)
             ax.tick_params(axis="x", length=0)
-            ax.set_title(pretty(metric, names), pad=8)
+            ax.set_title(pretty(metric, names), pad=10)
             ax.set_ylabel(labels.get(metric, ""))
             sns.despine(ax=ax)
 
             if results is not None:
-                y_star = _headroom(ax, log)
-                sub = results[results["metric"] == metric]
-                for _, r in sub.iterrows():
-                    s = stars(r[q_col])
-                    if s and r["condition"] in conditions:
-                        ax.text(conditions.index(r["condition"]), y_star, s,
-                                ha="center", va="center",
-                                **(NS_STYLE if s == "ns" else STAR_STYLE))
+                brackets_to_draw = (ax, brackets.get(metric, []), log)
+                ax._brackets = brackets_to_draw
 
         for ax in list(axes.flat)[len(metrics):]:
             ax.axis("off")
@@ -456,6 +537,92 @@ def plot_superplots(df, metrics, labels=None, log_metrics=(), ncols=4,
                        bbox_to_anchor=(0.5, 1 - (title_h - 0.02) / fig_h), frameon=False,
                        handletextpad=0.3, columnspacing=1.2, borderaxespad=0)
         fig.tight_layout(rect=(0, 0, 1, 1 - band / fig_h), w_pad=1.5, h_pad=1.5)
+        for ax in axes.flat:
+            if hasattr(ax, "_brackets"):
+                _draw_brackets(*ax._brackets)
+    return fig
+
+
+def plot_pairwise_matrices(results, metrics=None, conditions=None, q_col="q_replicates",
+                           names=None, ncols=4):
+    """One small condition x condition matrix per metric.
+
+    Cell (row A, column B) = Cliff's delta of A vs B (red: A higher than B),
+    with stars from the q-value; blank = pair not compared. Shows every
+    pairwise comparison at once, also for many conditions.
+    """
+    res = results
+    metrics = [m for m in (metrics or list(dict.fromkeys(res["metric"]))) if m in set(res["metric"])]
+    if conditions is None:
+        conditions = list(dict.fromkeys(list(res["baseline"].astype(str)) + list(res["condition"].astype(str))))
+    conditions = [str(c) for c in conditions]
+    n = len(conditions)
+    pos = {c: i for i, c in enumerate(conditions)}
+    ncols = min(ncols, len(metrics))
+    nrows = int(np.ceil(len(metrics) / ncols))
+    cell = 0.48 if n > 3 else 0.62
+    side = cell * n + 1.2
+    show_numbers = n <= 6
+    with plt.rc_context({**STYLE, "axes.grid": False}):
+        fig, axes = plt.subplots(nrows, ncols, figsize=(side * ncols + 1.2, side * nrows + 0.6),
+                                 squeeze=False)
+        im = None
+        for ax, metric in zip(axes.flat, metrics):
+            M = np.full((n, n), np.nan)
+            Q = np.full((n, n), np.nan)
+            for _, r in res[res["metric"] == metric].iterrows():
+                a, b = pos.get(str(r["condition"])), pos.get(str(r["baseline"]))
+                if a is None or b is None:
+                    continue
+                d = r["cliffs_delta"]
+                # keep the lower triangle: row = later condition
+                if a > b:
+                    M[a, b], Q[a, b] = d, r[q_col]
+                else:
+                    M[b, a], Q[b, a] = -d, r[q_col]
+            used_rows = [i for i in range(n) if np.isfinite(M[i]).any()]
+            used_cols = [j for j in range(n) if np.isfinite(M[:, j]).any()]
+            if not used_rows:
+                ax.axis("off")
+                continue
+            sub = M[np.ix_(used_rows, used_cols)]
+            subq = Q[np.ix_(used_rows, used_cols)]
+            im = ax.imshow(sub, cmap="RdBu_r", vmin=-1, vmax=1, aspect="equal")
+            for (y, x), d in np.ndenumerate(sub):
+                if not np.isfinite(d):
+                    continue
+                st = stars(subq[y, x])
+                ink = "white" if abs(d) > 0.6 else "#111111"
+                if st and st != "ns":
+                    if show_numbers:
+                        ax.text(x, y - 0.17, f"{d:+.2f}", ha="center", va="center", fontsize=7, color=ink)
+                    ax.text(x, y + (0.2 if show_numbers else 0.05), st, ha="center", va="center",
+                            fontsize=11, fontweight="bold", color=ink)
+                elif show_numbers:
+                    ax.text(x, y, f"{d:+.2f}", ha="center", va="center", fontsize=7,
+                            color=ink, alpha=0.6)
+            ax.set_xticks(range(len(used_cols)))
+            ax.set_xticklabels([conditions[j] for j in used_cols], rotation=40, ha="right", fontsize=8)
+            ax.set_yticks(range(len(used_rows)))
+            ax.set_yticklabels([conditions[i] for i in used_rows], fontsize=8)
+            ax.set_xticks(np.arange(-0.5, len(used_cols)), minor=True)
+            ax.set_yticks(np.arange(-0.5, len(used_rows)), minor=True)
+            ax.grid(which="minor", color="white", linewidth=2)
+            ax.tick_params(which="both", length=0)
+            for sp in ax.spines.values():
+                sp.set_visible(False)
+            ax.set_title(pretty(metric, names), fontsize=10)
+        for ax in list(axes.flat)[len(metrics):]:
+            ax.axis("off")
+        fig.tight_layout(rect=(0, 0, 0.93, 0.96))
+        if im is not None:
+            cax = fig.add_axes([0.945, 0.25, 0.012, 0.5])
+            cb = fig.colorbar(im, cax=cax)
+            cb.set_label("Cliff's δ (row vs column)", fontsize=8)
+            cb.outline.set_visible(False)
+        level = "replicate" if q_col == "q_replicates" else "cell"
+        fig.text(0.5, 0.995, f"All pairwise comparisons  ·  stars: {level}-level q-value",
+                 ha="center", va="top", fontsize=13, fontweight="bold")
     return fig
 
 
