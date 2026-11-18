@@ -102,6 +102,15 @@ zero foci are kept (`n_foci = 0`).
 
 ### `STATISTICS/` — condition comparison
 
+- **`METRICS.ipynb`** + `METRICS_utils.py` — **main result**: per-metric
+  comparison of conditions. SuperPlots (cells coloured by replicate, replicate
+  medians), Welch t-test on replicate medians (cell-level Mann–Whitney as
+  descriptive), median ratio with hierarchical-bootstrap 95 % CI, Cliff's delta,
+  Benjamini–Hochberg FDR over all metrics × comparisons, effect-size heatmap, and
+  an expression-level check (Spearman with `nucleus_mean_intensity`,
+  expression-matched re-analysis). The `data` list has one entry per condition ×
+  biological replicate (`condition`, `replicate`, `path`); at least 3 replicates
+  per condition are needed for replicate-level tests.
 - **`PCA.ipynb`** + `PCA_utils.py` — PCA on standardised per-cell features,
   Spearman correlation heatmap, violin plots, bootstrapped centroid confidence
   regions, PERMANOVA / PERMDISP between samples, centroid distance tree, outlier
