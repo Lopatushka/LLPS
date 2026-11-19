@@ -44,7 +44,7 @@ images currently open in Fiji and ask for an output folder.
 | Script | What it does |
 |---|---|
 | `nuclei_manual_segment.py` | Asks for microscope type (Airyscan / NSpark), DAPI channel and measurement channel. For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
-| `opener.py` | Opens all files in a folder whose name contains a given pattern and has a given extension. |
+| `opener.py` | Opens, in alphabetical order, all files in a folder whose name contains a given pattern (case-insensitive; empty = any) and has a given extension. Optionally also searches subfolders. Unreadable files are skipped and listed in the Log. |
 
 ### `outsu.py` — Otsu threshold segmentation
 
