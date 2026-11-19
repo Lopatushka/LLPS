@@ -140,10 +140,16 @@ Cells with zero foci are kept (`n_foci = 0`).
 ### *Optional* `FOCI/mfi_nuclei.py` — nuclear area and mean intensity
 
 For every
-`.tif`/`.tiff` in the input folder it measures the nucleus (pixels > 0) and
-writes `MFI_nuclei.csv` with `image_id`, `Filename`, `Area` (calibrated from the
-TIFF resolution tags, e.g. micron^2), `unit`, `Area_px` and `Mean`. `Area_px` and
-`Mean` equal `nucleus_area_px` and `nucleus_mean_intensity` in `summary.csv` of
+`.tif`/`.tiff` in the input folder it measures the nucleus (pixels > 0) and writes `MFI_nuclei.csv` with the following columns:
+- `image_id`
+- `Filename`
+- `Area` (calibrated from the
+TIFF resolution tags, e.g. micron^2)
+- `unit`
+- `Area_px`
+- `Mean`
+
+`Area_px` and `Mean` equal `nucleus_area_px` and `nucleus_mean_intensity` in `summary.csv` of
 `outsu.py` / `gmm.py` for the same images. An existing `MFI_nuclei.csv` is never
 overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
 
