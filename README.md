@@ -349,6 +349,49 @@ above over all foci of that cell (the centroids are not aggregated), plus
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
 
+### All per-cell metrics by category
+
+Every column of `summary/summary.csv` and `aggregated_data.csv` (one row per
+cell in both). *median* = median over the foci of the cell of the per-focus
+column in `roi_measurements/<image>_ROIs.csv`; *copied* = same value as in
+`summary.csv`; — = not in that file.
+
+| Category | Metric | `summary.csv` | `aggregated_data.csv` | Meaning | Units |
+|---|---|---|---|---|---|
+| ID | `image_id` | ✓ | ✓ | Image (= nucleus) name without extension | — |
+| Number | `n_rois` / `n_foci` | `n_rois` | `n_foci` | Number of foci in the cell | count |
+| Number | `foci_density` | ✓ | copied | `n_rois` / `nucleus_area_px` | foci / px |
+| Size | `area` | — | median | Focus area | px |
+| Size | `equivalent_diameter_area` | — | median | Diameter of a circle with the focus area | px |
+| Size | `perimeter` | — | median | Focus boundary length | px |
+| Size | `total_area_px` | ✓ | — | Summed area of all foci | px |
+| Size | `area_fraction` | ✓ | copied | Foci area / nucleus area | 0–1 |
+| Size | `size_gini` | ✓ | copied | Inequality of foci sizes (0 = equal, 1 = one focus holds all area); empty if < 2 foci | 0–1 |
+| Shape | `eccentricity` | — | median | Elongation of the fitted ellipse | 0–1 |
+| Shape | `solidity` | — | median | Area / convex-hull area | 0–1 |
+| Intensity | `mean_intensity` | — | median | Mean intensity of the focus | grey values |
+| Intensity | `max_intensity` | — | median | Brightest pixel of the focus | grey values |
+| Intensity | `min_intensity` | — | median | Dimmest pixel of the focus | grey values |
+| Partitioning | `partition_coefficient` | — | median | Focus / nucleoplasm mean raw intensity | ratio |
+| Partitioning | `fraction_signal_in_foci` | ✓ | copied | Raw intensity in foci / raw intensity of the nucleus | 0–1 |
+| Nucleus / expression | `nucleus_area_px` | ✓ | — | Nucleus area (non-zero pixels) | px |
+| Nucleus / expression | `nucleus_mean_intensity` | ✓ | copied | Mean raw intensity of the nucleus (total concentration) | grey values |
+| Nucleus / expression | `nucleoplasm_mean_intensity` | ✓ | copied | Mean raw intensity outside foci and their 2 px ring (dilute phase) | grey values |
+| Spatial | `nn_distance` | — | median | Centre-to-centre distance to the nearest focus | px |
+| Spatial | `mean_nn_distance` | ✓ (mean) | — | Mean `nn_distance` of the cell | px |
+| Spatial | `nn_gap` | — | median | Edge-to-edge distance to the nearest focus (0 = touching) | px |
+| Spatial | `clark_evans_ratio` | ✓ | copied | Mean NN distance / random expectation (< 1 clustered, ≈ 1 random, > 1 even) | ratio |
+| Spatial | `fraction_touching` | ✓ | copied | Fraction of foci with `nn_gap` ≤ 1 px | 0–1 |
+| Segmentation (outsu.py) | `otsu_threshold` | ✓ | — | Otsu threshold of the nucleus | grey values |
+| Segmentation (outsu.py) | `threshold_factor` | ✓ | — | Factor applied to the Otsu threshold | — |
+| Segmentation (outsu.py) | `threshold` | ✓ | — | Threshold used (`otsu_threshold` × `threshold_factor`) | grey values |
+| Segmentation (gmm.py) | `n_components` | ✓ | — | Number of GMM components | — |
+| Segmentation (gmm.py) | `signal_components` | ✓ | — | Brightest components taken as foci | — |
+
+Spatial metrics (`nn_*`, `mean_nn_distance`, `clark_evans_ratio`, `size_gini`)
+are empty for cells with fewer than 2 foci; all foci features are empty for
+cells with 0 foci.
+
 ## Citation
 
 If you use this code in your research, please cite this repository:
