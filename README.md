@@ -191,12 +191,13 @@ per condition are needed for replicate-level tests.
 - expression check
 - within-condition outliers
 
-## **`UMAP_v2.ipynb`** + `UMAP_v2_utils.py` — UMAP map and cell states (same
-  `data` format and feature preparation as `PCA_v2.ipynb`). Settings sweep with
-  trustworthiness and seed stability, condition maps with density contours, each
-  feature as a colour on the map, KMeans clusters found in feature space (not on
+## **`UMAP_v2.ipynb`** + `UMAP_v2_utils.py` — UMAP map and cell states (same `data` format and feature preparation as `PCA_v2.ipynb`).
+- Settings sweep with trustworthiness and seed stability
+- condition maps with density contours, each feature as a colour on the map
+- KMeans clusters found in feature space (not on
   UMAP coordinates) with k chosen by silhouette and bootstrap stability (ARI)
-  and a warning when cells form a continuum, cluster profiles and most typical
+  and a warning when cells form a continuum
+- cluster profiles and most typical
   cells (image IDs), and cluster shares per condition tested on replicate
   fractions (Welch) with Fisher / chi-square as descriptive cell-level tests.
 
