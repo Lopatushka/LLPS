@@ -147,10 +147,10 @@ overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
   cells (image IDs), and cluster shares per condition tested on replicate
   fractions (Welch) with Fisher / chi-square as descriptive cell-level tests.
 
-At the top of each notebook set `root_dir` and the `data` list — one entry per
+At the top of each notebook set `DATA_DIR` and the `data` list — one entry per
 condition × biological replicate, with its `condition`, `replicate` and the
 `path` to its `aggregated_data.csv`, e.g.
-`{"condition": "WT", "replicate": "1", "path": f"{root_dir}/..."}`.
+`{"condition": "WT", "replicate": "1", "path": f"{DATA_DIR}/..."}`.
 
 ## Installation
 
