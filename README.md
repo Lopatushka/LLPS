@@ -292,3 +292,7 @@ watershed splitting happened. 0 for a cell with one focus, empty without foci.
 above over all foci of that cell (the centroids are not aggregated), plus
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
