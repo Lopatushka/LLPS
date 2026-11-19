@@ -155,30 +155,43 @@ overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
 
 ### `STATISTICS/` — condition comparison
 
-- **`METRICS.ipynb`** + `METRICS_utils.py` — **main result**: per-metric
-  comparison of conditions. SuperPlots (cells coloured by replicate, replicate
-  medians), Welch t-test on replicate medians (cell-level Mann–Whitney as
-  descriptive), median ratio with hierarchical-bootstrap 95 % CI, Cliff's delta,
-  Benjamini–Hochberg FDR over all metrics × comparisons, effect-size heatmap, and
-  an expression-level check (Spearman with `nucleus_mean_intensity`,
-  expression-matched re-analysis). The `data` list has one entry per condition ×
-  biological replicate (`condition`, `replicate`, `path`); at least 3 replicates
-  per condition are needed for replicate-level tests.
-- **`CSAT.ipynb`** + `CSAT_utils.py` — saturation concentration from single-cell
-  expression (nuclear intensity = total, nucleoplasm intensity = dilute phase).
+## **`METRICS.ipynb`** + `METRICS_utils.py` - **per-metric comparison of conditions**:
+- SuperPlots (cells coloured by replicate, replicate
+  medians)
+- Welch t-test on replicate medians (cell-level Mann–Whitney as
+  descriptive)
+- median ratio with hierarchical-bootstrap 95 % CI
+- Cliff's delta
+- Benjamini–Hochberg FDR over all metrics × comparisons
+- effect-size heatmap
+- expression-level check (Spearman with `nucleus_mean_intensity`, expression-matched re-analysis).
+  
+The `data` list has one entry per condition ×
+biological replicate (`condition`, `replicate`, `path`); at least 3 replicates
+per condition are needed for replicate-level tests.
+
+## **`CSAT.ipynb`** + `CSAT_utils.py` — saturation concentration from single-cell expression (nuclear intensity = total, nucleoplasm intensity = dilute phase).
   Three independent estimates with hierarchical-bootstrap CIs and a reliability
   verdict each: onset (logistic fit of foci presence), dilute-phase buffering
   (segmented log-log fit vs. straight line by BIC, buffering exponent β) and the
   lever rule (fraction of signal in foci = A·(1 − c_sat/c_total)). Ratio to the
   reference condition and replicate-level Welch test on log c_sat.
-- **`PCA_v2.ipynb`** + `PCA_v2_utils.py` — PCA of all foci metrics (same `data`
-  format as `METRICS.ipynb`). Log transform and z-scoring, feature correlations
-  and redundant pairs, scree plot with parallel analysis (components above
-  chance), loadings and correlation circle, PCA map with replicate centroids and
-  hierarchical-bootstrap confidence ellipses, PERMANOVA / PERMDISP at cell and
-  replicate level (exact permutations), distance from the reference centroid,
-  PC-score SuperPlots, expression check, within-condition outliers.
-- **`UMAP_v2.ipynb`** + `UMAP_v2_utils.py` — UMAP map and cell states (same
+
+## **`PCA_v2.ipynb`** + `PCA_v2_utils.py` — PCA of all foci metrics (same `data` format as `METRICS.ipynb`)
+- Log transform and z-scoring
+- feature correlations and redundant pairs
+- scree plot with parallel analysis (components above
+  chance)
+- loadings and correlation circle
+- PCA map with replicate centroids and
+  hierarchical-bootstrap confidence ellipses
+- PERMANOVA / PERMDISP at cell and replicate level (exact permutations)
+- distance from the reference centroid
+- PC-score SuperPlots
+- expression check
+- within-condition outliers
+
+## **`UMAP_v2.ipynb`** + `UMAP_v2_utils.py` — UMAP map and cell states (same
   `data` format and feature preparation as `PCA_v2.ipynb`). Settings sweep with
   trustworthiness and seed stability, condition maps with density contours, each
   feature as a colour on the map, KMeans clusters found in feature space (not on
