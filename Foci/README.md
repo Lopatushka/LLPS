@@ -15,6 +15,7 @@ raw multichannel .tif
    │  FIJI/MFI_nuclei.py              (Fiji)  → MFI_nuclei.csv        (optional)
    ▼
 single-nucleus .tif images
+   │  MFI_nuclei.py                              → MFI_nuclei.csv (optional, no Fiji needed)
    │  outsu.py  or   gmm.py                     → per-image foci tables
    │  agg.py   (both methods)                     → aggregated_data.csv (one row per cell)
    ▼
@@ -32,6 +33,7 @@ Foci/
 ├── outsu.py           Otsu threshold foci segmentation   (config_outsu.toml)
 ├── gmm.py             Gaussian-mixture-model foci segmentation (config_gmm.toml)
 ├── agg.py             aggregates the foci tables of either method, one row per cell
+├── MFI_nuclei.py      nuclear area and mean intensity (Python version of FIJI/MFI_nuclei.py)
 ├── STATISTICS/        PCA / UMAP analysis notebooks and helpers
 └── requirements.txt   Python dependencies
 ```
@@ -99,6 +101,16 @@ or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
 plus the median of each foci feature, and the per-cell
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
+
+### `MFI_nuclei.py` — nuclear area and mean intensity
+
+Python version of `FIJI/MFI_nuclei.py`, runs without Fiji. For every
+`.tif`/`.tiff` in the input folder it measures the nucleus (pixels > 0) and
+writes `MFI_nuclei.csv` with `image_id`, `Filename`, `Area` (calibrated from the
+TIFF resolution tags, e.g. micron^2), `unit`, `Area_px` and `Mean`. `Area_px` and
+`Mean` equal `nucleus_area_px` and `nucleus_mean_intensity` in `summary.csv` of
+`outsu.py` / `gmm.py` for the same images. An existing `MFI_nuclei.csv` is never
+overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
 
 ### `STATISTICS/` — condition comparison
 
@@ -205,6 +217,11 @@ python agg.py -i <results>/roi_measurements -o <results>       # -> aggregated_d
 cd Foci
 python gmm.py --input <tif_folder> --output <results>           # uses config_gmm.toml
 python agg.py -i <results>/roi_measurements -o <results>
+```
+
+```bash
+cd Foci
+python MFI_nuclei.py -i <tif_folder> -o <results>              # -> MFI_nuclei.csv
 ```
 
 `--input` and `--output` are required for every script.
