@@ -11,11 +11,9 @@ with multivariate statistics (PCA, UMAP, PERMANOVA).
 ```
 raw multichannel .tif
    │  FIJI/nuclei_manual_segment.py   (Fiji)  → one .tif per nucleus + ROI .zip
-   │  FIJI/substruct_background.py    (Fiji)  → *_bg_subtracted.tif   (optional)
-   │  FIJI/MFI_nuclei.py              (Fiji)  → MFI_nuclei.csv        (optional)
    ▼
 single-nucleus .tif images
-   │  MFI_nuclei.py                              → MFI_nuclei.csv (optional, no Fiji needed)
+   │  mfi_nuclei.py                              → MFI_nuclei.csv (optional)
    │  outsu.py  or   gmm.py                     → per-image foci tables
    │  agg.py   (both methods)                     → aggregated_data.csv (one row per cell)
    ▼
@@ -33,7 +31,7 @@ Foci/
 ├── outsu.py           Otsu threshold foci segmentation   (config_outsu.toml)
 ├── gmm.py             Gaussian-mixture-model foci segmentation (config_gmm.toml)
 ├── agg.py             aggregates the foci tables of either method, one row per cell
-├── MFI_nuclei.py      nuclear area and mean intensity (Python version of FIJI/MFI_nuclei.py)
+├── mfi_nuclei.py      nuclear area and mean intensity (MFI) of every image
 ├── STATISTICS/        PCA / UMAP analysis notebooks and helpers
 └── requirements.txt   Python dependencies
 ```
@@ -46,8 +44,6 @@ images currently open in Fiji and ask for an output folder.
 | Script | What it does |
 |---|---|
 | `nuclei_manual_segment.py` | Asks for microscope type (Airyscan / NSpark), DAPI channel and measurement channel. For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
-| `substruct_background.py` | Rolling-ball background subtraction (radius set in a dialog) on all open images; saves `<image>_bg_subtracted.tif`. |
-| `MFI_nuclei.py` | Measures area and mean intensity of the nucleus (pixels > 0) in every open image and saves `MFI_nuclei.csv` (Filename, Area, Area_px, Mean); never overwrites an existing table (adds `_1`, `_2`, ...). |
 | `opener.py` | Opens all files in a folder whose name contains a given pattern and has a given extension. |
 
 ### `outsu.py` — Otsu threshold segmentation
@@ -102,9 +98,9 @@ plus the median of each foci feature, and the per-cell
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
 zero foci are kept (`n_foci = 0`).
 
-### `MFI_nuclei.py` — nuclear area and mean intensity
+### `mfi_nuclei.py` — nuclear area and mean intensity
 
-Python version of `FIJI/MFI_nuclei.py`, runs without Fiji. For every
+For every
 `.tif`/`.tiff` in the input folder it measures the nucleus (pixels > 0) and
 writes `MFI_nuclei.csv` with `image_id`, `Filename`, `Area` (calibrated from the
 TIFF resolution tags, e.g. micron^2), `unit`, `Area_px` and `Mean`. `Area_px` and
@@ -221,7 +217,7 @@ python agg.py -i <results>/roi_measurements -o <results>
 
 ```bash
 cd Foci
-python MFI_nuclei.py -i <tif_folder> -o <results>              # -> MFI_nuclei.csv
+python mfi_nuclei.py -i <tif_folder> -o <results>              # -> MFI_nuclei.csv
 ```
 
 `--input` and `--output` are required for every script.

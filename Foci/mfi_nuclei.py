@@ -1,6 +1,6 @@
 """Nuclear area and mean fluorescence intensity (MFI) of single-nucleus TIFF images.
 
-Standalone Python version of FIJI/MFI_nuclei.py (no Fiji needed). Run with -h for details.
+Run with -h for details.
 """
 import argparse
 import traceback
@@ -75,7 +75,7 @@ def parse_args():
 Area and mean fluorescence intensity (MFI) of the nucleus in single-nucleus
 TIFF images. Nucleus = pixels > 0; the 0 pixels outside the nucleus are not
 measured. Intensities are measured on the images as they are (raw, or
-background-subtracted if you pass the *_bg_subtracted.tif images).""",
+background-subtracted if you pass such images).""",
         epilog="""\
 input:
   A folder with one 2D grayscale image per nucleus (*.tif / *.tiff),
@@ -90,7 +90,7 @@ output:
                             the table is saved as MFI_nuclei_1.csv, _2, ...
 
 examples:
-  python MFI_nuclei.py -i nuclei_tif/ -o results/""",
+  python mfi_nuclei.py -i nuclei_tif/ -o results/""",
     )
     parser.add_argument("-i", "--input", type=Path, metavar="DIR", required=True,
                         help="folder with the .tif/.tiff images to measure (required)")
