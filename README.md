@@ -26,7 +26,7 @@ plots and statistical tests
 ## Folder structure
 
 ```
-Foci/
+LLPS/
 ├── FIJI/                  Jython scripts, run inside Fiji/ImageJ
 ├── FOCI/                  Python scripts for foci segmentation and measurement
 │   ├── outsu.py           Otsu threshold foci segmentation   (config_outsu.toml)
@@ -171,10 +171,18 @@ the config files are read with the built-in `tomllib`.
 
 ```bash
 git clone https://github.com/Lopatushka/LLPS.git
-cd LLPS/Foci
+cd LLPS
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Or, with conda (installs the tested Python version and the same pinned
+packages from `requirements.txt`):
+
+```bash
+conda env create -f environment.yml
+conda activate foci
 ```
 
 Jupyter (or VS Code with the Jupyter extension) is needed to run the notebooks.
@@ -208,24 +216,24 @@ misspelled or missing keys stop the run with an error.
 ### Running
 
 ```bash
-cd Foci/FOCI          # from the repository root (LLPS/)
+cd FOCI              # from the repository root (LLPS/)
 python outsu.py --input <tif_folder> --output <results>         # uses config_outsu.toml
 python outsu.py -i <tif_folder> -o <results> -c my_config.toml  # other parameters
 python agg.py -i <results>/roi_measurements -o <results>       # -> aggregated_data.csv
 ```
 
 ```bash
-cd Foci/FOCI          # from the repository root (LLPS/)
+cd FOCI              # from the repository root (LLPS/)
 python gmm.py --input <tif_folder> --output <results>           # uses config_gmm.toml
 python agg.py -i <results>/roi_measurements -o <results>
 ```
 
 ```bash
-cd Foci/FOCI          # from the repository root (LLPS/)
+cd FOCI              # from the repository root (LLPS/)
 python mfi_nuclei.py -i <tif_folder> -o <results>              # -> MFI_nuclei.csv
 ```
 
-Run the scripts from `Foci/FOCI/` (or give their path, e.g. `python Foci/FOCI/outsu.py`);
+Run the scripts from `FOCI/` (or give their path, e.g. `python FOCI/outsu.py`);
 the default config is found next to the script, wherever you run it from.
 `--input` and `--output` are required for every script.
 Each script's `--help` explains its arguments, the expected input and every
@@ -287,7 +295,7 @@ foci in contact or separated by one pixel. With `segmentation = "watershed"`
 this includes the parts of every split focus, so it also shows how much
 watershed splitting happened. 0 for a cell with one focus, empty without foci.
 
-`agg.py` (in `Foci/FOCI/`, for both methods) writes `aggregated_data.csv` with one row per cell:
+`agg.py` (in `FOCI/`, for both methods) writes `aggregated_data.csv` with one row per cell:
 `image_id`, `n_foci` (number of foci in the cell) and the median of each feature
 above over all foci of that cell (the centroids are not aggregated), plus
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have

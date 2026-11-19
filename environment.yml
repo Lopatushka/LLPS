@@ -1,0 +1,15 @@
+# Conda environment for the Foci analysis scripts and notebooks.
+# Create:   conda env create -f environment.yml
+# Activate: conda activate foci
+#
+# Python packages are installed with pip from requirements.txt, so the exact
+# pinned versions stay in one place.
+name: foci
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13.13   # tested version (see README, "Tested environment")
+  - pip
+  - ipykernel   # run the notebooks in Jupyter / VS Code
+  - pip:
+      - -r requirements.txt
