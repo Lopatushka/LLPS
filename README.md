@@ -125,11 +125,18 @@ Parameters are set in `config_gmm.toml`.
 
 Reads all `*_ROIs.csv` files in the `roi_measurements/` folder of an `outsu.py`
 or `gmm.py` run and writes `aggregated_data.csv` with one row per cell: `n_foci`
-plus the median of each foci feature, and the per-cell
-`foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv` of the same run. Cells with
-zero foci are kept (`n_foci = 0`).
+plus the median of each foci feature, and the per-cell metrics from `summary/summary.csv` of the same run:
+- `foci_density`
+- `area_fraction`
+- `nucleus_mean_intensity`
+- `nucleoplasm_mean_intensity`
+- `fraction_signal_in_foci`
+- `size_gini`
+- `clark_evans_ratio`
+- `fraction_touching`
+Cells with zero foci are kept (`n_foci = 0`).
 
-### `FOCI/mfi_nuclei.py` — nuclear area and mean intensity
+### *Optional* `FOCI/mfi_nuclei.py` — nuclear area and mean intensity
 
 For every
 `.tif`/`.tiff` in the input folder it measures the nucleus (pixels > 0) and
