@@ -71,7 +71,9 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 5. foci ROIs: `segmentation = "watershed"` (default; distance transform + watershed to split touching foci, seeds `min_distance` apart;
   fragments smaller than `min_area` are merged into the touching focus; a focus
   split only into such fragments is kept unsplit) or
-  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `config_outsu.toml`.
+  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed.
+  
+  Parameters are set in `config_outsu.toml`.
   
   **Outputs** go into the same subfolders as `gmm.py`:
   1. `roi_measurements/` (`<image>_ROIs.csv`,
@@ -92,22 +94,32 @@ inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
  
 ### `FOCI/gmm.py` — Gaussian mixture model segmentation
 
-- **`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities
-  of each image; pixels whose probability of belonging to the brightest
-  component(s) (`signal_components`) is at least `probability_threshold` form
-  the foci mask. The mask is split into ROIs by `segmentation`: `"watershed"`
-  (default; distance transform + watershed, seeds `min_distance` apart;
-  fragments smaller than `min_area` are merged into the touching focus; a focus
-  split only into such fragments is kept unsplit) or
-  `"connected"` (connected regions); ROIs smaller than `min_area` are then removed.
-  Optional rolling-ball background subtraction (`rolling_ball_radius`, `0` =
-  off) and Gaussian smoothing. With `rolling_ball_radius > 0` the foci
-  intensities (`mean/max/min_intensity`) are measured on the
-  background-subtracted image, otherwise on the raw image. Outputs
-  into subfolders: `histograms/`, `panels/`, `backgrounds/`,
-  `corrected_images/`, `smoothed_images/`, `binary_masks/`, `labeled_rois/`,
-  `roi_measurements/` (`*_ROIs.csv`) and `summary/`.
-  Parameters are set in `config_gmm.toml`.
+**`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities 
+of each image; pixels whose probability of belonging to the brightest
+component(s) (`signal_components`) is at least `probability_threshold` form
+the foci mask. The mask is split into ROIs by `segmentation`:
+ - `"watershed"` (default; distance transform + watershed, seeds `min_distance` apart;
+fragments smaller than `min_area` are merged into the touching focus; a focus
+  split only into such fragments is kept unsplit)
+- `"connected"` (connected regions); ROIs smaller than `min_area` are then removed.
+
+*Optional* rolling-ball background subtraction (`rolling_ball_radius`, `0` =
+off) and Gaussian smoothing. With `rolling_ball_radius > 0` the foci
+intensities (`mean/max/min_intensity`) are measured on the
+background-subtracted image, otherwise on the raw image.
+
+Parameters are set in `config_gmm.toml`.
+
+**Outputs** are saved into subfolders:
+1. `histograms/`
+2. `panels/`
+3. `backgrounds/`
+4. `corrected_images/`
+5. `smoothed_images/`
+6. `binary_masks/`
+7. `labeled_rois/`
+8. `roi_measurements/` (`*_ROIs.csv`)
+9. `summary/`
 
 ### `FOCI/agg.py` — aggregation (both methods)
 
