@@ -45,7 +45,7 @@ images currently open in Fiji and ask for an output folder.
 |---|---|
 | `nuclei_manual_segment.py` | Asks for microscope type (Airyscan / NSpark), DAPI channel and measurement channel. For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
 | `substruct_background.py` | Rolling-ball background subtraction (radius set in a dialog) on all open images; saves `<image>_bg_subtracted.tif`. |
-| `MFI_nuclei.py` | Measures area and mean intensity of every open image and saves `MFI_nuclei.csv`. |
+| `MFI_nuclei.py` | Measures area and mean intensity of the nucleus (pixels > 0) in every open image and saves `MFI_nuclei.csv` (Filename, Area, Area_px, Mean); never overwrites an existing table (adds `_1`, `_2`, ...). |
 | `opener.py` | Opens all files in a folder whose name contains a given pattern and has a given extension. |
 
 ### `outsu.py` — Otsu threshold segmentation
