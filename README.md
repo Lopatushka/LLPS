@@ -36,6 +36,7 @@ LLPS/
 │   ├── agg.py             aggregates the foci tables of either method, one row per cell
 │   └── mfi_nuclei.py      nuclear area and mean intensity (MFI) of every image (optional)
 ├── STATISTICS/            PCA / UMAP / METRICS / CSAT analysis notebooks and helpers
+│
 └── requirements.txt       Python dependencies
 ```
 
@@ -46,7 +47,7 @@ images currently open in Fiji and ask for an output folder.
 
 | Script | What it does |
 |---|---|
-| `nuclei_manual_segment.py` | Asks for microscope type (Airyscan / NSpark), DAPI channel and measurement channel. For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
+| `nuclei_manual_segment.py` | For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
 | `opener.py` | Opens, in alphabetical order, all files in a folder whose name contains a given pattern (case-insensitive; empty = any) and has a given extension. Optionally also searches subfolders. Unreadable files are skipped and listed in the Log. |
 | `closer.py` | Closes all open images after one confirmation dialog, discarding unsaved changes (no "Save?" prompt per image). Tables and the Log stay open. |
 
@@ -56,25 +57,39 @@ Both `outsu.py` and `gmm.py` expect single-nucleus images with everything outsid
 the nucleus set to 0: the non-zero pixels are the nucleus. Foci are only searched
 inside it, and `area_fraction` in `summary.csv` is foci area / nucleus area.
 
-- **`outsu.py`** — for every `.tif`/`.tiff` in the input folder: optional
-  rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
-  default) → Gaussian smoothing (`sigma`) → Otsu threshold (computed on the nucleus, i.e. the non-zero pixels) × `threshold_factor` → small-object removal
-  (`min_area`) → foci ROIs: `segmentation = "watershed"` (default; distance
-  transform + watershed to split touching foci, seeds `min_distance` apart;
+- **`outsu.py`**.
+
+**Input:**  every `.tif`/`.tiff` files in the input folder.
+
+**Pipeline:**
+
+1. *optional* rolling-ball background subtraction (`rolling_ball_radius`, `0` = off, the
+  default)
+2. Gaussian smoothing (`sigma`)
+3. Otsu threshold (computed on the nucleus, i.e. the non-zero pixels) × `threshold_factor`
+4. small-object removal (`min_area`)
+5. foci ROIs: `segmentation = "watershed"` (default; distance transform + watershed to split touching foci, seeds `min_distance` apart;
   fragments smaller than `min_area` are merged into the touching focus; a focus
   split only into such fragments is kept unsplit) or
-  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `config_outsu.toml`. Outputs go
-  into the same subfolders as `gmm.py`: `roi_measurements/` (`<image>_ROIs.csv`,
-  one row per focus, see *Measured foci features* below), `summary/`
+  `"connected"` (connected regions of the mask); ROIs smaller than `min_area` are then removed. Parameters are set in `config_outsu.toml`.
+  
+  **Outputs** go into the same subfolders as `gmm.py`:
+  1. `roi_measurements/` (`<image>_ROIs.csv`,
+  one row per focus, see *Measured foci features* below),
+  2. `summary/`
   (`all_ROIs.csv`, and `summary.csv` with the Otsu threshold, the threshold used,
-  number of foci, nucleus area and foci area per image), `binary_masks/`, `labeled_rois/`,
-  `backgrounds/`, `corrected_images/`, `smoothed_images/`,
-  and — if `save_figures = true` — `panels/` (`<image>_six_panels.png`: original,
-  background, corrected, mask, distance transform, segmented ROIs) and
-  `histograms/` (`<image>_histograms.png`: intensity histogram with the threshold).
+  number of foci, nucleus area and foci area per image)
+  3. `binary_masks/`
+  4. `labeled_rois/`
+  5. `backgrounds/`
+  6. `corrected_images/`
+  7. `smoothed_images/`
+  8.  `histograms/` (`<image>_histograms.png`: intensity histogram with the threshold).
   With `rolling_ball_radius > 0` the intensities are measured on the
   background-subtracted image, otherwise on the raw image.
-
+  9. `panels/` if `save_figures = true` (`<image>_six_panels.png`: original,
+  background, corrected, mask, distance transform, segmented ROIs) and
+ 
 ### `FOCI/gmm.py` — Gaussian mixture model segmentation
 
 - **`gmm.py`** — fits a GMM (`n_components`, 4 by default) to pixel intensities
