@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Foci: nuclear foci segmentation and analysis"
+abstract: >-
+  Tools for segmenting nuclei and nuclear foci in fluorescence microscopy
+  images, measuring foci morphology and intensity, and comparing experimental
+  conditions with multivariate statistics (PCA, UMAP, PERMANOVA).
+authors:
+  - given-names: Elena
+    family-names: Lopatukhina
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/Lopatushka/LLPS"
+license: MIT
+version: 0.1.0
+date-released: 2026-11-19
+keywords:
+  - fluorescence microscopy
+  - image analysis
+  - nuclear foci
+  - segmentation
+  - LLPS
