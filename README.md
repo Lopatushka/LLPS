@@ -293,6 +293,22 @@ above over all foci of that cell (the centroids are not aggregated), plus
 `foci_density`, `area_fraction`, `nucleus_mean_intensity`, `nucleoplasm_mean_intensity`, `fraction_signal_in_foci`, `size_gini`, `clark_evans_ratio` and `fraction_touching` from `summary/summary.csv`. Cells without foci have
 `n_foci = 0` and empty feature values.
 
+## Citation
+
+If you use this code in your research, please cite this repository:
+
+```bibtex
+@software{foci_llps,
+  author = {Elena Lopatukhina},
+  title  = {Foci: nuclear foci segmentation and analysis},
+  year   = {2026},
+  url    = {https://github.com/Lopatushka/LLPS}
+}
+```
+
+A publication describing this work is in preparation; this section will be
+updated with the reference once it is available.
+
 ## License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed — see [LICENSE](LICENSE) for details.
