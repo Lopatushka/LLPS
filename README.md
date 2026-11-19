@@ -260,6 +260,29 @@ To try other settings (e.g. per microscope or for a sensitivity analysis), copy
 the file, edit the copy and pass it with `--config`. Every key must be present;
 misspelled or missing keys stop the run with an error.
 
+| Parameter | `config_outsu.toml` | `config_gmm.toml` | Meaning | Notes |
+|---|---|---|---|---|
+| `rolling_ball_radius` | `0` | `0` | Rolling-ball background subtraction radius, px; `0` = off | Applied before smoothing. When > 0, `mean/max/min_intensity` are measured on the background-subtracted image; `partition_coefficient` always on the raw one |
+| `sigma` | `0.6` | — | Gaussian smoothing before thresholding, px | |
+| `smooth_sigma` | — | `1.0` | Gaussian smoothing before the GMM fit, px | |
+| `threshold_factor` | `1.0` | — | Foci mask = smoothed image > Otsu threshold × `threshold_factor` | Otsu threshold is computed on the nucleus (non-zero pixels). `summary.csv` records `otsu_threshold`, `threshold_factor` and the `threshold` used |
+| `n_components` | — | `4` | Number of Gaussian components fitted to the pixel intensities | Recorded in `summary.csv` |
+| `signal_components` | — | `[4]` | Components used as foci signal, numbered 1…`n_components` by increasing mean intensity | `[4]` = brightest only, `[3, 4]` = two brightest. Recorded in `summary.csv` |
+| `probability_threshold` | — | `0.5` | A pixel is foci if its summed probability of the signal components ≥ this value | Range (0, 1] |
+| `n_init` | — | `10` | Number of GMM initialisations; the best fit is kept | |
+| `random_state` | — | `42` | Seed for pixel subsampling and GMM initialisation | Same seed → same result |
+| `max_fit_pixels` | — | `150000` | Fit the GMM on a random subsample of this many pixels; `0` = all pixels | Faster for large images |
+| `fill_holes` | — | `true` | Fill holes inside foci masks | |
+| `min_area` | `7` | `7` | Smallest object / focus kept, px | Smaller watershed fragments are merged into the touching focus; a focus split only into such fragments is kept unsplit |
+| `segmentation` | `"watershed"` | `"watershed"` | How the foci mask is split into ROIs: `"watershed"` (distance transform + watershed, splits touching foci) or `"connected"` (connected regions, 8-connectivity) | Watershed splits are counted in `fraction_touching` |
+| `min_distance` | `3` | `3` | Minimum distance between watershed seeds (peaks of the distance transform), px | Used only with `segmentation = "watershed"` |
+| `save_figures` | `true` | — | Save `panels/<image>_six_panels.png` and `histograms/<image>_histograms.png` for every image | |
+| `hist_bins` | — | `200` | Number of bins of the histogram plots | |
+| `hist_percentile` | — | `99.99` | Upper intensity percentile shown in the histogram plots | |
+| `figure_dpi` | `300` | `180` | Resolution of the saved figures | |
+
+— = the parameter does not exist for that script.
+
 ### Running
 
 ```bash
@@ -332,11 +355,6 @@ foci features.
 | Spatial | `mean_nn_distance` | — | ✓ | — | Mean `nn_distance` of the cell | px | Empty for cells with < 2 foci |
 | Spatial | `clark_evans_ratio` | — | ✓ | copied | `mean_nn_distance` / mean expected if the same number of foci were placed at random in that nucleus: < 1 = clustered, ≈ 1 = random, > 1 = evenly spaced | ratio | Corrects for nucleus size and foci count. Expected value with Donnelly's edge correction, 0.5·√(A/n) + (0.0514 + 0.041/√n)·P/n (A, P = nucleus area and perimeter), because foci near the nuclear edge have no neighbours outside it. Uses centre-to-centre distances on purpose: the random expectation is only defined for points. Foci are not points and cannot sit closer than about their radii, so large or densely packed foci push the ratio above 1 even when placed at random. Empty for cells with < 2 foci |
 | Spatial | `fraction_touching` | — | ✓ | copied | Fraction of the cell's foci whose `nn_gap` ≤ 1 px (`TOUCHING_GAP_PX` in the scripts): foci in contact or separated by one pixel | 0–1 | With `segmentation = "watershed"` this includes the parts of every split focus, so it also shows how much watershed splitting happened. 0 for a cell with one focus, empty without foci |
-| Segmentation (`outsu.py`) | `otsu_threshold` | — | ✓ | — | Otsu threshold of the nucleus (non-zero pixels) | grey values | |
-| Segmentation (`outsu.py`) | `threshold_factor` | — | ✓ | — | Factor applied to the Otsu threshold | — | From the config |
-| Segmentation (`outsu.py`) | `threshold` | — | ✓ | — | Threshold used, `otsu_threshold` × `threshold_factor` | grey values | |
-| Segmentation (`gmm.py`) | `n_components` | — | ✓ | — | Number of GMM components | — | From the config |
-| Segmentation (`gmm.py`) | `signal_components` | — | ✓ | — | Brightest component(s) taken as foci | — | From the config |
 
 ## Citation
 
