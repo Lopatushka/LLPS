@@ -134,6 +134,7 @@ plus the median of each foci feature, and the per-cell metrics from `summary/sum
 - `size_gini`
 - `clark_evans_ratio`
 - `fraction_touching`
+
 Cells with zero foci are kept (`n_foci = 0`).
 
 ### *Optional* `FOCI/mfi_nuclei.py` — nuclear area and mean intensity
