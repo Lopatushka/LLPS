@@ -18,7 +18,7 @@ single-nucleus .tif images
    │  FOCI/agg.py   (both methods)               → aggregated_data.csv (one row per cell)
    ▼
 aggregated_data.csv for each condition
-   │  STATISTICS/PCA.ipynb, STATISTICS/UMAP.ipynb
+   │  STATISTICS/METRICS.ipynb, CSAT.ipynb, PCA_v2.ipynb, UMAP_v2.ipynb
    ▼
 plots and statistical tests
 ```
@@ -138,10 +138,6 @@ overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
   hierarchical-bootstrap confidence ellipses, PERMANOVA / PERMDISP at cell and
   replicate level (exact permutations), distance from the reference centroid,
   PC-score SuperPlots, expression check, within-condition outliers.
-- **`PCA.ipynb`** + `PCA_utils.py` — PCA on standardised per-cell features,
-  Spearman correlation heatmap, violin plots, bootstrapped centroid confidence
-  regions, PERMANOVA / PERMDISP between samples, centroid distance tree, outlier
-  detection.
 - **`UMAP_v2.ipynb`** + `UMAP_v2_utils.py` — UMAP map and cell states (same
   `data` format and feature preparation as `PCA_v2.ipynb`). Settings sweep with
   trustworthiness and seed stability, condition maps with density contours, each
@@ -150,14 +146,11 @@ overwritten (`MFI_nuclei_1.csv`, `_2`, ...).
   and a warning when cells form a continuum, cluster profiles and most typical
   cells (image IDs), and cluster shares per condition tested on replicate
   fractions (Welch) with Fisher / chi-square as descriptive cell-level tests.
-- **`UMAP.ipynb`** + `UMAP_utils.py` — UMAP embedding (with an `n_neighbors`
-  sweep), KMeans / agglomerative clustering, chi-square test of cluster
-  composition across samples, PERMANOVA within clusters, centroid CIs.
 
 At the top of each notebook set `root_dir` and the `data` list — one entry per
-condition with a sample label and the path to its `aggregated_data.csv`. The
-notebook concatenates them into one table with a `sample` column
-(`CONCATENATE_DATA`, `CLEAN_DATA`, `SAVE_CONCATENATED_DATA` flags).
+condition × biological replicate, with its `condition`, `replicate` and the
+`path` to its `aggregated_data.csv`, e.g.
+`{"condition": "WT", "replicate": "1", "path": f"{root_dir}/..."}`.
 
 ## Installation
 
@@ -239,8 +232,9 @@ the default config is found next to the script, wherever you run it from.
 Each script's `--help` explains its arguments, the expected input and every
 output file, e.g. `python outsu.py --help`.
 
-Then open `STATISTICS/PCA.ipynb` or `STATISTICS/UMAP.ipynb`, point the `data`
-list at the `aggregated_data.csv` files and run the cells.
+Then open `STATISTICS/METRICS.ipynb` (main comparison), `CSAT.ipynb`,
+`PCA_v2.ipynb` or `UMAP_v2.ipynb`, point the `data` list at the
+`aggregated_data.csv` files and run the cells.
 
 ### Measured foci features
 
