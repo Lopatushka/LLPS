@@ -657,7 +657,7 @@ def plot_effect_heatmap(results, q_col="q_replicates", metrics=None, names=None)
                     ax.text(c + 0.5, r + 0.5, f"{d:+.2f}", ha="center", va="center",
                             fontsize=8, color=ink, alpha=0.75)
         ax.set_yticklabels([pretty(m, names) for m in order], rotation=0)
-        ax.set_xticklabels(cols, rotation=0)
+        ax.set_xticklabels(cols, rotation=45, ha="right", rotation_mode="anchor")
         ax.tick_params(length=0)
         ax.set_xlabel("")
         ax.set_ylabel("")
