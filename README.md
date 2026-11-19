@@ -9,7 +9,7 @@ with multivariate statistics (PCA, UMAP, PERMANOVA).
 ## Workflow
 
 ```
-raw multichannel .tif
+raw .tif
    │  FIJI/nuclei_manual_segment.py   (Fiji)  → one .tif per nucleus + ROI .zip
    ▼
 single-nucleus .tif images
@@ -34,9 +34,8 @@ LLPS/
 │   ├── config_outsu.toml  parameters of outsu.py
 │   ├── config_gmm.toml    parameters of gmm.py
 │   ├── agg.py             aggregates the foci tables of either method, one row per cell
-│   └── mfi_nuclei.py      nuclear area and mean intensity (MFI) of every image
+│   └── mfi_nuclei.py      nuclear area and mean intensity (MFI) of every image (optional)
 ├── STATISTICS/            PCA / UMAP / METRICS / CSAT analysis notebooks and helpers
-├── OLD/                   earlier code, no longer used by the workflow
 └── requirements.txt       Python dependencies
 ```
 
