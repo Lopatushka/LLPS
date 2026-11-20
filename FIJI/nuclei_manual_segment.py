@@ -39,6 +39,9 @@ def ask_params_for_image():
 
 def NSpark_name_processing(name):
     try:
+        name = str(name) # converts the input to a string first
+        name = name.strip() # removes spaces from both ends
+        name = name.rstrip('. ') # removes dots and spaces from the end only
         name = name.replace(" ", "_")
         name = name.split(".nd2")[0] + name.split(".nd2")[2]
         return name
