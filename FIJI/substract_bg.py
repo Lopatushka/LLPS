@@ -1,6 +1,8 @@
 from ij import IJ, WindowManager
 from ij.gui import GenericDialog
 from ij.plugin.filter import BackgroundSubtracter
+from ij.plugin import ZProjector
+from collections import deque
 import os
 import traceback
 
@@ -22,14 +24,82 @@ def ask_params_for_image():
 
     return {"bg_value": radius}
 
+def nucleus_mask(imp):
+    """Inside-the-nucleus mask for images produced by nuclei_manual_segment.py,
+    where everything outside the ROI was set to 0.
+    A pixel counts as inside if it is non-zero on at least one slice.
+    Returns a list of booleans (one per pixel) or None if the image is not masked."""
+    if imp.getStackSize() > 1:
+        ip = ZProjector.run(imp, "max").getProcessor()
+    else:
+        ip = imp.getProcessor()
+    inside = [ip.getf(i) != 0 for i in range(ip.getWidth() * ip.getHeight())]
+    if all(inside):
+        return None # no zero area: plain image, nothing to protect
+    return inside
+
+def fill_sources(inside, width, height, band):
+    """For every outside pixel within `band` pixels of the nucleus, find the
+    nearest inside pixel (8-neighbour flood from the edge outward).
+    Returns {outside_index: inside_index}."""
+    src = {}
+    queue = deque()
+    # 1) outside pixels touching the nucleus take the value of that inside neighbour
+    for i in range(width * height):
+        if inside[i]:
+            continue
+        x, y = i % width, i // width
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if i not in src and 0 <= nx < width and 0 <= ny < height and inside[ny * width + nx]:
+                    src[i] = ny * width + nx
+        if i in src:
+            queue.append((i, 1))
+    # 2) grow outward ring by ring, copying the source of the previous ring
+    while queue:
+        i, d = queue.popleft()
+        if d >= band:
+            continue
+        x, y = i % width, i // width
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height:
+                    j = ny * width + nx
+                    if not inside[j] and j not in src:
+                        src[j] = src[i]
+                        queue.append((j, d + 1))
+    return src
+
 def subtract_background(imp, radius, light_background=False, use_paraboloid=False, do_presmooth=True):
     """Rolling-ball background subtraction on every slice of the image
-    (all Z-slices, channels and time points), not only the displayed one."""
+    (all Z-slices, channels and time points), not only the displayed one.
+
+    For masked nuclei (outside = 0, output of nuclei_manual_segment.py) the zero
+    area around the nucleus is first filled with the nearest nucleus edge values,
+    so the ball doesn't see a drop to 0 at the edge (that drop is what made the
+    bright rim). After subtraction the outside is set back to exactly 0.
+    Returns True if the image was treated as a masked nucleus."""
     radius = float(radius)
     stack = imp.getStack()
+    width, height = imp.getWidth(), imp.getHeight()
     bs = BackgroundSubtracter()
+
+    inside = nucleus_mask(imp)
+    src = {}
+    outside = []
+    if inside is not None:
+        outside = [i for i in range(width * height) if not inside[i]]
+        # The ball can reach up to 2*radius; the extra margin covers pre-smoothing
+        # and the image shrinking rolling ball does internally for big radii.
+        band = int(2 * radius) + 10
+        src = fill_sources(inside, width, height, band)
+
     for n in range(1, stack.getSize() + 1):
         ip = stack.getProcessor(n)
+        for i, j in src.items():    # extend nucleus edge values outward
+            ip.setf(i, ip.getf(j))
         bs.rollingBallBackground(
             ip,
             radius,
@@ -39,7 +109,10 @@ def subtract_background(imp, radius, light_background=False, use_paraboloid=Fals
             bool(do_presmooth),
             False                   # correctCorners (only used with paraboloid)
         )
+        for i in outside:           # put the outside back to exactly 0
+            ip.setf(i, 0)
     imp.updateAndDraw()
+    return inside is not None
 
 def close_images(imps):
     for im in imps:
@@ -97,7 +170,9 @@ def main():
 
         try:
             # Subtract background
-            subtract_background(imp=imp, radius=params["bg_value"])
+            masked = subtract_background(imp=imp, radius=params["bg_value"])
+            if masked:
+                IJ.log("  Masked nucleus detected: edge-safe subtraction used")
             IJ.log("Rolling ball raidus is {}".format(params["bg_value"]))
 
             # Save the processed image (works for any extension, or none)
