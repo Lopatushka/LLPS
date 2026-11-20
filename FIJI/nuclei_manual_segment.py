@@ -82,6 +82,22 @@ def save_rois_zip(rois, zip_path):
     finally:
         stream.close()
 
+def clear_outside_all_slices(imp, roi):
+    """Set every pixel outside the ROI to 0 on every slice of the stack.
+
+    Does not depend on Fiji's background colour, and never shows the
+    'Process all slices?' prompt.
+    """
+    if roi is None or not roi.isArea():
+        raise ValueError('ROI "%s" is not an area selection' % (roi.getName() if roi else None))
+    stack = imp.getStack()
+    for n in range(1, stack.getSize() + 1):
+        ip = stack.getProcessor(n)
+        ip.setValue(0)
+        ip.fillOutside(roi)
+    imp.killRoi()
+    imp.updateAndDraw()
+
 def close_images(imps):
     for im in imps:
         if im is None:
@@ -166,9 +182,7 @@ def semi_manual_img_process(imp, output_dir, p):
                 work = meas_imp.duplicate()
                 work.setTitle('MEAS_work')
                 work.show()
-                work.setRoi(roi.clone())
-                IJ.run(work, 'Clear Outside', '')
-                work.killRoi()
+                clear_outside_all_slices(work, roi)
                 outname = 'C%d_%s_ROI_%02d_%s.tif' % (
                         p['MEASURE_CHANNEL'], img_title, i + 1, roi_name)
                 IJ.saveAs(work, 'Tiff', os.path.join(output_dir, outname))
