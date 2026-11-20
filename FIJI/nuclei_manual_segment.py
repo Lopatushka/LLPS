@@ -43,12 +43,19 @@ def NSpark_name_processing(name):
         name = name.split(".nd2")[0] + name.split(".nd2")[2]
         return name
     except Exception as e:
-         raise Exception("ERROR in parsing image name")
+         raise Exception("ERROR in NSpark parsing image name")
      
 def Ayriscan_name_processing(name):
-    name = os.path.splitext(name)[0]        
-    name = name.strip().replace(' ', '_').replace(',', '')
-    return re.sub(r'[\\/:*?"<>|]', '_', name)
+    try:
+        name = os.path.splitext(name)[0] # get name
+        name = str(name) # converts the input to a string first
+        name = name.strip() # removes spaces from both ends
+        name = name.rstrip('. ') # removes dots and spaces from the end only
+        name = re.sub(r'[^A-Za-z0-9_-]', '_', name) # anything not a letter, digit, _ or - becomes _
+        name = name.strip('_') # drop leading/trailing _
+        return name
+    except Exception as e:
+             raise Exception("ERROR in Ayriscan parsing image name")
 
 def safe_filename(name):
     return re.sub(r'[\\/:*?"<>|]', '_', str(name)).strip().rstrip('. ') or 'ROI'
