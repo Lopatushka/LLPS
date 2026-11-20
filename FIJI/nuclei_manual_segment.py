@@ -48,32 +48,52 @@ def NSpark_name_processing(name):
     except Exception as e:
          raise Exception("ERROR in NSpark parsing image name")
      
-def Ayriscan_name_processing(name):
+def to_text(value):
+    """Return value as text without str(), which fails on non-Latin characters in Jython."""
+    if isinstance(value, basestring):
+        return value
+    return unicode(value)
+
+UNSAFE_CHARS = re.compile(r'[^\w-]', re.UNICODE) # \w = letters of any alphabet, digits, _
+
+def Airyscan_name_processing(name):
+    original = name
     try:
-        name = os.path.splitext(name)[0] # get name
-        name = str(name) # converts the input to a string first
+        name = os.path.splitext(to_text(name))[0] # drop the file extension
         name = name.strip() # removes spaces from both ends
         name = name.rstrip('. ') # removes dots and spaces from the end only
-        name = re.sub(r'[^A-Za-z0-9_-]', '_', name) # anything not a letter, digit, _ or - becomes _
+        # anything not a letter (any alphabet, incl. Cyrillic), digit, _ or - becomes _
+        name = UNSAFE_CHARS.sub('_', name)
         name = name.strip('_') # drop leading/trailing _
-        return name
+        return name or 'image'
     except Exception as e:
-             raise Exception("ERROR in Ayriscan parsing image name")
+        raise Exception("ERROR in Airyscan parsing image name %r: %s" % (original, e))
+
+def unique_title(title, used_titles):
+    """Append _2, _3, ... if this title was already used in the current batch,
+    so two images with the same name don't overwrite each other's files."""
+    candidate = title
+    k = 2
+    while candidate in used_titles:
+        candidate = '%s_%d' % (title, k)
+        k += 1
+    used_titles.add(candidate)
+    return candidate
 
 def safe_filename(name):
-    return re.sub(r'[\\/:*?"<>|]', '_', str(name)).strip().rstrip('. ') or 'ROI'
-     
+    return re.sub(r'[\\/:*?"<>|]', '_', to_text(name)).strip().rstrip('. ') or 'ROI'
+
 def ensure_roi_manager(reset=True):
-	"""
+    """
     Gets the ROI Manager instance.
     Optionally resets it to avoid mixing old ROIs with new ones.
     """
-	rm = RoiManager.getInstance()
-	if rm is None:
-		rm = RoiManager()
-	if reset:
-		rm.reset()    
-	return rm
+    rm = RoiManager.getInstance()
+    if rm is None:
+        rm = RoiManager()
+    if reset:
+        rm.reset()
+    return rm
 
 def save_rois_zip(rois, zip_path):
     """Write every selected ROI to a ZIP, independent of ROI Manager selection."""
@@ -115,21 +135,7 @@ def close_images(imps):
         im.changes = False
         im.close()
 
-def close_all_csv_tables():
-    windows = WindowManager.getAllNonImageWindows()
-    if windows is not None:
-        for w in windows:
-            title = w.getTitle()
-            if title.endswith(".csv"):
-                w.dispose()
-
-def cleanup_iteration():
-    rm = RoiManager.getInstance()
-    if rm is not None:
-        rm.reset()
-        rm.close()
-    
-def semi_manual_img_process(imp, output_dir, p):
+def semi_manual_img_process(imp, output_dir, p, used_titles):
     # Parameters:
     DAPI_CHANNEL =  p['DAPI_CHANNEL'] - 1
     MEASURE_CHANNEL =  p['MEASURE_CHANNEL'] - 1
@@ -145,8 +151,10 @@ def semi_manual_img_process(imp, output_dir, p):
         img_title = NSpark_name_processing(img_title)
             
     elif microscope_type == "Airyscan":
-        img_title = Ayriscan_name_processing(img_title)
-    
+        img_title = Airyscan_name_processing(img_title)
+
+    img_title = unique_title(img_title, used_titles)
+
     split_imps = []
     rm = None
     
@@ -156,14 +164,14 @@ def semi_manual_img_process(imp, output_dir, p):
         dapi_imp = split_imps[DAPI_CHANNEL]
         meas_imp = split_imps[MEASURE_CHANNEL]
         for channel in split_imps:
-             channel.show()
-             channel.getProcessor().resetMinAndMax()
-             IJ.run(channel, 'Enhance Contrast', 'saturated=0.35')
-             channel.updateAndDraw()
-        
+            channel.show()
+            channel.getProcessor().resetMinAndMax()
+            IJ.run(channel, 'Enhance Contrast', 'saturated=0.35')
+            channel.updateAndDraw()
+
         rm = ensure_roi_manager(reset=True) # clean roi manager before launch
-        
-        meas_imp.getWindow().toFront()
+
+        dapi_imp.getWindow().toFront() # ROIs are drawn on the DAPI channel
         
         while True:
             gd = NonBlockingGenericDialog('Select ROIs: ' + img_title)
@@ -230,20 +238,15 @@ def main():
             continue
         
         title = imp.getTitle()
-        print(title)
-        # Skip typical derived images (adjust if needed)
-        if (title.startswith("C") and "-" in title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
+        # Skip split-channel windows (C1-..., C2-...) and helper images (adjust if needed)
+        if re.match(r'^C\d+-', title) or title in ["DAPI_work", "Nuclei_mask_particles_only"]:
             continue
-        
-        images.append(imp)        
-    
+
+        images.append(imp)
+
     if not images:
         IJ.error('No suitable images are open.')
         return
-    
-    # Keep only unique images
-    unique_images = list(set(images))
-    n = len(unique_images) # total amount of images to process
 
     # Ask user about the parameters
     params = ask_params_for_image()
@@ -258,10 +261,11 @@ def main():
         return
 
     # ---- Loop: show GUI per image, then process ----
+    used_titles = set() # output names already used in this batch
     for i, imp in enumerate(images):
         IJ.log('Processing %d/%d: %s' % (i + 1, len(images), imp.getTitle()))
         try:
-            if not semi_manual_img_process(imp, output_dir, params):
+            if not semi_manual_img_process(imp, output_dir, params, used_titles):
                 IJ.log('Cancelled by user; stopping batch.')
                 break
 
