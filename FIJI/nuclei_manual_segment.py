@@ -153,8 +153,6 @@ def semi_manual_img_process(imp, output_dir, p, used_titles):
     elif microscope_type == "Airyscan":
         img_title = Airyscan_name_processing(img_title)
 
-    img_title = unique_title(img_title, used_titles)
-
     split_imps = []
     rm = None
     
@@ -176,10 +174,18 @@ def semi_manual_img_process(imp, output_dir, p, used_titles):
         while True:
             gd = NonBlockingGenericDialog('Select ROIs: ' + img_title)
             gd.addMessage('Draw ROI(s) on the DAPI image and click Add in ROI Manager.\n'
-                          'Click OK to continue, or Cancel to stop processing.')
+                          'OK: save and continue.\n'
+                          'Skip image: close this image without saving and go to the next one.\n'
+                          'Cancel: stop processing.')
+            # Three buttons: OK / Skip image / Cancel
+            gd.enableYesNoCancel('OK', 'Skip image')
             gd.showDialog()
             if gd.wasCanceled():
-                return False
+                return 'cancelled'
+            if not gd.wasOKed(): # "Skip image" was pressed
+                imp.changes = False
+                imp.close() # split images are closed in the finally block below
+                return 'skipped'
             rois = list(rm.getRoisAsArray()) # list of ROIs in roi manager
             if not rois:
                 WaitForUserDialog('ROI Warning', 'Add at least one ROI to ROI Manager.').show()
@@ -188,7 +194,10 @@ def semi_manual_img_process(imp, output_dir, p, used_titles):
                 WaitForUserDialog('ROI Warning', 'Exactly one ROI is required. Please adjust ROI Manager.').show()
                 continue
             break
-            
+
+        # Reserve the output name only now, so a skipped image doesn't use it up.
+        img_title = unique_title(img_title, used_titles)
+
         # Export each ROI without changing the original measurement image.
         for i, roi in enumerate(rois):
             roi_name = roi.getName()
@@ -217,7 +226,7 @@ def semi_manual_img_process(imp, output_dir, p, used_titles):
         # Close the original only after every TIFF and the ROI zip saved.
         imp.changes = False
         imp.close()
-        return True
+        return 'saved'
     
     finally:
         close_images(split_imps)
@@ -265,11 +274,14 @@ def main():
     for i, imp in enumerate(images):
         IJ.log('Processing %d/%d: %s' % (i + 1, len(images), imp.getTitle()))
         try:
-            if not semi_manual_img_process(imp, output_dir, params, used_titles):
+            result = semi_manual_img_process(imp, output_dir, params, used_titles)
+            if result == 'cancelled':
                 IJ.log('Cancelled by user; stopping batch.')
                 break
-
-            IJ.log('Successfully saved: ' + imp.getTitle())
+            elif result == 'skipped':
+                IJ.log('Skipped by user (nothing saved): ' + imp.getTitle())
+            else:
+                IJ.log('Successfully saved: ' + imp.getTitle())
 
         except Exception as e:
             # log immediately
