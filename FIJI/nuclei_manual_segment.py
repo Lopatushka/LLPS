@@ -201,12 +201,14 @@ def semi_manual_img_process(imp, output_dir, p):
                 if work is not None:
                     work.changes = False
                     work.close()
-                imp.changes = False
-                imp.close()
-            
+
         roi_path = os.path.join(output_dir, '%s_rois.zip' % (img_title))
         save_rois_zip(rois, roi_path)
         IJ.log('Saved %d ROIs to %s' % (len(rois), roi_path))
+
+        # Close the original only after every TIFF and the ROI zip saved.
+        imp.changes = False
+        imp.close()
         return True
     
     finally:
