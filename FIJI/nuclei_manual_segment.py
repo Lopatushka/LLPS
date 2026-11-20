@@ -237,7 +237,8 @@ def main():
         try:
             if not semi_manual_img_process(imp, output_dir, params):
                 IJ.log('Cancelled by user; stopping batch.')
-                
+                break
+
             IJ.log('Successfully saved: ' + imp.getTitle())
 
         except Exception as e:
