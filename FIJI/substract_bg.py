@@ -98,6 +98,7 @@ def main():
         try:
             # Subtract background
             subtract_background(imp=imp, radius=params["bg_value"])
+            IJ.log("Rolling ball raidus is {}".format(params["bg_value"]))
 
             # Save the processed image (works for any extension, or none)
             name = os.path.splitext(title)[0] + "_bg_subtracted.tif"
