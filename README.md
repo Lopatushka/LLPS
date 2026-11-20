@@ -13,6 +13,7 @@ raw .tif
    │  FIJI/nuclei_manual_segment.py   (Fiji)  → one .tif per nucleus + ROI .zip
    ▼
 single-nucleus .tif images
+   │  FIJI/substract_bg.py   (Fiji, optional) → *_bg_subtracted.tif
    │  FOCI/mfi_nuclei.py                         → MFI_nuclei.csv (optional)
    │  FOCI/outsu.py  or  FOCI/gmm.py             → per-image foci tables
    │  FOCI/agg.py   (both methods)               → aggregated_data.csv (one row per cell)
@@ -47,9 +48,16 @@ images currently open in Fiji and ask for an output folder.
 
 | Script | What it does |
 |---|---|
-| `nuclei_manual_segment.py` | For each open image you draw nuclear ROIs on the DAPI channel. Each nucleus is saved as a separate `.tif` (`C<channel>_<image>_ROI_<nn>_....tif`) and the ROIs as `<image>_rois.zip`. |
+| `nuclei_manual_segment.py` | For each open image you draw nuclear ROIs on the DAPI channel and add them to the ROI Manager. Each nucleus is saved as a separate `.tif` of the measurement channel (`C<channel>_<image>_ROI_<nn>_<roi>.tif`), with every pixel outside the ROI set to 0 on all slices, and the ROIs as `<image>_rois.zip`. The ROI dialog has three buttons: **OK** saves and continues, **Skip image** closes the image and its split channels without saving and goes to the next one, **Cancel** stops the batch. Images with the same output name in one batch get `_2`, `_3`, ... instead of overwriting each other. Split-channel windows (`C1-...`) are not processed. |
+| `substract_bg.py` | *Optional.* Rolling-ball background subtraction (radius in px, asked in a dialog) on every slice of every open image; saves `<image>_bg_subtracted.tif` and writes the radius and the progress to the Log. Images already named `*_bg_subtracted` are skipped. Run it on the single-nucleus images from `nuclei_manual_segment.py`: for these masked images the zero area around the nucleus is first filled with the nearest edge values, so the rolling ball does not create a bright rim at the nuclear edge, and the outside is set back to 0 afterwards. Unmasked images are processed as usual. |
 | `opener.py` | Opens, in alphabetical order, all files in a folder whose name contains a given pattern (case-insensitive; empty = any) and has a given extension. Optionally also searches subfolders. Unreadable files are skipped and listed in the Log. |
 | `closer.py` | Closes all open images after one confirmation dialog, discarding unsaved changes (no "Save?" prompt per image). Tables and the Log stay open. |
+
+If you use `substract_bg.py`, keep `rolling_ball_radius = 0` in `config_outsu.toml` /
+`config_gmm.toml`, otherwise the background is subtracted twice. Note that
+`partition_coefficient`, `fraction_signal_in_foci` and the nucleus/nucleoplasm
+intensities are meant to be measured on raw intensities; on background-subtracted
+input they describe the subtracted image instead.
 
 ### `FOCI/outsu.py` — Otsu threshold segmentation
 
